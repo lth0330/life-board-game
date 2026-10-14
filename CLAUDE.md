@@ -10,10 +10,10 @@
 
 ## 문서
 - `docs/spec.md` — **먼저 읽을 것.** 확정 요약 + 진행 체크리스트 + 문서 목록
-- `docs/01-structure.md` 구조 / `02-character.md` 능력치·직업 / `03-money.md` 돈·재테크 / `04-luck.md` 운세 / `05-marriage.md` 결혼 / `06-players.md` 플레이어끼리 / `07-cards.md` 카드 / `reference.md` 참고 게임
+- `docs/01-structure.md` 구조 / `02-character.md` 능력치·직업 / `03-money.md` 돈·재테크 / `04-luck.md` 운세 / `05-marriage.md` 결혼 / `06-players.md` 플레이어끼리 / `07-cards.md` 카드 / `08-ai.md` AI / `reference.md` 참고 게임
 
 ## 이어서 할 일 (2026-10-15 기준)
-1. 다음 주제: 9 AI 추천 (6 카드 완료)
+1. **9 AI 거의 완료** — `docs/08-ai.md`. 남은 작은 질문: 같은 성격 중복, AI 말풍선 대사
 2. 그다음 남은 주제: 10 화면 → 11 이름, 5-1 직업 세부, 이벤트 맵 아이디어, 밸런스 숫자
 
 ## 사용자
