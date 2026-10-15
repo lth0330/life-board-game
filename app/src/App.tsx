@@ -25,7 +25,7 @@ const DICE_ROLL_MS = 750
 const DICE_SHOW_MS = 650
 // 상점 카테고리 (물건 id로 나눔)
 const SHOP_CATS = [
-  { id: 'home', icon: '🏠', name: '집·차', match: (id: string) => id.startsWith('house') || id.startsWith('car') },
+  { id: 'home', icon: '🏠', name: '집·차', match: (id: string) => id.startsWith('house') || id.startsWith('mortgage') || id.startsWith('car') },
   { id: 'love', icon: '💕', name: '연애', match: (id: string) => id.startsWith('agency') },
   { id: 'pet', icon: '🐶', name: '반려동물', match: (id: string) => id === 'pet' },
   { id: 'item', icon: '🎲', name: '카드·주사위', match: (id: string) => id === 'chance' || id.startsWith('dice_') },

@@ -1,6 +1,6 @@
 import { BUSINESSES, DICE_ITEMS, JOBLESS_BUSINESSES, JOBS, SECTORS } from './data'
 import {
-  aiDiceItem, aiWantsCar, buyLottery, canAct, canBorrowFrom, choose, cur, carCost, cureAddiction, houseCost, isAdultStage, loanLimit, loanTotal, repayFriendLoan,
+  aiDiceItem, aiWantsCar, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, loanLimit, loanTotal, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, rngOf, salaryOf, scoreOf, stageOf, startSabotage, stockHint, takeLoan, toggleInsurance,
   tradeStock, useChance,
 } from './game'
@@ -84,6 +84,12 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
     case 'retire': return id === 'city' ? (per === 'gambler' || per === 'investor' ? 3 : 1) : 2
     case 'shop': {
       if (id === 'pass') return per === 'safe' || per === 'investor' ? 2 : 1
+      if (id.startsWith('mortgage')) {
+        const i = +id.slice(8)
+        const m = mortgagePlan(s, p, i)
+        if (per === 'safe' || m.installment > salaryOf(p) * 0.4 || p.money - m.down < bankDebt(p)) return 0
+        return 2.6 + i * 0.5 + (per === 'investor' || per === 'gambler' ? 0.6 : 0)
+      }
       if (id.startsWith('house')) { const i = +id.slice(5); return p.money - houseCost(s, p, i) >= loanTotal(p) ? 3 + i : 0 } // 빚 갚을 돈은 남기고 살 수 있으면 삼
       if (id.startsWith('car')) { const i = +id.slice(3); return p.money - loanTotal(p) > carCost(p, i) * 2 ? 2.5 + i * 0.5 : 0 }
       if (id === 'chance') return 0.5

@@ -96,7 +96,9 @@ export interface Suitor extends Spouse {
 export interface Loan {
   amount: number
   dueTurn: number
-  kind?: '일반' | '학자금' | '창업'
+  kind?: '일반' | '학자금' | '창업' | '주담대'
+  installment?: number // 주택담보대출: 매 턴 자동으로 갚는 돈
+  missed?: number // 주택담보대출: 연체 횟수 (3번이면 경매)
 }
 
 export interface FriendLoan {

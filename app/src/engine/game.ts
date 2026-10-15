@@ -60,6 +60,7 @@ export function stocksValue(s: GameState, p: Player) {
   return SECTORS.reduce((sum, k) => sum + p.stocks[k] * s.stockPrice[k], 0)
 }
 export const loanTotal = (p: Player) => p.loans.reduce((a, l) => a + l.amount, 0)
+export const bankDebt = (p: Player) => p.loans.filter((l) => l.kind !== '주담대').reduce((a, l) => a + l.amount, 0) // 일반 대출 한도에 들어가는 빚
 export const friendDebt = (s: GameState, p: Player) => s.friendLoans.filter((l) => l.borrowerId === p.id).reduce((a, l) => a + l.owe, 0)
 export const friendCredit = (s: GameState, p: Player) => s.friendLoans.filter((l) => l.lenderId === p.id).reduce((a, l) => a + l.owe, 0)
 export function assetsOf(s: GameState, p: Player) {
@@ -331,17 +332,55 @@ function economyTick(s: GameState, p: Player) {
   p.money -= upkeep
   carCrashTick(s, p)
   healthTick(s, p)
-  for (const l of p.loans) l.amount = Math.round(l.amount * 1.01)
+  for (const l of p.loans) l.amount = Math.round(l.amount * (l.kind === '주담대' ? 1 + HOUSE_RULES.mortgageRate : 1.01))
+  mortgageTick(s, p)
   for (const l of p.loans) {
+    if (l.kind === '주담대') continue
     const left = l.dueTurn - p.turnsPlayed
     if (left >= 1 && left <= 3) {
       log(s, p.id, `${l.kind ?? '일반'} 대출 ${won(l.amount)} 기한까지 ${left}턴! 못 갚으면 강제 청산`, 'bad')
       if (p.human && (left === 3 || left === 1)) s.banner = { title: `대출 기한 ${left}턴 전`, text: `${won(l.amount)} 갚기 (재테크 → 대출)`, tone: 'bad' }
     }
   }
-  const overdue = p.loans.filter((l) => p.turnsPlayed > l.dueTurn)
+  const overdue = p.loans.filter((l) => l.kind !== '주담대' && p.turnsPlayed > l.dueTurn)
   if (overdue.length) forceLiquidate(s, p, overdue)
 }
+
+// 주택담보대출: 매 턴 정해진 돈이 자동으로 빠짐. 못 내면 연체, 3번이면 집을 경매로 팖
+function mortgageTick(s: GameState, p: Player) {
+  const m = p.loans.find((l) => l.kind === '주담대')
+  if (!m) return
+  const pay = Math.min(m.amount, m.installment ?? m.amount)
+  if (p.money >= pay) {
+    p.money -= pay
+    m.amount -= pay
+    if (m.amount <= 0) { p.loans = p.loans.filter((l) => l !== m); log(s, p.id, '주택담보대출을 다 갚았다! 이제 진짜 내 집', 'good'); s.banner = { title: '대출 끝!', text: `${p.name}: 내 집 마련 완료`, tone: 'good' } }
+    return
+  }
+  m.missed = (m.missed ?? 0) + 1
+  log(s, p.id, `주택담보대출 연체 ${m.missed}번째 (${won(pay)}을 못 냄). 3번이면 경매`, 'bad')
+  if (p.human) s.banner = { title: `대출 연체 ${m.missed}번`, text: '3번이면 집이 경매로 넘어가요', tone: 'bad' }
+  if (m.missed < 3 || !p.house) return
+  const sale = Math.round(houseValue(s, p) * HOUSE_RULES.auctionRate)
+  const name = HOUSES[p.house].name
+  p.house = 0
+  p.happy -= 8
+  const left = m.amount - sale
+  p.loans = p.loans.filter((l) => l !== m)
+  if (left > 0) { p.loans.push({ amount: left, dueTurn: p.turnsPlayed + 8, kind: '일반' }); p.creditBad = 8 }
+  else p.money += -left
+  log(s, p.id, `${name}이 경매로 ${won(sale)}에 넘어갔다… 행복 -8${left > 0 ? `, 남은 빚 ${won(left)}은 일반 대출로 · 신용불량` : `, 남은 돈 +${won(-left)}`}`, 'bad')
+  s.banner = { title: '집 경매', text: p.name, tone: 'bad' }
+}
+
+// 주택담보대출로 집 살 때 필요한 계약금·빌릴 돈·매 턴 갚을 돈
+export function mortgagePlan(s: GameState, p: Player, tier: number) {
+  const cost = houseCost(s, p, tier)
+  const down = Math.round(cost * HOUSE_RULES.downRate)
+  const borrow = cost - down
+  return { cost, down, borrow, installment: Math.ceil((borrow * (1 + HOUSE_RULES.mortgageRate * HOUSE_RULES.mortgageTurns / 2)) / HOUSE_RULES.mortgageTurns) }
+}
+const hasMortgage = (p: Player) => p.loans.some((l) => l.kind === '주담대')
 
 // ───────── 창업·퇴직금·메달 ─────────
 
@@ -1512,6 +1551,10 @@ function triggerPoint(s: GameState, p: Player, kind: 'shop' | 'marriage') {
       const cost = houseCost(s, p, i)
       const sell = p.house ? ` · 지금 집 팔고 ${won(cost)}만 더` : ''
       opts.push({ id: `house${i}`, label: `${h.name} 사기`, desc: `시세 ${won(housePriceOf(s, i) * coupon)}${coupon < 1 ? ' (쿠폰)' : ''}${sell} · 매 턴 관리비 ${won(housePriceOf(s, i) * HOUSE_RULES.upkeepRate)}`, disabled: p.money < cost })
+      if (p.money < cost && !hasMortgage(p) && stageOf(s).id !== 'old') {
+        const m = mortgagePlan(s, p, i)
+        opts.push({ id: `mortgage${i}`, label: `${h.name} 대출 끼고 사기`, desc: `계약금 ${won(m.down)} (30%) · 나머지 ${won(m.borrow)}은 주택담보대출 · 매 턴 ${won(m.installment)}씩 ${HOUSE_RULES.mortgageTurns}턴 자동으로 갚기 · 3번 못 내면 경매`, disabled: p.money < m.down || p.creditBad > 0 })
+      }
     })
     if (stageOf(s).id !== 'old') CARS.forEach((c, i) => {
       if (i <= p.car) return
@@ -1743,7 +1786,17 @@ export function choose(s: GameState, optionId: string) {
       break
     case 'shop':
       if (optionId !== 'pass') p.record.shopBuys++
-      if (optionId.startsWith('house')) {
+      if (optionId.startsWith('mortgage')) {
+        const i = +optionId.slice(8) as 0 | 1 | 2 | 3
+        const m = mortgagePlan(s, p, i)
+        const old = p.house ? `${HOUSES[p.house].name}을 팔고 ` : ''
+        if (p.chance === 'coupon') p.chance = null
+        spend(p, m.down)
+        p.loans.push({ amount: m.borrow, dueTurn: p.turnsPlayed + HOUSE_RULES.mortgageTurns, kind: '주담대', installment: m.installment, missed: 0 })
+        p.house = i; p.happy += HOUSES[i].happy
+        log(s, p.id, `${old}${HOUSES[i].name}을 대출 끼고 샀다! 계약금 ${won(m.down)}, 매 턴 ${won(m.installment)}씩 갚기. 행복 +${HOUSES[i].happy}`, 'good')
+        s.banner = { title: '내 집 마련!', text: `${p.name}: ${HOUSES[i].name}`, tone: 'good' }
+      } else if (optionId.startsWith('house')) {
         const i = +optionId.slice(5) as 0 | 1 | 2 | 3
         const cost = houseCost(s, p, i)
         const old = p.house ? `${HOUSES[p.house].name}을 ${won(houseValue(s, p))}에 팔고 ` : ''
@@ -2023,7 +2076,7 @@ export function toggleInsurance(s: GameState, kind: InsuranceKind) {
 export function takeLoan(s: GameState, amount: number) {
   const p = cur(s)
   if (!canAct(s) || !isAdultStage(s) || p.creditBad > 0) return
-  if (loanTotal(p) + amount > loanLimit(p)) return
+  if (bankDebt(p) + amount > loanLimit(p)) return
   p.loans.push({ amount, dueTurn: p.turnsPlayed + 8, kind: '일반' })
   p.money += amount
   log(s, p.id, `은행에서 ${won(amount)} 빌렸다 (8턴 안에 갚기)`, 'info')

@@ -120,7 +120,7 @@ const TYPE_ART: Record<string, string> = {
 
 // 배너 제목으로 그림 고르기
 const BANNER_ART: [RegExp, string][] = [
-  [/결혼/, 'marriage'], [/아기/, 'baby'], [/복권/, 'ticket'], [/메달|감독/, 'medal'], [/회사|창업|매각/, 'biz'], [/잔치/, 'cake'],
+  [/집|대출 끝/, 'family'], [/결혼/, 'marriage'], [/아기/, 'baby'], [/복권/, 'ticket'], [/메달|감독/, 'medal'], [/회사|창업|매각/, 'biz'], [/잔치/, 'cake'],
   [/자녀/, 'grad'], [/수능|대학/, 'grad'], [/이혼/, 'broken'], [/게임 끝/, 'trophy'],
 ]
 export function BannerArt({ title, tone }: { title: string; tone: string }) {

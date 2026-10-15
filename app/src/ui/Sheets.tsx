@@ -3,7 +3,7 @@ import { Character } from '../art/Character'
 import { Trophy } from '../art/More'
 import { CARS, CHANCE_NAMES, DICE_ITEMS, HOUSE_RULES, HOUSES, INSURANCE, JOBS, KIDS, LOTTERY_PRICE, MEDALS, PERSONALITIES, SABOTAGE_NAMES, SECTORS } from '../engine/data'
 import {
-  ageOf, AWARD_POINTS, awardsOf, canBorrowFrom, fortuneName, friendDebt, houseValue, isAdultStage, jobOf, kidAllowance, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
+  ageOf, AWARD_POINTS, awardsOf, bankDebt, canBorrowFrom, fortuneName, friendDebt, houseValue, isAdultStage, jobOf, kidAllowance, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
   stars, stockHint, stocksValue,
 } from '../engine/game'
 import type { GameState, InsuranceKind, Player, Sector } from '../engine/types'
@@ -120,15 +120,16 @@ export function FinanceSheet(f: FinanceProps) {
       )}
       {tab === 'loan' && (
         <div className="list">
-          <p>빌린 돈 <b>{won(loanTotal(p))}</b> / 한도 {won(loanLimit(p))} · 매 턴 이자 1% · 기한에 한꺼번에 갚기 (못 갚으면 강제 청산)</p>
+          <p>빌린 돈 <b>{won(loanTotal(p))}</b> · 일반 대출 한도 {won(bankDebt(p))} / {won(loanLimit(p))} · 매 턴 이자 1% · 기한에 한꺼번에 갚기 (못 갚으면 강제 청산)</p>
           {p.creditBad > 0 && <p className="bad">신용불량 {p.creditBad}턴: 대출 불가</p>}
           {p.loans.map((l, i) => {
             const left = l.dueTurn - p.turnsPlayed
+            if (l.kind === '주담대') return <div key={i} className={l.missed ? 'bad' : 'muted'}>· 주택담보대출 {won(l.amount)} · 매 턴 {won(l.installment ?? 0)} 자동 상환{l.missed ? ` · 연체 ${l.missed}번 ⚠️ (3번이면 경매)` : ''}</div>
             return <div key={i} className={left <= 3 ? 'bad' : 'muted'}>· {l.kind ?? '일반'} 대출 {won(l.amount)} · 남은 {Math.max(0, left)}턴{left <= 3 ? ' ⚠️' : ''}</div>
           })}
           <div className="row">
             {[500, 1000, 3000].map((a) => (
-              <button key={a} disabled={locked || p.creditBad > 0 || loanTotal(p) + a > loanLimit(p)} onClick={() => f.onLoan(a)}>{won(a)} 빌리기</button>
+              <button key={a} disabled={locked || p.creditBad > 0 || bankDebt(p) + a > loanLimit(p)} onClick={() => f.onLoan(a)}>{won(a)} 빌리기</button>
             ))}
           </div>
           {p.loans.length > 0 && (() => {
