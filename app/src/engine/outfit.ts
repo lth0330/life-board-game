@@ -4,6 +4,7 @@ import type { Rng } from './rng'
 export type Slot = 'hair' | 'hat' | 'top' | 'outer' | 'bottom' | 'shoes' | 'acc'
 
 export interface Outfit {
+  gender?: 'm' | 'f' // 남자 / 여자 (예전 저장엔 없음 → 남자)
   skin: string
   hair: string
   hairColor: string
@@ -56,8 +57,14 @@ export const ITEMS: Record<Slot, { id: string; name: string }[]> = {
 
 export const SLOT_NAMES: Record<Slot, string> = { hair: '머리', hat: '모자', top: '상의', outer: '겉옷', bottom: '하의', shoes: '신발', acc: '액세서리' }
 
+// 성별을 바꾸면 머리 모양을 그에 맞게 (직접 고른 건 그대로 두되, 반대 성별 대표 머리만 바꿈)
+export function withGender(o: Outfit, gender: 'm' | 'f'): Outfit {
+  const hair = gender === 'f' && (o.hair === 'short' || o.hair === 'buzz') ? 'long' : gender === 'm' && (o.hair === 'long' || o.hair === 'pony' || o.hair === 'bun') ? 'short' : o.hair
+  return { ...o, gender, hair }
+}
+
 export const DEFAULT_OUTFIT: Outfit = {
-  skin: SKINS[0], hair: 'short', hairColor: HAIR_COLORS[0],
+  gender: 'm', skin: SKINS[0], hair: 'short', hairColor: HAIR_COLORS[0],
   hat: 'none', hatColor: CLOTH_COLORS[1], top: 'tee', topColor: CLOTH_COLORS[0],
   outer: 'none', outerColor: CLOTH_COLORS[6], bottom: 'pants', bottomColor: CLOTH_COLORS[6],
   shoes: 'sneakers', shoesColor: CLOTH_COLORS[7], acc: 'none', accColor: CLOTH_COLORS[3],
@@ -66,8 +73,9 @@ export const DEFAULT_OUTFIT: Outfit = {
 // AI·친구용 무작위 옷차림. 대표 색(플레이어 색)을 상의에 써서 누군지 알아보기 쉽게
 export function randomOutfit(rng: Rng, mainColor: string): Outfit {
   const pick = (slot: Slot) => rng.pick(ITEMS[slot]).id
+  const gender = rng.chance(0.5) ? 'f' : 'm'
   return {
-    skin: rng.pick(SKINS), hair: pick('hair'), hairColor: rng.pick(HAIR_COLORS),
+    gender, skin: rng.pick(SKINS), hair: gender === 'f' ? rng.pick(['long', 'pony', 'bun', 'curly', 'short']) : rng.pick(['short', 'curly', 'buzz', 'short']), hairColor: rng.pick(HAIR_COLORS),
     hat: rng.chance(0.4) ? pick('hat') : 'none', hatColor: rng.pick(CLOTH_COLORS),
     top: pick('top'), topColor: mainColor,
     outer: rng.chance(0.35) ? pick('outer') : 'none', outerColor: rng.pick(CLOTH_COLORS),

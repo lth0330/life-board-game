@@ -13,10 +13,11 @@ const darken = (hex: string, amt = 0.18) => {
 type Extra = 'baby' | 'kinder' | 'student' | null
 function aged(o: Outfit, age?: number): { o: Outfit; scale: number; cane: boolean; extra: Extra } {
   if (age === undefined) return { o, scale: 1, cane: false, extra: null }
-  if (age < 4) return { o: { ...o, hair: 'buzz', hat: 'none', top: 'tee', topColor: '#CFE7F5', outer: 'none', bottom: 'shorts', bottomColor: '#FFFFFF', acc: 'none' }, scale: 0.55, cane: false, extra: 'baby' }
+  const f = o.gender === 'f'
+  if (age < 4) return { o: { ...o, hair: 'buzz', hat: f ? 'ribbon' : 'none', hatColor: '#F3A3C0', top: 'tee', topColor: f ? '#F7D3E2' : '#CFE7F5', outer: 'none', bottom: 'shorts', bottomColor: '#FFFFFF', acc: 'none' }, scale: 0.55, cane: false, extra: 'baby' }
   if (age < 8) return { o: { ...o, hat: 'cap', hatColor: '#F2C230', top: 'tee', outer: 'none', bottom: 'shorts', acc: 'none' }, scale: 0.68, cane: false, extra: 'kinder' }
   if (age < 20) {
-    const skirt = o.bottom === 'skirt' || o.top === 'dress'
+    const skirt = f
     return { o: { ...o, hat: 'none', top: 'shirt', topColor: '#F4EBD6', outer: 'jacket', outerColor: '#1E2A44', bottom: skirt ? 'skirt' : 'pants', bottomColor: '#2C3A5C', acc: 'none' }, scale: age < 14 ? 0.8 : 0.9, cane: false, extra: 'student' }
   }
   const hairColor = age >= 60 ? '#DCDCDC' : age >= 45 ? mix(o.hairColor, '#C8C8C8', 0.4) : o.hairColor
@@ -112,6 +113,7 @@ export function Character({ outfit, view = 'front', size = 100, title, age }: Pr
         <g>
           <circle cx="41" cy="42" r="3" fill={ink} />
           <circle cx="59" cy="42" r="3" fill={ink} />
+          {o.gender === 'f' && <path d="M36 38l3 2M64 38l-3 2" stroke={ink} strokeWidth="1.8" strokeLinecap="round" />}
           <path d="M44 52q6 5 12 0" stroke={ink} strokeWidth="2.2" fill="none" strokeLinecap="round" />
           <circle cx="35" cy="50" r="4" fill="#F09A8A" opacity="0.5" />
           <circle cx="65" cy="50" r="4" fill="#F09A8A" opacity="0.5" />

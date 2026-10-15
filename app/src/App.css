@@ -484,3 +484,6 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
 .track { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 0.23s linear; will-change: transform; }
 .char, .shadow { transition: left 0.23s linear, top 0.23s linear, opacity 0.3s; }
 @media (prefers-reduced-motion: reduce) { .track, .char, .shadow { transition: none; } }
+.gender-pick { display: flex; gap: 6px; }
+.gender-pick button { min-height: 36px; padding: 0 14px; border-radius: 999px; font-family: 'Jua', sans-serif; }
+.gender-pick button.on { background: var(--ink); color: var(--paper); }
