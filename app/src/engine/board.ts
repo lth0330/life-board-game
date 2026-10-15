@@ -148,7 +148,7 @@ export function buildStage(d: StageDef, rng: Rng): Stage {
   // 대학교: 대학 간 사람의 출발 칸 → 대학 길 9칸을 주사위로 걷고 → 졸업하면 본 길 직업 칸으로
   if (d.campus) {
     const jobDep = Number(Object.keys(d.stops).find((k) => d.stops[+k] === 'job'))
-    const UNI: [UniEvent, number][] = [['study', 25], ['club', 15], ['love', 15], ['parttime', 15], ['exam', 15], ['party', 10], ['scholar', 5]]
+    const UNI: [UniEvent, number][] = [['study', 40], ['love', 15], ['parttime', 15], ['exam', 15], ['party', 10], ['scholar', 5]] // study = 캠퍼스 생활(지력·매력·체력 중 고름)
     const gate = tiles.push({ kind: 'campus', next: [], d: -9, lane: -1, road: 'campus' }) - 1
     let prev = gate
     for (let k = 0; k < 9; k++) {

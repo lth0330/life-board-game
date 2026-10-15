@@ -330,6 +330,7 @@ function economyTick(s: GameState, p: Player) {
   if (p.spouse?.trait === '명품 중독') upkeep += 15
   p.money -= upkeep
   carCrashTick(s, p)
+  healthTick(s, p)
   for (const l of p.loans) l.amount = Math.round(l.amount * 1.01)
   const overdue = p.loans.filter((l) => p.turnsPlayed > l.dueTurn)
   if (overdue.length) forceLiquidate(s, p, overdue)
@@ -398,6 +399,16 @@ function sellCompany(s: GameState, p: Player) {
 }
 
 const coachChance = (p: Player, rank: number) => Math.min(0.95, 0.2 + p.stats.str * 0.04 + rank * 0.15 + p.medals.length * 0.1)
+
+// 체력이 낮을수록 건강 문제 (성인부터, 노년엔 1.5배)
+function healthTick(s: GameState, p: Player) {
+  const rng = rngOf(s)
+  const str = p.stats.str
+  const ch = (str <= 2 ? 0.08 : str <= 4 ? 0.04 : str <= 6 ? 0.02 : 0.01) * (stageOf(s).id === 'old' ? 1.5 : 1)
+  if (!rng.chance(ch)) return
+  const what = rng.pick(['허리 디스크가 왔다', '위염으로 병원에 갔다', '독감으로 입원했다', '무릎을 다쳤다'])
+  badEvent(s, p, { text: `${what} (체력 ${str})`, loss: scaleOf(s) * 3, happyLoss: 2, kind: 'health' })
+}
 
 // 차 사고: 스쿠터는 자주(몸을 다침), 일반차는 적당히, 고급차는 드물지만 수리비가 큼
 function carCrashTick(s: GameState, p: Player) {
@@ -671,6 +682,7 @@ export function roll(s: GameState, bonus = 0, useCar = false, item: DiceItem | n
   const rng = rngOf(s)
   const st = stageOf(s)
   if (st.rolls && isEnd(tileOf(s, p))) {
+    const restStart = s.logCount
     s.lastRoll = rng.int(1, 6)
     s.dice = { value: s.lastRoll, id: (s.dice?.id ?? 0) + 1 }
     const k = rng.pick(STATS)
@@ -678,6 +690,7 @@ export function roll(s: GameState, bonus = 0, useCar = false, item: DiceItem | n
     p.money += scaleOf(s)
     log(s, p.id, `휴식 칸에서 쉬었다: ${STAT_NAMES[k]} +1, +${won(scaleOf(s))}`, 'good')
     if (rng.chance(0.25) && !p.chance) giveChance(s, p, randomChance(rng))
+    showPop(s, p, restStart, 'rest', '휴식 칸')
     endTurn(s)
     return
   }
@@ -907,7 +920,7 @@ function happyScene(s: GameState, p: Player): { art: string; title: string; text
   return rng.pick(c)
 }
 
-export const UNI_NAMES: Record<string, string> = { study: '공부', club: '동아리', love: '캠퍼스 연애', parttime: '알바', exam: '시험', party: '축제·MT', scholar: '장학금' }
+export const UNI_NAMES: Record<string, string> = { study: '캠퍼스 생활', club: '동아리', love: '캠퍼스 연애', parttime: '알바', exam: '시험', party: '축제·MT', scholar: '장학금' }
 const UNI_ART: Record<string, string> = { study: 'book', club: 'medal', love: 'heart', parttime: 'money', exam: 'warn', party: 'karaoke', scholar: 'grad' }
 
 // 대학 길 칸 사건
@@ -916,9 +929,16 @@ function uniTile(s: GameState, p: Player, ev: string) {
   const sc = scaleOf(s)
   const up = (k: StatKey, n: number) => { p.stats[k] = clampStat(p.stats[k] + n) }
   switch (ev) {
-    case 'study': up('int', 1); log(s, p.id, '도서관에서 밤새 공부했다. 지력 +1', 'good'); break
-    case 'club':
-      s.pending = { type: 'growPick', playerId: p.id, title: '동아리', text: '어떤 동아리에 들어갈까요?', options: [{ id: 'str', label: '운동 동아리', desc: `체력 +1 (지금 ${p.stats.str})` }, { id: 'cha', label: '공연 동아리', desc: `매력 +1 (지금 ${p.stats.cha})` }], data: { add: 1 } }
+    case 'study': case 'club':
+      s.pending = {
+        type: 'growPick', playerId: p.id, title: '캠퍼스 생활', text: '이번엔 무엇을 할까요?',
+        options: [
+          { id: 'int', label: '📚 도서관에서 공부', desc: `지력 +1 (지금 ${p.stats.int})` },
+          { id: 'cha', label: '🎤 동아리 활동', desc: `매력 +1 (지금 ${p.stats.cha})` },
+          { id: 'str', label: '🏃 운동', desc: `체력 +1 (지금 ${p.stats.str})` },
+        ],
+        data: { add: 1 },
+      }
       break
     case 'love': up('cha', 1); up('int', -1); p.happy += 3; log(s, p.id, '캠퍼스 커플! 매력 +1, 지력 -1 (공부는 뒷전), 행복 +3', 'good'); break
     case 'parttime': { const m = sc * 2; p.money += m; p.happy -= 1; log(s, p.id, `카페 알바를 했다. +${won(m)}, 행복 -1`, 'good'); break }
@@ -938,8 +958,17 @@ function uniTile(s: GameState, p: Player, ev: string) {
   void rng
 }
 
-const POP_ART: Record<string, string> = { money: 'money', risk: 'warn', card: 'card', happy: 'rest' }
-const POP_TITLE: Record<string, string> = { money: '돈 칸', risk: '위기 칸', card: '카드 칸', happy: '행복 칸' }
+const POP_ART: Record<string, string> = { money: 'money', risk: 'warn', card: 'card', happy: 'rest', date: 'heart', mini: 'medal' }
+const POP_TITLE: Record<string, string> = { money: '돈 칸', risk: '위기 칸', card: '카드 칸', happy: '행복 칸', date: '연애 칸', mini: '미니게임' }
+
+// 사건 팝업: start 이후 남은 기록(내 것 + 모두에게 일어난 것)을 그림과 함께. 고를 게 있으면 선택 창이 대신 뜸
+function showPop(s: GameState, p: Player, start: number, art: string, title: string) {
+  const n = s.logCount - start
+  if (n <= 0 || s.pending || s.mini) return
+  const lines = s.log.slice(-n).filter((l) => l.playerId === p.id || l.playerId === null)
+  if (!lines.length) return
+  s.popup = { id: (s.popup?.id ?? 0) + 1, art, title, text: lines.map((l) => l.text).join('\n'), tone: lines.some((l) => l.tone === 'bad') ? 'bad' : lines[0].tone, playerId: p.id }
+}
 
 function land(s: GameState) {
   const p = cur(s)
@@ -999,11 +1028,8 @@ function land(s: GameState) {
     case 'goal': break
   }
   // 칸 사건 팝업: 고를 게 없으면 이번 칸 기록을 그림과 함께 보여 줌 (화면에서 저절로 꺼짐)
-  const lines = s.log.slice(-(s.logCount - logStart)).filter((l) => l.playerId === p.id)
-  if (popArt && !s.pending && !s.mini && lines.length && s.logCount > logStart) {
-    if (t.kind === 'money') popTitle = isAdultStage(s) ? '보너스!' : '용돈!'
-    s.popup = { id: (s.popup?.id ?? 0) + 1, art: popArt, title: popTitle, text: lines.map((l) => l.text).join('\n'), tone: lines.some((l) => l.tone === 'bad') ? 'bad' : lines[0].tone, playerId: p.id }
-  }
+  if (t.kind === 'money') popTitle = isAdultStage(s) ? '보너스!' : '용돈!'
+  if (popArt) showPop(s, p, logStart, popArt, popTitle)
   s.meetCheck = true
   resume(s)
 }
@@ -1228,8 +1254,10 @@ export function finishMini(s: GameState, value: number) {
   if (!m) return
   const p = s.players[m.playerId]
   s.mini = null
+  const miniStart = s.logCount
   if (m.duel) resolveDuel(s, m.game as DuelId, m.duel.ids, { ...m.duel.results, [p.id]: value })
   else miniReward(s, p, m.game as MiniId, Math.max(0, Math.min(2, Math.round(value))), m.stake)
+  showPop(s, p, miniStart, 'medal', m.duel ? '대결 결과' : '미니게임 결과')
   resume(s)
 }
 
@@ -1575,6 +1603,14 @@ function jobPerkTick(s: GameState, p: Player) {
       break
     case 'doctor':
       if (rng.chance(0.15)) { p.happy -= 2; log(s, p.id, '밤샘 당직… 행복 -2', 'bad') }
+      break
+    case 'youtuber':
+      // 매력이 높을수록 광고·후원이 큼
+      if (rng.chance(0.3)) { const m = Math.round(sc * p.stats.cha * 0.5); p.money += m; log(s, p.id, `${rng.pick(['광고 협찬', '팬 후원', '라이브 방송 후원'])}! (매력 ${p.stats.cha}) +${won(m)}`, 'good') }
+      break
+    case 'athlete':
+      // 승급과는 상관없지만 매력이 높으면 부수입
+      if (p.stats.cha >= 4 && rng.chance(0.2)) { const m = Math.round(sc * p.stats.cha * 0.3); p.money += m; log(s, p.id, `${rng.pick(['굿즈 판매', '예능 출연', '광고 촬영', '인터넷 방송 출연'])}! (매력 ${p.stats.cha}) +${won(m)}`, 'good') }
       break
     default: break
   }
@@ -2193,11 +2229,13 @@ function endTurn(s: GameState) {
     p.finished = true
     s.finishCount++
     p.finishOrder = s.finishCount
+    const goalStart = s.logCount
     const bonus = [0, 500, 300, 100, 0][s.finishCount] ?? 0
     p.money += bonus
     if (p.jobId === 'ceo' && p.bizKeep) sellCompany(s, p)
     payDebtsAtGoal(s, p)
     log(s, p.id, `${s.finishCount}번째로 골인!${bonus ? ` +${won(bonus)}` : ''}`, 'good')
+    showPop(s, p, goalStart, 'trophy', `${s.finishCount}등으로 골인!`)
   }
   s.pending = null
   s.lastRoll = null
@@ -2261,7 +2299,8 @@ function careerRoll(s: GameState, p: Player) {
   if (!job?.boom || job.id === 'ceo') return // 사업가는 매 턴 회사 크기가 바뀜
   const rng = rngOf(s)
   const below = p.stats[job.key] < (job.req[job.key] ?? 0) ? -1 : 0 // 능력치가 조건 밑이면 추락 확률↑
-  const v = rng.int(1, 6) + (p.fortune >= 4 ? 1 : p.fortune <= 1 ? -1 : 0) + below
+  const charm = job.id === 'youtuber' ? (p.stats.cha >= 7 ? 1 : p.stats.cha <= 3 ? -1 : 0) : 0 // 유튜버는 매력이 높을수록 구독자가 잘 늚
+  const v = rng.int(1, 6) + (p.fortune >= 4 ? 1 : p.fortune <= 1 ? -1 : 0) + below + charm
   const sector = job.id === 'ceo' ? p.sector : null
   if (v >= 5 && p.jobRank < 2) {
     p.jobRank++

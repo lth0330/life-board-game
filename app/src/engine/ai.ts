@@ -185,7 +185,7 @@ export function aiPreRoll(s: GameState) {
   // 보험
   const wantIns = per === 'safe' ? 1 : per === 'family' ? 0.7 : 0.3
   if (p.money > 300) {
-    if (!p.insurance.health && rng.chance(wantIns)) toggleInsurance(s, 'health')
+    if (!p.insurance.health && rng.chance(p.stats.str <= 4 ? Math.max(wantIns, 0.7) : wantIns)) toggleInsurance(s, 'health') // 체력이 약하면 건강보험
     if (p.house && !p.insurance.property && rng.chance(wantIns)) toggleInsurance(s, 'property')
     if (p.car && !p.insurance.car && rng.chance(wantIns)) toggleInsurance(s, 'car')
   }
