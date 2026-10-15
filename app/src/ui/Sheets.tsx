@@ -33,7 +33,7 @@ interface FinanceProps {
   onTrade: (k: Sector, q: number) => void
   onInsurance: (k: InsuranceKind) => void
   onLoan: (amount: number) => void
-  onRepay: () => void
+  onRepay: (amount?: number) => void
   onFriendLoan: (lenderId: number, amount: number, rateIdx: number, term: number) => void
   onRepayFriend: (idx: number) => void
   onClose: () => void
@@ -52,6 +52,7 @@ function ProfitText({ v }: { v: number }) {
 export function FinanceSheet(f: FinanceProps) {
   const [tab, setTab] = useState<'lottery' | 'stock' | 'ins' | 'loan' | 'friend'>('stock')
   const [amount, setAmount] = useState(1000)
+  const [repay, setRepay] = useState(100)
   const [rateIdx, setRateIdx] = useState(1)
   const [term, setTerm] = useState(10)
   const { s, p } = f
@@ -119,25 +120,41 @@ export function FinanceSheet(f: FinanceProps) {
       )}
       {tab === 'loan' && (
         <div className="list">
-          <p>빌린 돈 <b>{won(loanTotal(p))}</b> / 한도 {won(loanLimit(p))} · 매 턴 이자 1% · 15턴 안에 갚기</p>
+          <p>빌린 돈 <b>{won(loanTotal(p))}</b> / 한도 {won(loanLimit(p))} · 매 턴 이자 1% · 기한에 한꺼번에 갚기 (못 갚으면 강제 청산)</p>
           {p.creditBad > 0 && <p className="bad">신용불량 {p.creditBad}턴: 대출 불가</p>}
-          {p.loans.map((l, i) => <div key={i} className="muted">· {won(l.amount)} (기한: {l.dueTurn}번째 차례)</div>)}
+          {p.loans.map((l, i) => {
+            const left = l.dueTurn - p.turnsPlayed
+            return <div key={i} className={left <= 3 ? 'bad' : 'muted'}>· {l.kind ?? '일반'} 대출 {won(l.amount)} · 남은 {Math.max(0, left)}턴{left <= 3 ? ' ⚠️' : ''}</div>
+          })}
           <div className="row">
             {[500, 1000, 3000].map((a) => (
               <button key={a} disabled={locked || p.creditBad > 0 || loanTotal(p) + a > loanLimit(p)} onClick={() => f.onLoan(a)}>{won(a)} 빌리기</button>
             ))}
           </div>
-          <button className="wide" disabled={locked || !p.loans.length} onClick={f.onRepay}>갚을 수 있는 만큼 갚기</button>
+          {p.loans.length > 0 && (() => {
+            // 100만 단위로 갚을 액수 고르기 (가진 돈과 남은 빚을 넘지 않게)
+            const max = Math.max(0, Math.floor(Math.min(p.money, loanTotal(p)) / 100) * 100)
+            const amt = Math.min(repay, max)
+            return (
+              <div className="row repay">
+                <button disabled={locked || amt <= 100} onClick={() => setRepay(Math.max(100, amt - 100))} aria-label="100만 줄이기">−</button>
+                <b className="grow center">{won(amt)}</b>
+                <button disabled={locked || amt + 100 > max} onClick={() => setRepay(amt + 100)} aria-label="100만 늘리기">＋</button>
+                <button disabled={locked || amt < 100} onClick={() => f.onRepay(amt)}>갚기</button>
+                <button disabled={locked || p.money <= 0} onClick={() => f.onRepay()}>최대</button>
+              </div>
+            )
+          })()}
         </div>
       )}
       {tab === 'friend' && (
         <div className="list">
-          <p className="note">친구에게는 <b>사람마다 한 번만</b> 부탁할 수 있어요. 기한을 넘기면 소송으로 가요. 빌려준 사람은 돌려받으면 운세가 좋아져요.</p>
+          <p className="note">친구에게는 <b>사람마다 한 번만</b> 부탁할 수 있어요. 기한을 넘기면 3턴 동안 독촉, 그래도 안 갚으면 소송이에요 (큰돈일수록 빌린 사람이 불리). 빌려준 사람은 돌려받으면 운세가 좋아져요.</p>
           {s.friendLoans.map((l, i) => (l.borrowerId === p.id || l.lenderId === p.id) && (
             <div key={i} className="row">
               <div className="grow">
                 {l.borrowerId === p.id ? `${s.players[l.lenderId].name}에게 갚을 돈` : `${s.players[l.borrowerId].name}에게 받을 돈`} <b>{won(l.owe)}</b>
-                <div className="muted">기한: {s.players[l.borrowerId].name}의 {l.dueTurn}번째 차례</div>
+                <div className={l.nag !== undefined ? 'bad' : 'muted'}>{l.nag !== undefined ? `기한 지남 · 독촉 중 (${l.nag}턴 뒤 소송)` : `남은 ${Math.max(0, l.dueTurn - s.players[l.borrowerId].turnsPlayed)}턴 (${s.players[l.borrowerId].name} 차례 기준)`}</div>
               </div>
               {l.borrowerId === p.id && <button disabled={locked || p.money < l.owe} onClick={() => f.onRepayFriend(i)}>갚기</button>}
             </div>

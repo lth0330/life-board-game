@@ -332,6 +332,13 @@ function economyTick(s: GameState, p: Player) {
   carCrashTick(s, p)
   healthTick(s, p)
   for (const l of p.loans) l.amount = Math.round(l.amount * 1.01)
+  for (const l of p.loans) {
+    const left = l.dueTurn - p.turnsPlayed
+    if (left >= 1 && left <= 3) {
+      log(s, p.id, `${l.kind ?? '일반'} 대출 ${won(l.amount)} 기한까지 ${left}턴! 못 갚으면 강제 청산`, 'bad')
+      if (p.human && (left === 3 || left === 1)) s.banner = { title: `대출 기한 ${left}턴 전`, text: `${won(l.amount)} 갚기 (재테크 → 대출)`, tone: 'bad' }
+    }
+  }
   const overdue = p.loans.filter((l) => p.turnsPlayed > l.dueTurn)
   if (overdue.length) forceLiquidate(s, p, overdue)
 }
@@ -378,7 +385,7 @@ function paySeverance(s: GameState, p: Player) {
 
 function startCompany(s: GameState, p: Player, biz: { name: string; stat: StatKey; sector: Sector | null }) {
   const cost = bizCost(p)
-  if (p.money < cost) { p.loans.push({ amount: cost - p.money, dueTurn: p.turnsPlayed + 20 }); p.money = cost; log(s, p.id, '빚을 내서 창업 자금을 마련했다', 'info') }
+  if (p.money < cost) { p.loans.push({ amount: cost - p.money, dueTurn: p.turnsPlayed + 20, kind: '창업' }); p.money = cost; log(s, p.id, '빚을 내서 창업 자금을 마련했다', 'info') }
   p.money -= cost
   setJob(s, p, 'ceo') // 다니던 직장 퇴직금은 여기서 받음
   p.jobRank = 0 // 모두 소기업부터
@@ -879,7 +886,7 @@ function applyRoadStart(s: GameState, p: Player, road: string) {
       const loan = score >= 12 ? 300 : score >= 8 ? 800 : 1200
       const grade = score >= 12 ? '상위권! 장학금을 받았다' : score >= 8 ? '중간' : '하위권… 등록금 비싼 대학'
       log(s, p.id, `수능: 지력 ${p.stats.int} + 주사위 ${dice} → ${grade} (학자금 대출 ${won(loan)})`, score >= 12 ? 'good' : score >= 8 ? 'info' : 'bad')
-      p.loans.push({ amount: loan, dueTurn: p.turnsPlayed + 40 })
+      p.loans.push({ amount: loan, dueTurn: p.turnsPlayed + 40, kind: '학자금' })
       if (score >= 12) s.banner = { title: '수능 상위권!', text: `${p.name}: 장학금`, tone: 'good' }
       // 성인부터 시작한 판이면 지금 바로 대학교로
       if (stageOf(s).id === 'young') p.pos = campusIdx(s)
@@ -2016,20 +2023,26 @@ export function takeLoan(s: GameState, amount: number) {
   const p = cur(s)
   if (!canAct(s) || !isAdultStage(s) || p.creditBad > 0) return
   if (loanTotal(p) + amount > loanLimit(p)) return
-  p.loans.push({ amount, dueTurn: p.turnsPlayed + 15 })
+  p.loans.push({ amount, dueTurn: p.turnsPlayed + 15, kind: '일반' })
   p.money += amount
   log(s, p.id, `은행에서 ${won(amount)} 빌렸다 (15턴 안에 갚기)`, 'info')
 }
 
-export function repayLoans(s: GameState) {
+export function repayLoans(s: GameState, amount?: number) {
   const p = cur(s)
   if (!canAct(s)) return
+  let budget = Math.min(Math.max(0, p.money), amount ?? Infinity)
+  let paid = 0
   p.loans.sort((a, b) => a.dueTurn - b.dueTurn)
-  while (p.loans.length && p.money >= p.loans[0].amount) {
-    p.money -= p.loans[0].amount
-    log(s, p.id, `대출 ${won(p.loans[0].amount)}을 갚았다`, 'good')
-    p.loans.shift()
+  for (const l of p.loans) {
+    const pay = Math.min(budget, l.amount)
+    l.amount -= pay
+    budget -= pay
+    paid += pay
   }
+  p.loans = p.loans.filter((l) => l.amount > 0)
+  p.money -= paid
+  if (paid) log(s, p.id, `대출 ${won(paid)}을 갚았다${p.loans.length ? ` (남은 빚 ${won(loanTotal(p))})` : ' (다 갚았다!)'}`, 'good')
 }
 
 // ───────── 플레이어끼리 돈 빌려주기 ─────────
@@ -2091,8 +2104,15 @@ export function repayFriendLoan(s: GameState, idx: number) {
 function friendLoanTick(s: GameState, p: Player) {
   const overdue = s.friendLoans.filter((l) => l.borrowerId === p.id && p.turnsPlayed > l.dueTurn)
   for (const l of overdue) {
+    const lender = s.players[l.lenderId]
+    l.nag = l.nag === undefined ? 3 : l.nag - 1
+    if (l.nag > 0) {
+      log(s, p.id, `${lender.name}의 독촉: "${won(l.owe)} 빨리 갚아!" (${l.nag}턴 안에 안 갚으면 소송)`, 'bad')
+      if (p.human) s.banner = { title: '빚 독촉', text: `${lender.name}에게 ${won(l.owe)} · ${l.nag}턴 남음`, tone: 'bad' }
+      continue
+    }
     s.friendLoans.splice(s.friendLoans.indexOf(l), 1)
-    lawsuit(s, s.players[l.lenderId], p, 'loan', l.owe)
+    lawsuit(s, lender, p, 'loan', l.owe)
   }
 }
 
@@ -2108,7 +2128,7 @@ function lawsuit(s: GameState, plaintiff: Player, defendant: Player, kind: 'loan
   }
   const power = (q: Player) => rng.int(1, 6) + (q.fortune - 2) + lawyer(q)
   const a = power(plaintiff)
-  const b = power(defendant) - (kind === 'loan' ? 1 : 0)
+  const b = power(defendant) - (kind === 'loan' ? 1 + Math.min(3, Math.floor(owe / 1000)) : 0) // 큰돈일수록 빌린 사람이 질 확률↑
   log(s, null, `[법적 공방] ${plaintiff.name}(${a}) vs ${defendant.name}(${b})`, 'info')
   s.banner = { title: '법적 공방', text: `${plaintiff.name} vs ${defendant.name}`, tone: 'info' }
   if (kind === 'loan') {

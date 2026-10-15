@@ -324,7 +324,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
           onLottery={() => act(buyLottery)} onCure={() => act(cureAddiction)}
           onTrade={(k, q) => act((s) => tradeStock(s, k, q))}
           onInsurance={(k) => act((s) => toggleInsurance(s, k))}
-          onLoan={(a) => act((s) => takeLoan(s, a))} onRepay={() => act(repayLoans)}
+          onLoan={(a) => act((s) => takeLoan(s, a))} onRepay={(a) => act((s) => repayLoans(s, a))}
           onFriendLoan={(id, a, r, t) => { setSheet(null); act((s) => requestFriendLoan(s, id, a, r, t)) }}
           onRepayFriend={(i) => act((s) => repayFriendLoan(s, i))}
           onClose={() => setSheet(null)}

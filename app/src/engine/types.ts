@@ -96,6 +96,7 @@ export interface Suitor extends Spouse {
 export interface Loan {
   amount: number
   dueTurn: number
+  kind?: '일반' | '학자금' | '창업'
 }
 
 export interface FriendLoan {
@@ -104,6 +105,7 @@ export interface FriendLoan {
   principal: number
   owe: number // 갚아야 할 돈 (원금 + 이자)
   dueTurn: number // 빌린 사람의 차례 수 기준
+  nag?: number // 기한이 지난 뒤 남은 독촉 턴 (0이 되면 소송)
 }
 
 export interface MiniState {
