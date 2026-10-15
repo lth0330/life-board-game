@@ -390,7 +390,10 @@ export function canAct(s: GameState) {
   return s.phase === 'roll' && !s.pending
 }
 
-export function roll(s: GameState, bonus = 0) {
+export const canUseCar = (p: Player) => p.car > 0 && p.carCharges > 0
+
+// useCar: 던지기 전에 자동차 ±1 능력을 쓰겠다고 정함 (쓰면 결과와 상관없이 1번 차감)
+export function roll(s: GameState, bonus = 0, useCar = false) {
   if (!canAct(s)) return
   const p = cur(s)
   const rng = rngOf(s)
@@ -408,19 +411,30 @@ export function roll(s: GameState, bonus = 0) {
   const value = rng.int(1, 6)
   s.lastRoll = value + bonus
   log(s, p.id, `주사위 ${value}${bonus ? ` +${bonus}` : ''}`, 'info')
-  if ((p.carCharges > 0 && p.car > 0) || p.chance === 'reroll') {
+  const carOn = useCar && canUseCar(p)
+  if (carOn) {
+    p.carCharges--
+    log(s, p.id, `${CARS[p.car].name} 능력 사용 (남은 ${p.carCharges}번)`, 'info')
+  }
+  if (carOn || p.chance === 'reroll') {
     if (p.human) {
-      const opts: ChoiceOption[] = [{ id: 'keep', label: `그대로 ${s.lastRoll}칸` }]
-      if (p.carCharges > 0 && p.car > 0) {
-        if (s.lastRoll > 1) opts.push({ id: 'minus', label: `-1 → ${s.lastRoll - 1}칸`, desc: `${CARS[p.car].name} (남은 ${p.carCharges}번)` })
-        opts.push({ id: 'plus', label: `+1 → ${s.lastRoll + 1}칸`, desc: `${CARS[p.car].name} (남은 ${p.carCharges}번)` })
-      }
+      const n = s.lastRoll
+      const opts: ChoiceOption[] = carOn
+        ? [
+            { id: 'minus', label: `-1 → ${n - 1}칸`, disabled: n <= 1 },
+            { id: 'keep', label: `+0 → ${n}칸` },
+            { id: 'plus', label: `+1 → ${n + 1}칸` },
+          ].filter((o) => !o.disabled)
+        : [{ id: 'keep', label: `그대로 ${n}칸` }]
       if (p.chance === 'reroll') opts.push({ id: 'reroll', label: '다시 굴리기 (찬스 카드)' })
-      s.pending = { type: 'afterRoll', playerId: p.id, title: `주사위 ${s.lastRoll}`, text: '이대로 갈까요?', options: opts }
+      s.pending = {
+        type: 'afterRoll', playerId: p.id, title: `주사위 ${n}`,
+        text: carOn ? `${CARS[p.car].name} 능력: 몇 칸 갈까요?` : '이대로 갈까요?', options: opts,
+      }
       s.phase = 'decision'
       return
     }
-    const choice = aiAfterRoll(s, p, s.lastRoll)
+    const choice = aiAfterRoll(s, p, s.lastRoll, carOn)
     applyAfterRoll(s, p, choice)
     return
   }
@@ -436,21 +450,34 @@ function tileAhead(s: GameState, p: Player, steps: number): Tile {
   return tiles[Math.min(p.pos + steps, tiles.length - 1)]
 }
 
-function aiAfterRoll(s: GameState, p: Player, n: number): string {
-  const bad = (k: number) => tileAhead(s, p, k).kind === 'risk'
-  if (p.carCharges > 0 && p.car > 0) {
-    if (bad(n) && !bad(n + 1)) return 'plus'
-    if (bad(n) && n > 1 && !bad(n - 1)) return 'minus'
-    if (stageOf(s).id === 'old' && p.carCharges > 1) return 'plus'
+function aiAfterRoll(s: GameState, p: Player, n: number, carOn: boolean): string {
+  const tileKind = (k: number) => tileAhead(s, p, k).kind
+  const value = (k: number) => {
+    const t = tileKind(k)
+    return t === 'risk' ? -3 : t === 'money' || t === 'map' ? 2 : t === 'card' || t === 'happy' || t === 'date' ? 1 : 0
   }
-  if (p.chance === 'reroll' && bad(n)) return 'reroll'
+  if (carOn) {
+    const cands = [['keep', n], ['plus', n + 1], ...(n > 1 ? [['minus', n - 1]] : [])] as [string, number][]
+    // 노년은 골까지 경주라 많이 가는 쪽에 가산점
+    const bonus = (k: number) => (stageOf(s).id === 'old' ? k * 0.5 : 0)
+    return cands.reduce((a, c) => (value(c[1]) + bonus(c[1]) > value(a[1]) + bonus(a[1]) ? c : a))[0]
+  }
+  if (p.chance === 'reroll' && tileKind(n) === 'risk') return 'reroll'
   return 'keep'
+}
+
+// AI가 던지기 전에 자동차 능력을 쓸지: 남은 횟수에 여유가 있거나 노년 경주면 사용
+export function aiWantsCar(s: GameState, p: Player): boolean {
+  if (!canUseCar(p)) return false
+  if (stageOf(s).id === 'old') return true
+  if (p.rollsLeft <= p.carCharges) return true
+  return rngOf(s).chance(0.35)
 }
 
 function applyAfterRoll(s: GameState, p: Player, choice: string) {
   let n = s.lastRoll ?? 1
-  if (choice === 'minus') { n -= 1; p.carCharges--; log(s, p.id, `${CARS[p.car].name}로 1칸 덜 갔다`, 'info') }
-  if (choice === 'plus') { n += 1; p.carCharges--; log(s, p.id, `${CARS[p.car].name}로 1칸 더 갔다`, 'info') }
+  if (choice === 'minus' && n > 1) { n -= 1; log(s, p.id, `${CARS[p.car].name}로 1칸 덜 갔다`, 'info') }
+  if (choice === 'plus') { n += 1; log(s, p.id, `${CARS[p.car].name}로 1칸 더 갔다`, 'info') }
   if (choice === 'reroll') {
     p.chance = null
     n = rngOf(s).int(1, 6)

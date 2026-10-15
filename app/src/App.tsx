@@ -2,9 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import { aiStep } from './engine/ai'
 import {
-  ageOf, buyLottery, canAct, choose, createGame, cur, cureAddiction, fortuneName, repayLoans, roll, stageOf,
+  ageOf, buyLottery, canAct, canUseCar, choose, createGame, cur, cureAddiction, fortuneName, repayLoans, roll, stageOf,
   startSabotage, takeLoan, toggleInsurance, tradeStock, useChance,
 } from './engine/game'
+import { CARS } from './engine/data'
 import type { Difficulty, GameState } from './engine/types'
 import { Board, FullMap } from './ui/Board'
 import { CardsSheet, FinanceSheet, GameOver, PeopleSheet, playerLine, won } from './ui/Sheets'
@@ -112,6 +113,7 @@ function Play({ game, setGame, speed, onQuit }: { game: GameState; setGame: (g: 
   const [sheet, setSheet] = useState<SheetKind>(null)
   const [rolling, setRolling] = useState<number | null>(null)
   const [menu, setMenu] = useState(false)
+  const [carMode, setCarMode] = useState(false)
   const gameRef = useRef(game)
   gameRef.current = game
 
@@ -152,11 +154,16 @@ function Play({ game, setGame, speed, onQuit }: { game: GameState; setGame: (g: 
     return () => clearTimeout(t)
   }, [game.banner])
 
+  // 차 능력은 차례마다 새로 고름
+  useEffect(() => { setCarMode(false) }, [game.turn])
+
   const doRoll = () => {
     if (!myTurn) return
+    const useCar = carMode
     setRolling(1)
-    setTimeout(() => { setRolling(null); act((s) => roll(s)) }, 650)
+    setTimeout(() => { setRolling(null); act((s) => roll(s, 0, useCar)) }, 650)
   }
+  const showCar = myTurn && canUseCar(p)
 
   const recent = game.log.slice(-3)
   const order = game.players
@@ -198,6 +205,12 @@ function Play({ game, setGame, speed, onQuit }: { game: GameState; setGame: (g: 
           </div>
         ))}
       </div>
+
+      {showCar && (
+        <button className={`car-toggle ${carMode ? 'on' : ''}`} aria-pressed={carMode} onClick={() => setCarMode(!carMode)}>
+          {CARS[p.car].name} ±1 {carMode ? '사용함' : '쓰기'} · 남은 {p.carCharges}번
+        </button>
+      )}
 
       <div className="controls">
         <button className="mid" onClick={() => setSheet('cards')}>카드{(p.chance || p.sabotage) ? <em>{(p.chance ? 1 : 0) + (p.sabotage ? 1 : 0)}</em> : null}</button>

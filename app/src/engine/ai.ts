@@ -1,6 +1,6 @@
 import { CARS, HOUSES, JOBS, SECTORS } from './data'
 import {
-  buyLottery, canAct, choose, cur, cureAddiction, isAdultStage, loanLimit, loanTotal, repayLoans, roll, rngOf,
+  aiWantsCar, buyLottery, canAct, choose, cur, cureAddiction, isAdultStage, loanLimit, loanTotal, repayLoans, roll, rngOf,
   salaryOf, scoreOf, startSabotage, stockHint, takeLoan, toggleInsurance, tradeStock, useChance,
 } from './game'
 import type { GameState, Pending, Player } from './types'
@@ -151,5 +151,5 @@ export function aiStep(s: GameState) {
   const p = cur(s)
   if (p.human || !canAct(s)) return
   aiPreRoll(s)
-  if (canAct(s)) roll(s)
+  if (canAct(s)) roll(s, 0, aiWantsCar(s, cur(s)))
 }
