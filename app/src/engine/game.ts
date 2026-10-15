@@ -2162,6 +2162,29 @@ function applySabotage(s: GameState, p: Player, target: Player) {
 
 // ───────── 차례 끝, 단계 전환 ─────────
 
+// 골인할 때 남은 돈으로 빚을 갚음 (친구 빚 먼저, 그다음 은행). 못 갚은 빚은 결산 때 자산에서 빠짐
+function payDebtsAtGoal(s: GameState, p: Player) {
+  let paid = 0
+  s.friendLoans = s.friendLoans.filter((l) => {
+    if (l.borrowerId !== p.id || p.money < l.owe) return true
+    p.money -= l.owe
+    s.players[l.lenderId].money += l.owe
+    paid += l.owe
+    return false
+  })
+  p.loans.sort((a, b) => a.dueTurn - b.dueTurn)
+  for (const l of p.loans) {
+    const pay = Math.min(Math.max(0, p.money), l.amount)
+    l.amount -= pay
+    p.money -= pay
+    paid += pay
+  }
+  p.loans = p.loans.filter((l) => l.amount > 0)
+  const left = loanTotal(p) + friendDebt(s, p)
+  if (paid) log(s, p.id, `골인하며 남은 돈으로 빚 ${won(paid)}을 갚았다`, 'info')
+  if (left) log(s, p.id, `갚지 못한 빚 ${won(left)}은 결산 때 자산에서 빠져요`, 'bad')
+}
+
 function endTurn(s: GameState) {
   const p = cur(s)
   const st = stageOf(s)
@@ -2173,6 +2196,7 @@ function endTurn(s: GameState) {
     const bonus = [0, 500, 300, 100, 0][s.finishCount] ?? 0
     p.money += bonus
     if (p.jobId === 'ceo' && p.bizKeep) sellCompany(s, p)
+    payDebtsAtGoal(s, p)
     log(s, p.id, `${s.finishCount}번째로 골인!${bonus ? ` +${won(bonus)}` : ''}`, 'good')
   }
   s.pending = null

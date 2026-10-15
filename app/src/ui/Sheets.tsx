@@ -271,7 +271,7 @@ export function GameOver({ s, onRestart }: { s: GameState; onRestart: () => void
                 <b className="jua total">{sc.total}점</b>
               </div>
               <div className="muted">
-                {jobOf(p)?.name ?? '백수'} · 자산 {won(sc.assets)} ({sc.assetScore}점) · 행복 {sc.happy}{sc.awardScore ? ` · 상 ${sc.awardScore}점` : ''}
+                {jobOf(p)?.name ?? '백수'} · 자산 {won(sc.assets)} ({sc.assetScore}점){loanTotal(p) + friendDebt(s, p) > 0 ? ` (빚 -${won(loanTotal(p) + friendDebt(s, p))} 포함)` : ''} · 행복 {sc.happy}{sc.awardScore ? ` · 상 ${sc.awardScore}점` : ''}
                 {p.spouse ? ` · ${p.spouse.name}와 결혼` : p.divorced ? ' · 이혼' : ' · 비혼'}
                 {p.children + p.adopted ? ` · 자녀 ${p.children + p.adopted}` : ''}
               </div>

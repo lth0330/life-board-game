@@ -52,7 +52,7 @@ export const STAGE_DEFS: StageDef[] = [
   },
   {
     id: 'young', name: '청년', ages: [20, 39], rolls: 10, length: 50,
-    weights: [['money', 25], ['card', 22], ['date', 22], ['risk', 15], ['happy', 10], ['grow', 8]],
+    weights: [['money', 22], ['card', 18], ['date', 32], ['risk', 14], ['happy', 9], ['grow', 8]],
     // 대학생이 3차례 늦게 출발해도 둘째 결혼식장(20)에 대부분 닿도록 앞쪽에 모음 (docs/13-review.md)
     stops: { 1: 'job', 22: 'jobfair' }, points: { 5: 'shop', 10: 'marriage', 18: 'shop', 20: 'marriage' },
     campus: true,
@@ -60,7 +60,7 @@ export const STAGE_DEFS: StageDef[] = [
   },
   {
     id: 'middle', name: '중년', ages: [40, 59], rolls: 8, length: 40,
-    weights: [['money', 25], ['risk', 25], ['happy', 20], ['card', 20], ['grow', 10], ['date', 12]],
+    weights: [['money', 25], ['risk', 25], ['happy', 20], ['card', 20], ['grow', 10], ['date', 20]],
     stops: { 15: 'middleBranch', 20: 'jobfair' }, points: { 13: 'marriage', 17: 'shop' }, dateUntil: 13,
     life: {
       id: 'startup', at: 5, rejoin: 11, title: '창업 vs 회사', text: '인생 2막을 어떻게 할까요?',
