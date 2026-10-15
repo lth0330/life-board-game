@@ -5,6 +5,7 @@ import type { GameState } from './types'
 function readyWithCar(seed: number): GameState {
   const s = createGame({ humanName: '나', humans: 1, aiCount: 1, settings: { startAdult: true, difficulty: 'normal' }, seed })
   if (s.pending) choose(s, 'work') // 대학 vs 바로 취업
+  if (s.pending?.type === 'job') choose(s, 'job:office') // 바로 취업하면 직업 선택 창이 바로 뜸
   const p = cur(s)
   p.car = 2
   p.carCharges = 2

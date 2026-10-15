@@ -106,6 +106,7 @@ describe('사람 플레이어 흐름', () => {
   it('친구에게 돈을 빌리면 상대마다 1번만, 기한을 넘기면 소송', () => {
     const s = newGame(9, true, 1, 3)
     if (s.pending) choose(s, 'work')
+  if (s.pending?.type === 'job') choose(s, 'job:office') // 바로 취업하면 직업 선택 창이 바로 뜸
     const me = cur(s)
     const ai = s.players[1]
     ai.money = 100000

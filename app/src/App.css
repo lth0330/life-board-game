@@ -497,3 +497,9 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
 .inc-up { color: var(--good); font-size: 0.85em; } .inc-down { color: var(--bad); font-size: 0.85em; }
 .mini-grid.three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .mini-seq.slot span.stopped { outline: 3px solid #FFD45C; }
+
+/* 끌어서 지도 보기 */
+.world { touch-action: none; cursor: grab; }
+.world:active { cursor: grabbing; }
+.track.dragging { transition: none; }
+.pan-home { position: absolute; right: 16px; top: 132px; z-index: 3; min-height: 40px; padding: 0 14px; border-radius: 999px; font-family: 'Jua', sans-serif; background: var(--paper); border: 3px solid var(--ink); }

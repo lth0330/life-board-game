@@ -227,12 +227,12 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
   const stageBanner = banner && !busy && banner.title.endsWith('단계')
 
   // 화면을 위로 밀어서 주사위 던지기
-  const swipeY = useRef<number | null>(null)
+  const swipeY = useRef<{ y: number; t: number } | null>(null)
   return (
     <div
       className="play"
-      onPointerDown={(e) => { if ((e.target as HTMLElement).closest('.world')) swipeY.current = e.clientY }}
-      onPointerUp={(e) => { if (swipeY.current !== null && swipeY.current - e.clientY > 70) doRoll(); swipeY.current = null }}
+      onPointerDown={(e) => { if ((e.target as HTMLElement).closest('.world')) swipeY.current = { y: e.clientY, t: Date.now() } }}
+      onPointerUp={(e) => { const sw = swipeY.current; if (sw && sw.y - e.clientY > 70 && Date.now() - sw.t < 300) doRoll(); swipeY.current = null }}
     >
       <Board s={game} focus={shown} posOf={posOf} showSteps={myTurn || (!p.human && game.phase === 'roll' && !busy)} />
 

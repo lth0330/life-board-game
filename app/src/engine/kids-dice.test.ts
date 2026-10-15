@@ -15,6 +15,7 @@ function playOut(s: GameState) {
 function readyHuman(seed: number): GameState {
   const s = createGame({ humanName: '나', humans: 1, aiCount: 1, settings: { startAdult: true, difficulty: 'normal' }, seed })
   if (s.pending) choose(s, 'work')
+  if (s.pending?.type === 'job') choose(s, 'job:office') // 바로 취업하면 직업 선택 창이 바로 뜸
   const p = cur(s)
   p.car = 2
   p.carCharges = 2
@@ -30,7 +31,7 @@ describe('주사위 아이템', () => {
         const s = readyHuman(seed)
         cur(s).diceItems = [item]
         roll(s, 0, false, item)
-        seen[item].add(s.lastRoll!)
+        seen[item].add(s.dice!.value + (s.dice!.second ?? 0)) // 차례가 끝나면 lastRoll은 지워지므로 주사위 기록으로
         expect(cur(s).diceItems.length, item).toBe(0)
       }
     }
@@ -51,7 +52,8 @@ describe('주사위 아이템', () => {
   it('없는 아이템은 쓸 수 없고 보통 주사위로 굴린다', () => {
     const s = readyHuman(7)
     roll(s, 0, false, 'twin')
-    expect(s.lastRoll!).toBeLessThanOrEqual(6)
+    expect(s.dice!.second).toBeUndefined()
+    expect(s.dice!.value).toBeLessThanOrEqual(6)
   })
 })
 

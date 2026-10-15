@@ -231,8 +231,8 @@ function beginTurn(s: GameState) {
   if (p.lottery.ticket) {
     p.lottery.ticket = false
     const r = rng.next()
-    // 1등 1% · 2등 7% · 3등 22% (전체 30%). 운세로 전체 확률이 바뀜: 대흉·흉 -5%p, 길 +5%p, 대길 +10%p (비율은 그대로)
-    const luck = (0.3 + [-0.05, -0.05, 0, 0.05, 0.1][p.fortune]) / 0.3
+    // 1등 1% · 2등 7% · 3등 22% (전체 30%). 운세로 전체 확률이 바뀜: 대흉 -10%p, 흉 -5%p, 길 +5%p, 대길 +10%p (비율은 그대로)
+    const luck = (0.3 + [-0.1, -0.05, 0, 0.05, 0.1][p.fortune]) / 0.3
     const rank = r < 0.01 * luck ? 1 : r < 0.08 * luck ? 2 : r < 0.3 * luck ? 3 : 0
     const prize = [0, 3000, 300, 30][rank]
     if (prize > 0) {
@@ -271,10 +271,7 @@ function beginTurn(s: GameState) {
   } else if (sid === 'young' && p.retake) {
     s.pending = { type: 'retake', playerId: p.id, title: '재수 1년', text: `${STAT_NAMES[p.retake]} +1 하고 다시 시험을 봐요 (이번 차례는 이걸로 끝)`, options: [{ id: 'go', label: '시험 보기' }] }
   } else if (sid === 'young' && p.collegeDecided && !p.college && !p.jobId && p.pos === 0) {
-    const st = stageOf(s)
-    const jobIdx = st.tiles.findIndex((t) => t.stop === 'job')
-    p.pos = jobIdx
-    stopTile(s, p, st.tiles[jobIdx])
+    goToJob(s, p)
   } else if (sid === 'middle' && p.exAthlete !== null) {
     const ch = Math.round(coachChance(p, p.exAthlete) * 100)
     s.pending = {
@@ -987,7 +984,7 @@ function applyRoadStart(s: GameState, p: Player, road: string) {
       if (stageOf(s).id === 'young') p.pos = campusIdx(s)
       break
     }
-    case 'work': p.collegeDecided = true; p.money += 400; log(s, p.id, '바로 취업 준비. 모아 둔 돈 +400만', 'good'); break
+    case 'work': p.collegeDecided = true; p.money += 400; log(s, p.id, '바로 취업 준비. 모아 둔 돈 +400만', 'good'); if (stageOf(s).id === 'young') goToJob(s, p); break
     case 'startup': {
       // 백수만 이 길로 옴: 능력치에 맞춰 업종을 고름
       s.pending = {
@@ -1672,6 +1669,15 @@ function findSuitor(p: Player, key: string) {
 
 // ───────── 정지 칸 ─────────
 
+// 바로 취업: 주사위 없이 본 길 직업 칸으로 가서 바로 고름
+function goToJob(s: GameState, p: Player) {
+  const st = stageOf(s)
+  if (p.pos !== 0) return
+  const jobIdx = st.tiles.findIndex((t) => t.stop === 'job')
+  p.pos = jobIdx
+  stopTile(s, p, st.tiles[jobIdx])
+}
+
 // 대학 3종: 능력치가 높을수록 합격 (룰렛)
 export const UNIS: { stat: StatKey; name: string }[] = [{ stat: 'int', name: '일반대' }, { stat: 'str', name: '체대' }, { stat: 'cha', name: '예대·방송대' }]
 export const passChance = (p: Player, k: StatKey) => Math.min(0.95, 0.15 + p.stats[k] * 0.09)
@@ -1830,10 +1836,25 @@ export function choose(s: GameState, optionId: string) {
         }
       } else applyRoadStart(s, p, optionId)
       break
-    case 'uniFail':
-      if (optionId === 'retake') { p.retake = (pd.data as { k: StatKey }).k; p.retook = true; p.collegeDecided = true; log(s, p.id, '재수를 하기로 했다', 'info') }
-      else { p.collegeDecided = true; log(s, p.id, '대학 대신 바로 일을 하기로 했다', 'info') }
+    case 'uniFail': {
+      const k = (pd.data as { k: StatKey }).k
+      p.collegeDecided = true
+      if (optionId === 'retake') {
+        p.retook = true
+        log(s, p.id, '재수를 하기로 했다', 'info')
+        if (stageOf(s).id === 'young') {
+          // 청년이면 이번 차례를 재수에 씀: 바로 다시 시험
+          p.stats[k] = clampStat(p.stats[k] + 1)
+          log(s, p.id, `재수 1년: ${STAT_NAMES[k]} +1`, 'info')
+          if (!uniTry(s, p, k)) { log(s, p.id, '또 떨어졌다… 다음 차례에 바로 직업을 골라요', 'bad') }
+          s.lastRoll = 0
+        } else p.retake = k // 학생 마지막 차례면 청년 첫 차례에 다시 시험
+      } else {
+        log(s, p.id, '대학 대신 바로 일을 하기로 했다', 'info')
+        if (stageOf(s).id === 'young') goToJob(s, p)
+      }
       break
+    }
     case 'retake': {
       const k = p.retake!
       p.retake = null

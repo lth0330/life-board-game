@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactElement } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactElement } from 'react'
 import { Building, TileIcon, Tree } from '../art/Art'
 import { Landmark } from '../art/More'
 import { Character } from '../art/Character'
@@ -60,9 +60,14 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos }: Props) {
   const st = s.stages[s.stageIdx]
   const focusPos = posOf(focus)
   const fd = st.tiles[focusPos].d
+  // 끌어서 보기: pan.y > 0 이면 앞쪽(먼 칸), < 0 이면 뒤쪽
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null)
+  useEffect(() => { setPan({ x: 0, y: 0 }) }, [focus.id, focusPos, s.stageIdx])
+  const panD = pan.y / 150 // 끌어서 옮긴 깊이
   const xAt = (t: Tile) => 540 + Math.round(Math.sin(t.d * 0.55) * 150) + t.lane * LANE - 60
   const yAt = (t: Tile) => 1600 - t.d * 150 // 칸 위치는 고정. 카메라(.track)가 fd만큼 움직임
-  const visible = (t: Tile) => t.d >= fd - 2.5 && t.d <= fd + 11
+  const visible = (t: Tile) => t.d >= fd + panD - 2.5 && t.d <= fd + panD + 11
   const steps = showSteps ? distancesFrom(st, focusPos, 6) : new Map<number, number>()
   const items: ReactElement[] = []
   // 갈라진 길이 지나는 쪽에는 건물·나무를 더 바깥으로 밀어냄
@@ -168,8 +173,18 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos }: Props) {
     })
   }
 
+  const maxD = Math.max(...st.tiles.map((t) => t.d))
+  const onDown = (e: ReactPointerEvent) => { drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y } }
+  const onMove = (e: ReactPointerEvent) => {
+    const d = drag.current
+    if (!d || !e.buttons) return
+    const y = Math.max((-fd - 1) * 150, Math.min((maxD - fd) * 150, d.py + (e.clientY - d.y) * 2.5))
+    const x = Math.max(-500, Math.min(500, d.px + (e.clientX - d.x) * 1.5))
+    setPan({ x, y })
+  }
+  const panned = Math.abs(pan.x) > 20 || Math.abs(pan.y) > 40
   return (
-    <div className="world">
+    <div className="world" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={() => { drag.current = null }} onPointerLeave={() => { drag.current = null }}>
       <div className="sky-deco">
         <div className="hill a" /><div className="hill b" />
         <div className="ground" />
@@ -177,9 +192,10 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos }: Props) {
       </div>
       <div className="camera">
         <div className="plane" style={{ transform: `rotateX(${TILT}deg)` }}>
-          <div key={s.stageIdx} className="track" style={{ transform: `translate(${-st.tiles[focusPos].lane * LANE}px, ${fd * 150}px)` }}>{items}</div>
+          <div key={s.stageIdx} className={`track${drag.current ? ' dragging' : ''}`} style={{ transform: `translate(${-st.tiles[focusPos].lane * LANE + pan.x}px, ${fd * 150 + pan.y}px)` }}>{items}</div>
         </div>
       </div>
+      {panned && <button className="pan-home" onClick={(e) => { e.stopPropagation(); setPan({ x: 0, y: 0 }) }} onPointerDown={(e) => e.stopPropagation()}>내 위치로</button>}
     </div>
   )
 }
