@@ -33,7 +33,7 @@ const PAGES: { title: string; body: ReactNode }[] = [
         {[
           ['money', '돈', '보너스·용돈'], ['grow', '성장', '지력·체력·매력 +'], ['happy', '행복', '행복 +'],
           ['risk', '위기', '나쁜 일 (운세·보험으로 줄일 수 있음)'], ['card', '카드', '좋은 일, 나쁜 일, 고르는 일'],
-          ['stop', '정지', '무조건 멈춰서 선택 (직업, 동아리 등)'], ['date', '연애', '데이트 (결혼했으면 아기)'],
+          ['stop', '멈추는 칸', '반짝이는 칸. 주사위가 남아도 여기서 꼭 멈춰서 골라요 (직업·동아리·갈림길 등)'], ['date', '연애', '데이트 (결혼했으면 아기)'],
           ['mini', '게임', '이벤트 길의 미니게임'], ['rest', '휴식', '단계 끝. 남은 주사위만큼 쉬며 보상'],
         ].map(([k, n, d]) => (
           <div key={k} className="manual-tile"><span className={`mt-${k}`}><TileIcon kind={k} size={30} /></span><b>{n}</b><span className="muted">{d}</span></div>

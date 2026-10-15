@@ -270,6 +270,39 @@ export function PeopleSheet({ s, onClose }: { s: GameState; onClose: () => void 
   )
 }
 
+// 중간 정산: 청년·중년이 끝날 때 지금 순위와 각자 상황
+export function StageSummary({ s, onClose }: { s: GameState; onClose: () => void }) {
+  const ranked = [...s.players].map((p) => ({ p, sc: scoreOf(s, p) })).sort((a, b) => b.sc.total - a.sc.total)
+  return (
+    <div className="sheet-backdrop">
+      <div className="sheet">
+        <h2 className="jua center">{s.summary} 정산</h2>
+        <p className="center muted">지금까지 점수 (자산 50만당 1점 + 행복, 상은 마지막에)</p>
+        <div className="people">
+          {ranked.map(({ p, sc }, i) => {
+            const debt = loanTotal(p) + friendDebt(s, p)
+            return (
+              <div key={p.id} className="person" style={{ borderColor: p.color }}>
+                <div className="person-head">
+                  <b className="jua rank">{['🥇', '🥈', '🥉'][i] ?? ''}{i + 1}위</b>
+                  <span className="person-face" style={{ borderColor: p.color }}><Character outfit={p.outfit} size={24} age={ageOf(s, p)} /></span>
+                  <b className="jua">{p.name}</b>
+                  <b className="jua total">{sc.total}점</b>
+                </div>
+                <div className="muted">{ageOf(s, p)}세 · {playerLine(s, p)}{salaryOf(p) ? ` · 월급 ${won(salaryOf(p))}` : ''}</div>
+                <div>자산 <b>{won(sc.assets)}</b>{debt ? <span className="bad"> (빚 {won(debt)})</span> : null} · 행복 <b>{p.happy}</b></div>
+                <div className="muted">지력 {p.stats.int} · 체력 {p.stats.str} · 매력 {p.stats.cha}</div>
+                <div className="muted">{p.spouse ? `배우자 ${p.spouse.name} ${stars(p.spouse.grade)}` : p.divorced ? '이혼' : '미혼'}{p.kids.length ? ` · 자녀 ${p.kids.length}` : ''}{p.house ? ` · ${HOUSES[p.house].name}` : ''}{p.car ? ` · ${CARS[p.car].name}` : ''}</div>
+              </div>
+            )
+          })}
+        </div>
+        <button className="wide big" onClick={onClose}>다음 단계로</button>
+      </div>
+    </div>
+  )
+}
+
 export function GameOver({ s, onRestart }: { s: GameState; onRestart: () => void }) {
   const ranked = [...s.players].map((p) => ({ p, sc: scoreOf(s, p) })).sort((a, b) => b.sc.total - a.sc.total)
   return (

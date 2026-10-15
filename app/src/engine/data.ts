@@ -64,7 +64,7 @@ export const INSURANCE = {
   car: { name: '자동차보험', premium: 8 },
 } as const
 
-export const CHANCE_NAMES = { reroll: '다시 굴리기', block: '방해 막기', charm: '행운 부적', coupon: '할인 쿠폰', shortcut: '지름길' } as const
+export const CHANCE_NAMES = { reroll: '다시 굴리기', block: '방해 막기', charm: '행운 부적', coupon: '할인 쿠폰 (집·차 30%, 최대 집 1,000만·차 500만)', shortcut: '지름길' } as const
 export const SABOTAGE_NAMES = { rumor: '소문 퍼뜨리기', stockRumor: '주가 루머', love: '연애 방해', lawsuit: '소송 걸기' } as const
 
 export const LOTTERY_PRICE = 10
@@ -101,7 +101,7 @@ export const HOUSE_RULES = {
   scoreRate: 1, // 최종 자산에는 시세 그대로 (사용자 결정: 사는 게 조금이라도 이득이게)
   rent: 15, // 집이 없으면 성인부터 매 턴 월세
   downRate: 0.3, // 주택담보대출 계약금 (집값의 30%)
-  mortgageTurns: 15, // 주택담보대출 갚는 기간
+  mortgageTurns: 10, // 주택담보대출 갚는 기간
   mortgageRate: 0.005, // 주택담보대출 이자 (매 턴 0.5%)
   auctionRate: 0.7, // 3번 연체하면 집을 시세의 70%에 경매
   forcedRate: 0.8, // 강제 청산 때 시세의 80%에 팔림

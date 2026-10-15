@@ -63,10 +63,10 @@ export const STAGE_DEFS: StageDef[] = [
     weights: [['money', 25], ['risk', 25], ['happy', 20], ['card', 20], ['grow', 10], ['date', 20]],
     stops: { 15: 'middleBranch', 20: 'jobfair' }, points: { 13: 'marriage', 17: 'shop' }, dateUntil: 13,
     life: {
-      id: 'startup', at: 5, rejoin: 11, title: '창업 vs 회사', text: '인생 2막을 어떻게 할까요?',
+      id: 'startup', at: 5, rejoin: 11, title: '인생 2막', text: '앞으로 어떻게 살까요? (창업 길은 백수만. 직장인은 중년 중반 취업 박람회에서 창업)',
       roads: [
         { road: 'startup', label: '창업 길', desc: '사업가가 돼요. 큰돈과 위기가 섞인 길' },
-        { road: 'company', label: '회사 길', desc: '지금 일을 계속해요. 안정적인 길' },
+        { road: 'company', label: '하던 일 계속', desc: '지금 하는 일을 이어 가요. 안정적인 길' },
       ],
     },
     event: { at: 21, rejoin: 28, len: 9, name: '카지노', minis: ['oddEven', 'highLow', 'slot'], desc: '돈·운세 미니게임 (운세가 좋을수록 유리, 도박중독 주의)' },

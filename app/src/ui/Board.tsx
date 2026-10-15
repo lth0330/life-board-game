@@ -31,6 +31,7 @@ const STOP_LABEL: Record<string, string> = { club: '동아리', job: '직업', j
 export function tileLook(t: Tile) {
   const base = TILE_STYLE[t.kind]
   if (t.uni) return { ...base, bg: UNI_LOOK[t.uni].bg, label: UNI_NAMES[t.uni] }
+  if (t.kind === 'stop' && !t.stop) return { ...base, label: '갈림길' }
   const label = t.stop ? STOP_LABEL[t.stop] : t.mini ? MINI_NAMES[t.mini] : base.label
   return { ...base, label }
 }
@@ -74,7 +75,7 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos }: Props) {
     const step = steps.get(i)
     const small = look.label.length > 3
     items.push(
-      <div key={`t${i}`} className={`tile${t.kind === 'mini' ? ' tile-mini' : ''}`} style={{ left: xAt(t), top: yAt(t), background: look.bg, color: look.fg }}>
+      <div key={`t${i}`} className={`tile${t.kind === 'mini' ? ' tile-mini' : ''}${t.kind === 'stop' ? ' tile-stop' : ''}`} style={{ left: xAt(t), top: yAt(t), background: look.bg, color: look.fg }}>
         <TileIcon kind={t.stop ? 'stop' : t.uni ? UNI_LOOK[t.uni].icon : t.kind === 'campus' ? 'grow' : t.kind} size={50} />
         <span className="tile-label" style={{ fontSize: small ? 17 : 21 }}>{look.label}</span>
         {step && <span className="tile-step">{step}</span>}
@@ -177,7 +178,7 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos }: Props) {
       </div>
       <div className="camera">
         <div className="plane" style={{ transform: `rotateX(${TILT}deg)` }}>
-          <div key={s.stageIdx} className="track" style={{ transform: `translateY(${fd * 150}px)` }}>{items}</div>
+          <div key={s.stageIdx} className="track" style={{ transform: `translate(${-st.tiles[focusPos].lane * LANE}px, ${fd * 150}px)` }}>{items}</div>
         </div>
       </div>
     </div>

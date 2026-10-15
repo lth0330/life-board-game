@@ -295,7 +295,7 @@ function HighLow({ onDone }: { onDone: (v: number) => void }) {
   const doneGuess = cards.length > 2
   return (
     <div className="mini-body">
-      <p>다음 카드가 더 높을까, 낮을까? (2번)</p>
+      <p>다음 카드가 더 높을까, 낮을까? (2번)<br /><small>카드 숫자는 1~13 (A=1, J=11, Q=12, K=13), 같은 숫자는 안 나와요</small></p>
       <div className="mini-seq">{cards.map((c, i) => <span key={i}>{c}</span>)}</div>
       <div className="mini-grid two">
         <button disabled={doneGuess} onClick={() => guess(true)}>높다</button>
@@ -305,29 +305,39 @@ function HighLow({ onDone }: { onDone: (v: number) => void }) {
   )
 }
 
-// 슬롯머신. 운세가 좋으면 잘 맞음
+// 슬롯머신: 시작을 누르면 3개가 돌고, 아래 버튼으로 하나씩 멈춤. 결과는 운세가 좋을수록 잘 나옴
 function Slot({ level, onDone }: { level: number; onDone: (v: number) => void }) {
   const faces = ['7', '★', '♥', '◆']
   const [reels, setReels] = useState(['?', '?', '?'])
-  const [spun, setSpun] = useState(false)
-  const spin = () => {
-    setSpun(true)
+  const [stopped, setStopped] = useState([false, false, false])
+  const [plan, setPlan] = useState<{ grade: number; out: string[] } | null>(null)
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null)
+  useEffect(() => () => { if (timer.current) clearInterval(timer.current) }, [])
+  const start = () => {
     const r = Math.random()
     const grade = r < [0.35, 0.2, 0.1][level] ? 2 : r < [0.75, 0.6, 0.45][level] ? 1 : 0
     const f = faces[rand(4)]
-    const out = grade === 2 ? [f, f, f] : grade === 1 ? shuffle([f, f, faces[(faces.indexOf(f) + 1) % 4]]) : [faces[0], faces[1], faces[2]].sort(() => Math.random() - 0.5)
-    let k = 0
-    const t = setInterval(() => {
-      k++
-      setReels(out.map((x, i) => (k > 4 + i * 2 ? x : faces[rand(4)])))
-      if (k > 9) { clearInterval(t); setTimeout(() => onDone(grade), 500) }
-    }, 120)
+    const out = grade === 2 ? [f, f, f] : grade === 1 ? shuffle([f, f, faces[(faces.indexOf(f) + 1) % 4]]) : shuffle([faces[0], faces[1], faces[2]])
+    setPlan({ grade, out })
+    timer.current = setInterval(() => setReels((rs) => rs.map((x, i) => (stoppedRef.current[i] ? x : faces[rand(4)]))), 90)
+  }
+  const stoppedRef = useRef(stopped)
+  stoppedRef.current = stopped
+  const stop = (i: number) => {
+    if (!plan || stopped[i]) return
+    const next = stopped.map((v, k) => v || k === i)
+    setStopped(next)
+    stoppedRef.current = next
+    setReels((rs) => rs.map((x, k) => (k === i ? plan.out[i] : x)))
+    if (next.every(Boolean)) { if (timer.current) clearInterval(timer.current); setTimeout(() => onDone(plan.grade), 700) }
   }
   return (
     <div className="mini-body">
-      <p>세 개가 같으면 대박, 두 개면 조금 따요</p>
-      <div className="mini-seq slot">{reels.map((x, i) => <span key={i}>{x}</span>)}</div>
-      <button className="wide big" disabled={spun} onClick={spin}>당기기</button>
+      <p>세 개가 같으면 대박, 두 개면 조금 따요. 버튼을 눌러 하나씩 멈춰요</p>
+      <div className="mini-seq slot">{reels.map((x, i) => <span key={i} className={stopped[i] ? 'stopped' : ''}>{x}</span>)}</div>
+      {!plan
+        ? <button className="wide big" onClick={start}>시작</button>
+        : <div className="mini-grid three">{[0, 1, 2].map((i) => <button key={i} disabled={stopped[i]} onClick={() => stop(i)}>멈춤 {i + 1}</button>)}</div>}
     </div>
   )
 }

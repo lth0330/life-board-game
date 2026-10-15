@@ -4,7 +4,7 @@ import { Character } from './art/Character'
 import { aiStep } from './engine/ai'
 import { CARS, DICE_ITEMS } from './engine/data'
 import {
-  ageOf, buyLottery, canAct, canUseCar, choose, createGame, cur, cureAddiction, finishMini, fortuneName, repayFriendLoan,
+  ageOf, turnIncome, buyLottery, canAct, canUseCar, choose, createGame, cur, cureAddiction, finishMini, fortuneName, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, stageOf, startSabotage, takeLoan, toggleInsurance, tradeStock, useChance,
 } from './engine/game'
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
@@ -17,7 +17,7 @@ import { Confetti, DiceThrow, StageCard } from './ui/Effects'
 import { Manual } from './ui/Manual'
 import { MiniGame } from './ui/MiniGames'
 import { MenuScreen, SetupScreen, TitleScreen, type Speed } from './ui/Screens'
-import { CardsSheet, FinanceSheet, GameOver, PeopleSheet, playerLine, won } from './ui/Sheets'
+import { CardsSheet, FinanceSheet, GameOver, PeopleSheet, playerLine, StageSummary, won } from './ui/Sheets'
 
 const SPEED_MS: Record<Speed, number> = { fast: 450, normal: 1000, slow: 1700 }
 const WALK_MS = 230
@@ -158,9 +158,23 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
   const [shopCat, setShopCat] = useState<string | null>(null)
   useEffect(() => { setShopCat(null) }, [game.pending])
 
-  const busy = rolling || diceShow !== null || walking || popShow !== null
+  // 차례가 넘어가도 방금 움직인 사람을 1.2초 더 보여 줌 (팝업·걷기가 끝난 뒤)
+  const [hold, setHold] = useState<number | null>(null)
+  const prevCur = useRef(game.current)
+  useEffect(() => {
+    if (game.current === prevCur.current) return
+    setHold(prevCur.current)
+    prevCur.current = game.current
+  }, [game.current])
+  useEffect(() => {
+    if (hold === null || walking || diceShow !== null || popShow !== null) return
+    const t = setTimeout(() => setHold(null), 1200)
+    return () => clearTimeout(t)
+  }, [hold, walking, diceShow, popShow])
+
+  const busy = rolling || diceShow !== null || walking || popShow !== null || hold !== null || !!game.summary
   const p = cur(game)
-  const shown = walking ? game.players[game.pathPlayer] : p
+  const shown = walking ? game.players[game.pathPlayer] : hold !== null ? game.players[hold] : p
   const pending = busy ? null : game.pending
   const myTurn = p.human && canAct(game) && !busy
   const st = stageOf(game)
@@ -228,7 +242,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
             <span className="hud-face" style={{ borderColor: shown.color }}><Character outfit={shown.outfit} size={22} age={ageOf(game, shown)} /></span>
             <div className="jua hud-stage">{st.name} · {ageOf(game, shown)}세</div>
           </div>
-          <div className="hud-money">돈 <b>{won(shown.money)}</b> · 행복 <b>{shown.happy}</b></div>
+          <div className="hud-money">돈 <b>{won(shown.money)}</b>{turnIncome(game, shown) ? <span className={turnIncome(game, shown) > 0 ? 'inc-up' : 'inc-down'}> (매 턴 {turnIncome(game, shown) > 0 ? '+' : ''}{won(turnIncome(game, shown))})</span> : null} · 행복 <b>{shown.happy}</b></div>
           <div className={`fortune f${shown.fortune}`} title="오늘의 운세">{fortuneName(shown.fortune)}</div>
         </div>
         <div className="hud-row">
@@ -309,6 +323,8 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
           </div>
         </div>
       )}
+
+      {game.summary && !walking && <StageSummary s={game} onClose={() => act((s) => { s.summary = null })} />}
 
       {popVisible && popShow && (
         <EventPopup art={popShow.art} title={popShow.title} text={popShow.text} tone={popShow.tone} who={game.players[popShow.playerId].name} onClose={() => setPopShow(null)} />
