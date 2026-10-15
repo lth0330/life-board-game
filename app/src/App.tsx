@@ -2,12 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import { aiStep } from './engine/ai'
 import {
-  ageOf, buyLottery, canAct, canUseCar, choose, createGame, cur, cureAddiction, fortuneName, repayLoans, roll, stageOf,
-  startSabotage, takeLoan, toggleInsurance, tradeStock, useChance,
+  ageOf, buyLottery, canAct, canUseCar, choose, createGame, cur, cureAddiction, finishMini, fortuneName, repayFriendLoan,
+  repayLoans, requestFriendLoan, roll, stageOf, startSabotage, takeLoan, toggleInsurance, tradeStock, useChance,
 } from './engine/game'
 import { CARS } from './engine/data'
 import type { Difficulty, GameState } from './engine/types'
 import { Board, FullMap } from './ui/Board'
+import { MiniGame } from './ui/MiniGames'
 import { CardsSheet, FinanceSheet, GameOver, PeopleSheet, playerLine, won } from './ui/Sheets'
 
 type Speed = 'fast' | 'normal' | 'slow'
@@ -120,6 +121,7 @@ function Play({ game, setGame, speed, onQuit }: { game: GameState; setGame: (g: 
   const act = useCallback((fn: (s: GameState) => void) => {
     const next = structuredClone(gameRef.current)
     next.banner = null
+    next.speech = null
     fn(next)
     setGame(next)
   }, [setGame])
@@ -144,6 +146,15 @@ function Play({ game, setGame, speed, onQuit }: { game: GameState; setGame: (g: 
     }, SPEED_MS[speed] + (game.banner ? 900 : 0))
     return () => clearTimeout(t)
   }, [game, pending, p.human, rolling, speed, act])
+
+  // AI 말풍선도 잠깐 보였다가 사라짐
+  const [speech, setSpeech] = useState(game.speech)
+  useEffect(() => {
+    if (!game.speech) return
+    setSpeech(game.speech)
+    const t = setTimeout(() => setSpeech(null), 2600)
+    return () => clearTimeout(t)
+  }, [game.speech])
 
   // 배너는 잠깐 보였다가 사라짐
   const [banner, setBanner] = useState(game.banner)
@@ -244,6 +255,8 @@ function Play({ game, setGame, speed, onQuit }: { game: GameState; setGame: (g: 
           onTrade={(k, q) => act((s) => tradeStock(s, k, q))}
           onInsurance={(k) => act((s) => toggleInsurance(s, k))}
           onLoan={(a) => act((s) => takeLoan(s, a))} onRepay={() => act(repayLoans)}
+          onFriendLoan={(id, a, r, t) => { setSheet(null); act((s) => requestFriendLoan(s, id, a, r, t)) }}
+          onRepayFriend={(i) => act((s) => repayFriendLoan(s, i))}
           onClose={() => setSheet(null)}
         />
       )}
@@ -255,6 +268,16 @@ function Play({ game, setGame, speed, onQuit }: { game: GameState; setGame: (g: 
       )}
       {sheet === 'people' && <PeopleSheet s={game} onClose={() => setSheet(null)} />}
       {sheet === 'map' && <FullMap s={game} onClose={() => setSheet(null)} />}
+
+      {game.mini && game.players[game.mini.playerId].human && (
+        <MiniGame key={`${game.turn}-${game.mini.game}`} mini={game.mini} onFinish={(v) => act((s) => finishMini(s, v))} />
+      )}
+
+      {speech && (
+        <div className="speech" style={{ borderColor: game.players[speech.playerId].color }} role="status">
+          <b style={{ color: game.players[speech.playerId].color }}>{game.players[speech.playerId].name}</b> {speech.text}
+        </div>
+      )}
 
       {banner && (
         <div className={`banner b-${banner.tone}`} role="status">

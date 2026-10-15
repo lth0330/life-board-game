@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import { CARS, CHANCE_NAMES, HOUSES, INSURANCE, JOBS, LOTTERY_PRICE, PERSONALITIES, SABOTAGE_NAMES, SECTORS } from '../engine/data'
 import {
-  ageOf, fortuneName, isAdultStage, jobOf, loanLimit, loanTotal, salaryOf, scoreOf, stockHint, stocksValue,
+  ageOf, canBorrowFrom, fortuneName, friendDebt, isAdultStage, jobOf, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
+  stars, stockHint, stocksValue,
 } from '../engine/game'
 import type { GameState, InsuranceKind, Player, Sector } from '../engine/types'
 
@@ -31,11 +32,16 @@ interface FinanceProps {
   onInsurance: (k: InsuranceKind) => void
   onLoan: (amount: number) => void
   onRepay: () => void
+  onFriendLoan: (lenderId: number, amount: number, rateIdx: number, term: number) => void
+  onRepayFriend: (idx: number) => void
   onClose: () => void
 }
 
 export function FinanceSheet(f: FinanceProps) {
-  const [tab, setTab] = useState<'lottery' | 'stock' | 'ins' | 'loan'>('stock')
+  const [tab, setTab] = useState<'lottery' | 'stock' | 'ins' | 'loan' | 'friend'>('stock')
+  const [amount, setAmount] = useState(1000)
+  const [rateIdx, setRateIdx] = useState(1)
+  const [term, setTerm] = useState(10)
   const { s, p } = f
   const adult = isAdultStage(s)
   const hint = stockHint(s, p)
@@ -45,7 +51,7 @@ export function FinanceSheet(f: FinanceProps) {
       {!adult && <p className="note">재테크는 청년(성인)부터 할 수 있어요.</p>}
       {adult && !f.canUse && <p className="note">지금은 구경만 할 수 있어요 (내 차례, 주사위 던지기 전에 사용).</p>}
       <div className="tabs" role="tablist">
-        {([['stock', '주식'], ['lottery', '복권'], ['ins', '보험'], ['loan', '대출']] as const).map(([k, l]) => (
+        {([['stock', '주식'], ['lottery', '복권'], ['ins', '보험'], ['loan', '대출'], ['friend', '친구']] as const).map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
@@ -109,6 +115,37 @@ export function FinanceSheet(f: FinanceProps) {
           <button className="wide" disabled={locked || !p.loans.length} onClick={f.onRepay}>갚을 수 있는 만큼 갚기</button>
         </div>
       )}
+      {tab === 'friend' && (
+        <div className="list">
+          <p className="note">친구에게는 <b>사람마다 한 번만</b> 부탁할 수 있어요. 기한을 넘기면 소송으로 가요. 빌려준 사람은 돌려받으면 운세가 좋아져요.</p>
+          {s.friendLoans.map((l, i) => (l.borrowerId === p.id || l.lenderId === p.id) && (
+            <div key={i} className="row">
+              <div className="grow">
+                {l.borrowerId === p.id ? `${s.players[l.lenderId].name}에게 갚을 돈` : `${s.players[l.borrowerId].name}에게 받을 돈`} <b>{won(l.owe)}</b>
+                <div className="muted">기한: {s.players[l.borrowerId].name}의 {l.dueTurn}번째 차례</div>
+              </div>
+              {l.borrowerId === p.id && <button disabled={locked || p.money < l.owe} onClick={() => f.onRepayFriend(i)}>갚기</button>}
+            </div>
+          ))}
+          <div className="field"><span>빌릴 돈</span>
+            <div className="seg">{[500, 1000, 3000].map((a) => <button key={a} className={amount === a ? 'on' : ''} onClick={() => setAmount(a)}>{won(a)}</button>)}</div>
+          </div>
+          <div className="field"><span>이자</span>
+            <div className="seg">{LOAN_RATES.map((r, i) => <button key={r} className={rateIdx === i ? 'on' : ''} onClick={() => setRateIdx(i)}>{['조금', '보통', '많이'][i]} {Math.round(r * 100)}%</button>)}</div>
+          </div>
+          <div className="field"><span>갚는 기한</span>
+            <div className="seg">{[5, 10, 15].map((t) => <button key={t} className={term === t ? 'on' : ''} onClick={() => setTerm(t)}>{t}턴</button>)}</div>
+          </div>
+          {s.players.filter((q) => q.id !== p.id).map((q) => (
+            <div key={q.id} className="row">
+              <div className="grow"><b style={{ color: q.color }}>{q.name}</b> <span className="muted">가진 돈 {won(q.money)}</span></div>
+              <button disabled={locked || !canBorrowFrom(s, p, q)} onClick={() => f.onFriendLoan(q.id, amount, rateIdx, term)}>
+                {p.borrowedFrom.includes(q.id) ? '이미 부탁함' : '부탁하기'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </Sheet>
   )
 }
@@ -157,7 +194,7 @@ export function PeopleSheet({ s, onClose }: { s: GameState; onClose: () => void 
         {s.players.map((p) => {
           const sc = scoreOf(s, p)
           const tags: string[] = []
-          if (p.spouse) tags.push(`배우자 ${p.spouse.name}${p.spouse.revealed ? `(${p.spouse.trait})` : ''}`)
+          if (p.spouse) tags.push(`배우자 ${p.spouse.name} ${stars(p.spouse.grade)}${p.spouse.revealed ? ` (${p.spouse.trait})` : ''}`)
           if (p.children) tags.push(`자녀 ${p.children}`)
           if (p.adopted) tags.push('입양 자녀')
           if (p.pet?.alive) tags.push('반려동물')
@@ -165,6 +202,8 @@ export function PeopleSheet({ s, onClose }: { s: GameState; onClose: () => void 
           if (p.car) tags.push(CARS[p.car].name)
           if (p.lottery.addicted) tags.push('도박중독')
           if (p.creditBad) tags.push('신용불량')
+          if (p.agency) tags.push(`소개팅 ${p.agency.vip ? 'VIP' : '일반'}`)
+          if (friendDebt(s, p)) tags.push(`친구 빚 ${won(friendDebt(s, p))}`)
           if (p.college) tags.push('대졸')
           return (
             <div key={p.id} className="person" style={{ borderColor: p.color }}>

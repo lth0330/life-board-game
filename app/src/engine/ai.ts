@@ -68,6 +68,7 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
       if (id.startsWith('house')) { const i = +id.slice(5); return p.money > HOUSES[i].price * 1.5 ? 3 + i : 0 }
       if (id.startsWith('car')) { const i = +id.slice(3); return p.money > CARS[i].price * 2 ? 2.5 + i * 0.5 : 0 }
       if (id === 'chance') return 0.5
+      if (id === 'pet') return per === 'family' ? 2.4 : 0.8
       if (id.startsWith('agency')) {
         const want = !p.spouse && p.suitors.every((x) => x.affinity < 50)
         if (!want) return 0
@@ -109,6 +110,7 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
     }
     case 'agencyMatch': return id === 'yes' ? (p.money > 600 ? 2 : 0.5) : 1
     case 'rps': return rng.next()
+    case 'stray': return id === 'yes' ? (per === 'family' || per === 'safe' ? 2 : 0.8) : 1
     case 'loanRequest': return id === 'yes' ? 1 : 1.2
     case 'sabotageTarget': {
       const q = s.players[+id]

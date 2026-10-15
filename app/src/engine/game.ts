@@ -720,6 +720,12 @@ function drawCard(s: GameState, p: Player) {
       })
     }
     if (s.players.some((q) => q.house)) deck.push(() => everyoneStorm(s))
+    if (!p.pet?.alive && s.stageIdx <= 3) deck.push(() => {
+      s.pending = {
+        type: 'stray', playerId: p.id, title: '유기견을 만났다', text: '길에서 떠도는 강아지가 따라온다. 키울까요?',
+        options: [{ id: 'yes', label: '키운다', desc: '매 턴 행복 +1, 사료값 (선행)' }, { id: 'no', label: '보호소에 데려다준다' }],
+      }
+    })
   }
   rng.pick(deck)()
 }
@@ -1061,6 +1067,7 @@ function triggerPoint(s: GameState, p: Player, kind: 'shop' | 'marriage') {
       opts.push({ id: 'agency0', label: '소개팅 회사 일반 회원', desc: '매 턴 30만, 연애 시작 100만, 속성 지정' })
       opts.push({ id: 'agency1', label: '소개팅 회사 VIP 회원', desc: '매 턴 100만, 연애 시작 300만, 속성 지정 + ★3 이상 잘 나옴' })
     }
+    if (!p.pet?.alive) opts.push({ id: 'pet', label: '반려동물 데려오기', desc: `${won(50)} · 매 턴 행복 +1, 사료값`, disabled: p.money < 50 })
     opts.push({ id: 'chance', label: '찬스 카드 사기', desc: won(100), disabled: p.money < 100 })
     opts.push({ id: 'pass', label: '그냥 지나가기' })
     s.pending = { type: 'shop', playerId: p.id, title: '상점', text: `가진 돈 ${won(p.money)}. 하나만 살 수 있어요.`, options: opts }
@@ -1115,6 +1122,12 @@ function stopTile(s: GameState, p: Player, t: Tile) {
   }
 }
 
+function adoptPet(s: GameState, p: Player, text: string) {
+  p.pet = { alive: true, turnsLeft: rngOf(s).int(15, 20) }
+  p.happy += 3
+  log(s, p.id, `${text}. 행복 +3`, 'good')
+}
+
 function setJob(s: GameState, p: Player, id: string | null) {
   p.jobId = id
   p.jobRank = id === 'ceo' || JOBS.find((j) => j.id === id)?.boom ? 1 : 0
@@ -1165,7 +1178,7 @@ export function choose(s: GameState, optionId: string) {
       break
     case 'middleBranch':
       if (optionId === 'adopt') { p.adopted = 1; p.happy += 6; log(s, p.id, '아이를 입양했다. 행복 +6', 'good') }
-      if (optionId === 'pet') { p.pet = { alive: true, turnsLeft: rng.int(15, 20) }; p.happy += 3; log(s, p.id, '반려동물을 맞았다. 행복 +3', 'good') }
+      if (optionId === 'pet') adoptPet(s, p, '반려동물을 맞았다')
       break
     case 'shop':
       if (optionId.startsWith('house')) {
@@ -1195,7 +1208,14 @@ export function choose(s: GameState, optionId: string) {
       } else if (optionId === 'chance') {
         p.money -= 100
         giveChance(s, p, randomChance(rng))
+      } else if (optionId === 'pet') {
+        p.money -= 50
+        adoptPet(s, p, '상점에서 반려동물을 데려왔다')
       }
+      break
+    case 'stray':
+      if (optionId === 'yes') { p.goodDeeds++; adoptPet(s, p, '유기견을 가족으로 맞았다 (선행)') }
+      else log(s, p.id, '유기견을 보호소에 데려다줬다', 'info')
       break
     case 'agencyAttr': {
       const vip = (pd.data as { vip: boolean }).vip
