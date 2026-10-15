@@ -54,9 +54,10 @@ interface Props {
   focus: Player
   showSteps: boolean
   posOf?: (p: Player) => number // 걷는 연출 중에는 실제 위치 대신 지금 보여줄 칸
+  walkingId?: number | null // 지금 걷고 있는 사람 (통통 튀는 동작)
 }
 
-export function Board({ s, focus, showSteps, posOf = (p) => p.pos }: Props) {
+export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = null }: Props) {
   const st = s.stages[s.stageIdx]
   const focusPos = posOf(focus)
   const fd = st.tiles[focusPos].d
@@ -165,7 +166,7 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos }: Props) {
       const me = p.id === focus.id
       items.push(
         <div key={`s${p.id}`} className="shadow" style={{ left: xAt(t) + 20 + dx, top: yAt(t) + 70 }} />,
-        <div key={`c${p.id}`} className="char" style={{ ...stand, left: xAt(t) + 20 + dx, top: yAt(t) - 90, opacity: me ? 1 : 0.5 }}>
+        <div key={`c${p.id}`} className={`char${p.id === walkingId ? ' walking' : ''}`} style={{ ...stand, left: xAt(t) + 20 + dx, top: yAt(t) - 90, opacity: me ? 1 : 0.5 }}>
           <Character outfit={p.outfit} view="back" size={80} age={ageOf(s, p)} />
           <div className="name-tag" style={{ background: me ? p.color : 'rgba(42,33,24,0.6)', top: -40 - k * 34 }}>{p.name}</div>
         </div>,

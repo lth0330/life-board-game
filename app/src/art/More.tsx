@@ -1,4 +1,5 @@
-import type { ReactElement } from 'react'
+import { useEffect, useMemo, useState, type ReactElement } from 'react'
+import { sfx } from '../sound'
 
 // 추가 그림 (기본 버전 — 아트 단계에서 다시 그림, docs/12-art.md)
 // 이벤트 길 입구 랜드마크, 결정 창 그림
@@ -123,7 +124,53 @@ const BANNER_ART: [RegExp, string][] = [
   [/집|대출 끝/, 'family'], [/결혼/, 'marriage'], [/아기/, 'baby'], [/복권/, 'ticket'], [/메달|감독/, 'medal'], [/회사|창업|매각/, 'biz'], [/잔치/, 'cake'],
   [/자녀/, 'grad'], [/수능|대학/, 'grad'], [/이혼/, 'broken'], [/게임 끝/, 'trophy'],
 ]
+// 큰 사건 장면 (배너 위에 크게)
+const SCENES: [RegExp, () => ReactElement][] = [
+  [/결혼!/, () => (<g>
+    <rect x="0" y="0" width="220" height="150" rx="14" fill="#FFF5F8" />
+    <path d="M40 150V70a70 60 0 0 1 140 0v80" fill="none" stroke="#F3A3C0" strokeWidth="10" />
+    {[0, 1, 2, 3, 4, 5, 6].map((i) => <circle key={i} cx={40 + i * 23.3} cy={i === 0 || i === 6 ? 70 : 70 - Math.sin((i / 6) * Math.PI) * 58} r="7" fill={['#fff', '#F3A3C0', '#F2C230'][i % 3]} />)}
+    <circle cx="88" cy="78" r="12" fill="#F1C9A5" /><path d="M72 150v-46q16-14 32 0v46z" fill="#2A2118" /><path d="M86 94l2 8 2-8z" fill="#fff" />
+    <circle cx="132" cy="78" r="12" fill="#F1C9A5" /><path d="M114 150l6-50q12-10 24 0l6 50z" fill="#fff" stroke="#E8DCE3" strokeWidth="2" /><path d="M122 68q10-12 20 0" fill="#fff" opacity="0.9" />
+    <path d="M110 40a6 6 0 0 1 12 0c0 7-6 10-6 10s-6-3-6-10z" fill="#E34B4B" transform="translate(-6 -6)" />
+  </g>)],
+  [/아기 탄생/, () => (<g>
+    <rect x="0" y="0" width="220" height="150" rx="14" fill="#EAF4FB" />
+    {[[30, 30], [180, 26], [60, 60], [160, 70], [110, 18]].map(([x, y], i) => <path key={i} d={`M${x} ${y - 6}l2 4 5 1-4 3 1 5-4-3-4 3 1-5-4-3 5-1z`} fill="#F2C230" />)}
+    <path d="M50 96h120l-10 36H60z" fill="#F7D3E2" stroke="#B0476F" strokeWidth="3" />
+    <path d="M58 132v14M162 132v14" stroke="#B0476F" strokeWidth="4" />
+    <circle cx="110" cy="86" r="16" fill="#F6D3B3" /><path d="M86 100q24-14 48 0v8H86z" fill="#CFE7F5" />
+    <circle cx="104" cy="85" r="2" fill="#2A2118" /><circle cx="116" cy="85" r="2" fill="#2A2118" /><path d="M106 92q4 3 8 0" stroke="#2A2118" strokeWidth="1.5" fill="none" />
+  </g>)],
+  [/내 집 마련|대출 끝/, () => (<g>
+    <rect x="0" y="0" width="220" height="150" rx="14" fill="#FDF6E8" />
+    <rect x="60" y="62" width="100" height="78" fill="#F2E2C4" /><path d="M48 66L110 22l62 44z" fill="#B5452F" />
+    <rect x="98" y="100" width="24" height="40" fill="#7A5232" /><rect x="70" y="80" width="20" height="18" fill="#CFE7F5" /><rect x="130" y="80" width="20" height="18" fill="#CFE7F5" />
+    <g transform="translate(168 96) rotate(-30)"><circle r="10" fill="none" stroke="#E2B85C" strokeWidth="5" /><path d="M10 0h26M28 0v8M34 0v6" stroke="#E2B85C" strokeWidth="5" /></g>
+    {[[30, 30], [190, 40], [24, 110]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="5" fill={['#E34B4B', '#2E6FD8', '#2F8F5B'][i]} />)}
+  </g>)],
+  [/이혼/, () => (<g>
+    <rect x="0" y="0" width="220" height="150" rx="14" fill="#E9ECF2" />
+    <path d="M60 46q0-22 26-22 18 0 24 16 6-16 24-16 26 0 26 22" fill="#9AA6B8" />
+    {[0, 1, 2, 3, 4, 5].map((i) => <path key={i} d={`M${66 + i * 18} 60l-5 12`} stroke="#6E8BB8" strokeWidth="3" strokeLinecap="round" />)}
+    <path d="M104 140S70 118 70 98a18 18 0 0 1 34-6l-6 16 10 8-6 24z" fill="#C9553B" /><path d="M116 140s34-22 34-42a18 18 0 0 0-34-6l-6 16 10 8-4 24z" fill="#E07A5F" />
+  </g>)],
+  [/대학 졸업|합격!/, () => (<g>
+    <rect x="0" y="0" width="220" height="150" rx="14" fill="#F3EDFF" />
+    {[[40, 50, -20], [110, 30, 10], [176, 56, 25]].map(([x, y, r], i) => <g key={i} transform={`translate(${x} ${y}) rotate(${r})`}><path d="M-26 0L0-10 26 0 0 10z" fill="#2A2118" /><path d="M-14 4v12q14 8 28 0V4" fill="#2A2118" /><path d="M22 2v14" stroke="#F2C230" strokeWidth="3" /></g>)}
+    <path d="M70 140q40-40 80 0" fill="#6F45BD" /><circle cx="110" cy="96" r="14" fill="#F1C9A5" />
+  </g>)],
+  [/골인|게임 끝/, () => (<g>
+    <rect x="0" y="0" width="220" height="150" rx="14" fill="#FFF8DC" />
+    {Array.from({ length: 6 }, (_, c) => Array.from({ length: 3 }, (_, r) => <rect key={`${c}${r}`} x={40 + c * 23} y={30 + r * 16} width="23" height="16" fill={(c + r) % 2 ? '#2A2118' : '#fff'} />))}
+    <path d="M40 30v110M178 30v110" stroke="#7A5232" strokeWidth="5" />
+    <g transform="translate(80 92)"><path d="M0 0h60v18a30 30 0 0 1-60 0z" fill="#F2C230" stroke="#E2B85C" strokeWidth="3" /><rect x="24" y="46" width="12" height="10" fill="#E2B85C" /><rect x="14" y="56" width="32" height="8" fill="#7A5232" /></g>
+  </g>)],
+]
+
 export function BannerArt({ title, tone }: { title: string; tone: string }) {
+  const scene = SCENES.find(([re]) => re.test(title))?.[1]
+  if (scene) return <svg className="scene-art" viewBox="0 0 220 150" width="220" height="150" aria-hidden="true">{scene()}</svg>
   const key = BANNER_ART.find(([re]) => re.test(title))?.[1] ?? (tone === 'bad' ? 'warn' : null)
   const draw = key ? ART[key] : null
   if (!draw) return null
@@ -132,6 +179,45 @@ export function BannerArt({ title, tone }: { title: string; tone: string }) {
 
 export function Trophy({ size = 40 }: { size?: number }) {
   return <svg viewBox="0 0 120 100" width={size} height={size * 0.83} aria-hidden="true">{ART.trophy('')}</svg>
+}
+
+// 룰렛: 성공 칸(초록)이 확률만큼. 3바퀴 돌고 결과 칸에 멈춤
+export function Roulette({ title, chance, ok, who, onDone }: { title: string; chance: number; ok: boolean; who: string; onDone: () => void }) {
+  const [angle, setAngle] = useState(0)
+  const [stopped, setStopped] = useState(false)
+  const target = useMemo(() => {
+    // 바늘은 위(0°). 성공 칸은 0 ~ chance×360°. 그 안이나 밖의 한 점이 위로 오게 돌림
+    const span = chance * 360
+    const inside = span * (0.2 + Math.random() * 0.6)
+    const outside = span + (360 - span) * (0.2 + Math.random() * 0.6)
+    return 360 * 4 + (360 - (ok ? inside : outside))
+  }, [chance, ok])
+  useEffect(() => {
+    const t0 = setTimeout(() => setAngle(target), 50)
+    const tick = setInterval(() => sfx('spin'), 120)
+    const t1 = setTimeout(() => { clearInterval(tick); setStopped(true); sfx(ok ? 'fanfare' : 'lose') }, 2650)
+    const t2 = setTimeout(onDone, 4300)
+    return () => { clearTimeout(t0); clearTimeout(t1); clearTimeout(t2); clearInterval(tick) }
+  }, [target, ok, onDone])
+  const big = chance > 0.5 ? 1 : 0
+  const a = chance * 2 * Math.PI
+  const x = 50 + 46 * Math.sin(a), y = 50 - 46 * Math.cos(a)
+  return (
+    <button className="roulette-pop" onClick={() => stopped && onDone()} aria-label={`${title}: ${stopped ? (ok ? '성공' : '실패') : '돌아가는 중'}`}>
+      <b className="jua">{title}</b>
+      <span className="muted">{who} · 성공 확률 {Math.round(chance * 100)}%</span>
+      <div className="wheel-wrap">
+        <svg className="wheel" viewBox="0 0 100 100" style={{ transform: `rotate(${angle}deg)` }} aria-hidden="true">
+          <circle cx="50" cy="50" r="46" fill="#E07A5F" stroke="#2A2118" strokeWidth="3" />
+          {chance >= 0.999 ? <circle cx="50" cy="50" r="46" fill="#6DBB5A" /> : <path d={`M50 50 L50 4 A46 46 0 ${big} 1 ${x} ${y} Z`} fill="#6DBB5A" />}
+          {Array.from({ length: 12 }, (_, i) => <path key={i} d={`M50 50 L${50 + 46 * Math.sin(i * Math.PI / 6)} ${50 - 46 * Math.cos(i * Math.PI / 6)}`} stroke="rgba(255,255,255,0.5)" strokeWidth="1" />)}
+          <circle cx="50" cy="50" r="7" fill="#2A2118" />
+        </svg>
+        <svg className="needle" viewBox="0 0 20 24" aria-hidden="true"><path d="M10 24L0 0h20z" fill="#2A2118" /></svg>
+      </div>
+      {stopped && <b className={`jua roulette-result ${ok ? 'ok' : 'no'}`}>{ok ? '성공!' : '아쉬워요…'}</b>}
+    </button>
+  )
 }
 
 // 칸 사건 팝업: 그림 + 제목 + 이번 칸 기록. 눌러서 닫거나 저절로 꺼짐

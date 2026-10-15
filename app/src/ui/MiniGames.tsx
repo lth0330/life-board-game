@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MINI_NAMES } from '../engine/game'
+import { sfx } from '../sound'
+import { EventArt, Landmark } from '../art/More'
 import type { MiniState } from '../engine/types'
 
 // 미니게임 화면. 결과: 0 실패, 1 성공, 2 대성공 (대결 timing은 0~100점)
@@ -11,14 +13,26 @@ const LEVEL_NAME = ['쉬움', '보통', '어려움']
 const rand = (n: number) => Math.floor(Math.random() * n)
 const shuffle = <T,>(a: T[]) => [...a].sort(() => Math.random() - 0.5)
 
+// 미니게임 주제별 배경·그림 (이벤트 길과 같은 그림)
+const MINI_THEME: Record<string, string> = {
+  race: 'sport', tug: 'sport', throw: 'sport',
+  memory: 'brain', pairs: 'brain', quickmath: 'brain',
+  firstImpression: 'fest', rhythm: 'fest', confess: 'fest',
+  oddEven: 'casino', highLow: 'casino', slot: 'casino',
+  capital: 'travel', souvenir: 'travel', photo: 'travel',
+}
+const THEME_LANDMARK: Record<string, string> = { sport: '운동회', brain: '두뇌 올림피아드', fest: '축제 거리', casino: '카지노', travel: '세계일주' }
+
 export function MiniGame({ mini, onFinish }: Props) {
   const [result, setResult] = useState<number | null>(null)
   const resultRef = useRef<number | null>(null)
+  const isDuelRef = useRef(!!mini.duel)
   // 한 번만 결과를 받음 (타이머·StrictMode에서 두 번 불려도 안전)
   const done = useCallback((v: number) => {
     if (resultRef.current !== null) return
     resultRef.current = v
     setResult(v)
+    sfx(isDuelRef.current ? (v >= 50 ? 'win' : 'lose') : v >= 1 ? 'win' : 'lose')
   }, [])
   const isDuel = !!mini.duel
   const body = (() => {
@@ -42,7 +56,8 @@ export function MiniGame({ mini, onFinish }: Props) {
   })()
   return (
     <div className="sheet-backdrop mini-backdrop">
-      <div className="sheet mini">
+      <div className={`sheet mini theme-${MINI_THEME[mini.game] ?? 'duel'}`}>
+        <div className="mini-art">{isDuel ? <EventArt type="afterRoll" /> : <Landmark name={THEME_LANDMARK[MINI_THEME[mini.game]] ?? ''} />}</div>
         <div className="mini-head">
           <h2 className="jua">{MINI_NAMES[mini.game]}</h2>
           <span className="mini-level">난이도 {LEVEL_NAME[mini.level]}</span>

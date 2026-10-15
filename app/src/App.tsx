@@ -10,7 +10,8 @@ import {
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
 import type { DiceItem, GameState } from './engine/types'
 import { currentProfile, deleteGame, loadGame, logout, saveGame, updateOutfit, type Profile } from './storage'
-import { BannerArt, EventArt, EventPopup } from './art/More'
+import { BannerArt, EventArt, EventPopup, Roulette } from './art/More'
+import { setSoundPrefs, sfx, soundPrefs, unlockAudio } from './sound'
 import { Board, FullMap } from './ui/Board'
 import { Dresser } from './ui/Dresser'
 import { Confetti, DiceThrow, StageCard } from './ui/Effects'
@@ -101,6 +102,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
   const [sheet, setSheet] = useState<SheetKind>(null)
   const [rolling, setRolling] = useState(false)
   const [menu, setMenu] = useState(false)
+  const [sound, setSound] = useState(soundPrefs())
   const [carMode, setCarMode] = useState(false)
   const [itemMode, setItemMode] = useState<DiceItem | null>(null)
   const gameRef = useRef(game)
@@ -134,7 +136,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
   }, [game.pathId, walk.id])
   useEffect(() => {
     if (!walking || diceShow !== null) return
-    const t = setTimeout(() => setWalk((w) => ({ ...w, idx: w.idx + 1 })), WALK_MS)
+    const t = setTimeout(() => { sfx('step'); setWalk((w) => ({ ...w, idx: w.idx + 1 })) }, WALK_MS)
     return () => clearTimeout(t)
   }, [walking, walkIdx, diceShow])
   const posOf = (q: GameState['players'][number]) => (walking && q.id === game.pathPlayer ? game.path[walkIdx] : q.pos)
@@ -146,6 +148,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
     if (!game.popup || game.popup.id === lastPopId.current) return
     lastPopId.current = game.popup.id
     setPopShow(game.popup)
+    sfx(game.popup.tone === 'bad' ? 'bad' : game.popup.art === 'money' ? 'coin' : 'pop')
   }, [game.popup])
   const popVisible = !!popShow && !walking && diceShow === null
   useEffect(() => {
@@ -154,6 +157,15 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
     const t = setTimeout(() => setPopShow(null), ms)
     return () => clearTimeout(t)
   }, [popVisible, popShow, game.players])
+  // 룰렛 연출 (대학 합격·감독 도전)
+  const [wheel, setWheel] = useState<GameState['roulette']>(null)
+  const lastWheel = useRef(game.roulette?.id ?? 0)
+  useEffect(() => {
+    if (!game.roulette || game.roulette.id === lastWheel.current) return
+    lastWheel.current = game.roulette.id
+    setWheel(game.roulette)
+  }, [game.roulette])
+  const closeWheel = useCallback(() => setWheel(null), [])
   // 상점 카테고리
   const [shopCat, setShopCat] = useState<string | null>(null)
   useEffect(() => { setShopCat(null) }, [game.pending])
@@ -172,7 +184,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
     return () => clearTimeout(t)
   }, [hold, walking, diceShow, popShow])
 
-  const busy = rolling || diceShow !== null || walking || popShow !== null || hold !== null || !!game.summary
+  const busy = rolling || diceShow !== null || walking || popShow !== null || hold !== null || !!game.summary || wheel !== null
   const p = cur(game)
   const shown = walking ? game.players[game.pathPlayer] : hold !== null ? game.players[hold] : p
   const pending = busy ? null : game.pending
@@ -203,7 +215,12 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
     return () => clearTimeout(t)
   }, [game.speech])
   const [banner, setBanner] = useState(game.banner)
-  useEffect(() => { if (game.banner) setBanner(game.banner) }, [game.banner])
+  useEffect(() => {
+    if (!game.banner) return
+    setBanner(game.banner)
+    sfx(CELEBRATE.includes(game.banner.title) ? 'fanfare' : game.banner.title.startsWith('복권') ? 'win' : game.banner.tone === 'bad' ? 'bad' : 'pop')
+  }, [game.banner])
+  useEffect(() => { if (game.phase === 'gameover') sfx('fanfare') }, [game.phase])
   useEffect(() => {
     if (!banner || busy) return
     const t = setTimeout(() => setBanner(null), banner.title.endsWith('단계') ? 2000 : banner.title.startsWith('복권') ? 3200 : 1800)
@@ -218,6 +235,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
     if (onCampus) { act((s) => roll(s)); return } // 대학교에서는 주사위 대신 대학 생활
     const useCar = carMode
     const item = itemMode
+    sfx('dice')
     setRolling(true)
     setTimeout(() => { setRolling(false); act((s) => roll(s, 0, useCar, item)) }, DICE_ROLL_MS)
   }
@@ -231,10 +249,10 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
   return (
     <div
       className="play"
-      onPointerDown={(e) => { if ((e.target as HTMLElement).closest('.world')) swipeY.current = { y: e.clientY, t: Date.now() } }}
+      onPointerDown={(e) => { unlockAudio(); if ((e.target as HTMLElement).closest('.world')) swipeY.current = { y: e.clientY, t: Date.now() } }}
       onPointerUp={(e) => { const sw = swipeY.current; if (sw && sw.y - e.clientY > 70 && Date.now() - sw.t < 300) doRoll(); swipeY.current = null }}
     >
-      <Board s={game} focus={shown} posOf={posOf} showSteps={myTurn || (!p.human && game.phase === 'roll' && !busy)} />
+      <Board s={game} focus={shown} posOf={posOf} walkingId={walking ? game.pathPlayer : null} showSteps={myTurn || (!p.human && game.phase === 'roll' && !busy)} />
 
       <header className="hud">
         <div className="hud-row">
@@ -315,7 +333,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
             {pending.type === 'shop' && shopCat && <button className="ghost-btn" onClick={() => setShopCat(null)}>← 다른 물건 보기</button>}
             <div className="options">
               {pending.options.filter((o) => pending.type !== 'shop' || o.id === 'pass' || (shopCat && SHOP_CATS.find((c) => c.id === shopCat)!.match(o.id))).map((o) => (
-                <button key={o.id} disabled={o.disabled || !game.players[pending.playerId].human} onClick={() => act((s) => choose(s, o.id))}>
+                <button key={o.id} disabled={o.disabled || !game.players[pending.playerId].human} onClick={() => { sfx('click'); act((s) => choose(s, o.id)) }}>
                   <b>{o.label}</b>{o.desc && <span>{o.desc}</span>}
                 </button>
               ))}
@@ -325,6 +343,8 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
       )}
 
       {game.summary && !walking && <StageSummary s={game} onClose={() => act((s) => { s.summary = null })} />}
+
+      {wheel && <Roulette title={wheel.title} chance={wheel.chance} ok={wheel.ok} who={game.players[wheel.playerId].name} onDone={closeWheel} />}
 
       {popVisible && popShow && (
         <EventPopup art={popShow.art} title={popShow.title} text={popShow.text} tone={popShow.tone} who={game.players[popShow.playerId].name} onClose={() => setPopShow(null)} />
@@ -377,6 +397,10 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <h2 className="jua">설정</h2>
             <p className="muted">{saving ? '게임은 자동 저장돼요. 메뉴에서 이어 할 수 있어요.' : '손님 모드라 저장되지 않아요.'}</p>
+            <div className="sound-row">
+              <button className={sound.sfx ? 'on' : ''} aria-pressed={sound.sfx} onClick={() => { setSoundPrefs({ sfx: !sound.sfx }); setSound(soundPrefs()); sfx('click') }}>🔊 효과음 {sound.sfx ? '켜짐' : '꺼짐'}</button>
+              <button className={sound.bgm ? 'on' : ''} aria-pressed={sound.bgm} onClick={() => { unlockAudio(); setSoundPrefs({ bgm: !sound.bgm }); setSound(soundPrefs()) }}>🎵 배경음 {sound.bgm ? '켜짐' : '꺼짐'}</button>
+            </div>
             <button className="wide" onClick={() => setMenu(false)}>계속하기</button>
             <button className="wide secondary" onClick={() => { setMenu(false); setSheet('manual') }}>게임 설명서</button>
             <button className="wide secondary" onClick={onQuit}>메뉴로 나가기</button>

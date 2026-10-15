@@ -503,3 +503,41 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
 .world:active { cursor: grabbing; }
 .track.dragging { transition: none; }
 .pan-home { position: absolute; right: 16px; top: 132px; z-index: 3; min-height: 40px; padding: 0 14px; border-radius: 999px; font-family: 'Jua', sans-serif; background: var(--paper); border: 3px solid var(--ink); }
+
+/* 설정: 소리 */
+.sound-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
+.sound-row button { min-height: 44px; border-radius: 12px; font-family: 'Jua', sans-serif; }
+.sound-row button.on { background: var(--ink); color: var(--paper); }
+
+/* 룰렛 */
+.roulette-pop { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); z-index: 8; width: min(320px, calc(100% - 32px));
+  background: var(--paper); border: 4px solid var(--ink); border-radius: 22px; padding: 14px; display: flex; flex-direction: column; align-items: center; gap: 4px; font: inherit; color: var(--ink);
+  box-shadow: 0 14px 34px rgba(0,0,0,0.35); animation: pop 0.3s ease-out; }
+.roulette-pop > b { font-size: 24px; }
+.wheel-wrap { position: relative; width: 200px; height: 210px; }
+.wheel { position: absolute; left: 0; top: 10px; width: 200px; height: 200px; transition: transform 2.6s cubic-bezier(.15,.85,.25,1); }
+.needle { position: absolute; left: 90px; top: 0; width: 20px; height: 24px; }
+.roulette-result { font-size: 30px; }
+.roulette-result.ok { color: var(--good); } .roulette-result.no { color: var(--bad); }
+@media (prefers-reduced-motion: reduce) { .wheel { transition: none; } }
+
+/* 미니게임 주제별 배경 */
+.sheet.mini { position: relative; overflow: hidden; }
+.mini-art { width: 120px; height: 110px; margin: -6px auto 0; }
+.mini-art svg { width: 100%; height: 100%; }
+.sheet.mini.theme-sport { background: linear-gradient(#fdf6e8 0 55%, #bfe3a8 55%); }
+.sheet.mini.theme-brain { background: linear-gradient(160deg, #f3edff, #ddd0f7); }
+.sheet.mini.theme-fest { background: radial-gradient(circle at 20% 10%, #ffe7a8 0 8%, transparent 9%), radial-gradient(circle at 80% 12%, #ffc7d9 0 7%, transparent 8%), linear-gradient(#fff3f7, #ffd9e6); }
+.sheet.mini.theme-casino { background: radial-gradient(circle at 50% 0%, #2f8f5b, #1d5c3b); color: #fff7e8; }
+.sheet.mini.theme-casino .muted, .sheet.mini.theme-casino .note { color: #e8f3ea; }
+.sheet.mini.theme-casino button { color: var(--ink); }
+.sheet.mini.theme-travel { background: linear-gradient(#cfe7f5, #fdf6e8 70%); }
+.sheet.mini.theme-duel { background: linear-gradient(#ffe2c7, #fdf6e8); }
+
+/* 걸을 때 통통 */
+.char.walking svg { animation: walk-bob 0.23s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes walk-bob { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-14px) rotate(3deg); } }
+@media (prefers-reduced-motion: reduce) { .char.walking svg { animation: none; } }
+.scene-art { display: block; margin: 0 auto 6px; max-width: 100%; height: auto; border-radius: 14px; animation: scene-in 0.5s ease-out both; }
+@keyframes scene-in { from { transform: scale(0.85); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .scene-art { animation: none; } }

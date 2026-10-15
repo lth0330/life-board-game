@@ -230,7 +230,8 @@ export interface GameState {
   logCount: number // 지금까지 남긴 기록 수 (팝업에 이번 칸 기록만 모으려고)
   popup: { id: number; art: string; title: string; text: string; tone: 'good' | 'bad' | 'info'; playerId: number } | null // 칸 사건 팝업
   stockPrev: Record<Sector, number>
-  summary?: string | null // 중간 정산을 보여 줄 단계 이름 (청년·중년이 끝날 때) // 지난 바퀴 주가 (오르내림 표시)
+  summary?: string | null
+  roulette?: { id: number; title: string; chance: number; ok: boolean; playerId: number } | null // 룰렛 연출 (대학 합격·감독 도전) // 중간 정산을 보여 줄 단계 이름 (청년·중년이 끝날 때) // 지난 바퀴 주가 (오르내림 표시)
   stockPrice: Record<Sector, number>
   housePrice: number // 집 시세 (처음 100 = 상점 기본값 그대로)
   nextNews: { sector: Sector; up: boolean; size: number } | null

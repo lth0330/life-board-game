@@ -1678,13 +1678,20 @@ function goToJob(s: GameState, p: Player) {
   stopTile(s, p, st.tiles[jobIdx])
 }
 
+// 룰렛 연출: 결과는 이미 정해져 있고 화면이 돌려서 보여 줌
+function spinRoulette(s: GameState, p: Player, title: string, chance: number, ok: boolean) {
+  s.roulette = { id: (s.roulette?.id ?? 0) + 1, title, chance, ok, playerId: p.id }
+}
+
 // 대학 3종: 능력치가 높을수록 합격 (룰렛)
 export const UNIS: { stat: StatKey; name: string }[] = [{ stat: 'int', name: '일반대' }, { stat: 'str', name: '체대' }, { stat: 'cha', name: '예대·방송대' }]
 export const passChance = (p: Player, k: StatKey) => Math.min(0.95, 0.15 + p.stats[k] * 0.09)
 function uniTry(s: GameState, p: Player, k: StatKey) {
   const u = UNIS.find((x) => x.stat === k)!
   const ch = passChance(p, k)
-  if (rngOf(s).next() < ch) {
+  const ok = rngOf(s).next() < ch
+  spinRoulette(s, p, `${u.name} 합격 룰렛`, ch, ok)
+  if (ok) {
     p.major = k
     log(s, p.id, `🎯 ${u.name} 합격! (확률 ${Math.round(ch * 100)}%)`, 'good')
     s.banner = { title: `${u.name} 합격!`, text: p.name, tone: 'good' }
@@ -1916,7 +1923,9 @@ export function choose(s: GameState, optionId: string) {
       if (optionId === 'biz') startCompany(s, p, BUSINESSES.athlete)
       else if (optionId === 'coach') {
         const ch = coachChance(p, rank)
-        if (rng.next() < ch) {
+        const ok = rng.next() < ch
+        spinRoulette(s, p, '감독 도전 룰렛', ch, ok)
+        if (ok) {
           setJob(s, p, 'coach')
           p.jobRank = rank >= 2 || p.medals.length ? 1 : 0
           log(s, p.id, `감독 룰렛 성공! (확률 ${Math.round(ch * 100)}%) ${JOBS.find((j) => j.id === 'coach')!.ranks[p.jobRank]}가 됐다`, 'good')
