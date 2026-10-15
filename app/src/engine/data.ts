@@ -50,10 +50,11 @@ export const HOUSES = [
 ]
 
 export const CARS = [
-  { name: '없음', price: 0, upkeep: 0, charges: [0, 0, 0] },
-  { name: '스쿠터', price: 300, upkeep: 3, charges: [1, 2, 3] },
-  { name: '일반차', price: 1800, upkeep: 12, charges: [2, 3, 4] },
-  { name: '고급차', price: 6000, upkeep: 30, charges: [3, 4, 5] },
+  // crash: 매 턴 사고 확률 (노년엔 1.5배). 스쿠터는 잘 나고 몸을 다침, 고급차는 드물지만 수리비가 큼
+  { name: '없음', price: 0, upkeep: 0, charges: [0, 0, 0], crash: 0 },
+  { name: '스쿠터', price: 300, upkeep: 3, charges: [1, 2, 3], crash: 0.07 },
+  { name: '일반차', price: 1800, upkeep: 12, charges: [2, 3, 4], crash: 0.03 },
+  { name: '고급차', price: 6000, upkeep: 30, charges: [3, 4, 5], crash: 0.01 },
 ]
 
 export const INSURANCE = {
@@ -84,3 +85,40 @@ export const TRAITS: { name: string; good: boolean }[] = [
   { name: '술고래', good: false },
   { name: '바람기', good: false },
 ]
+
+// 주사위 아이템 (상점, 1회용). 자동차 ±1과 같은 차례에 함께 못 씀
+export const DICE_ITEMS = {
+  twin: { name: '쌍둥이 주사위', price: 300, desc: '2개 굴려서 합만큼 (2~12칸)' },
+  even: { name: '짝수 주사위', price: 100, desc: '2·4·6만 나와요' },
+  odd: { name: '홀수 주사위', price: 60, desc: '1·3·5만 나와요' },
+} as const
+export const MAX_DICE_ITEMS = 2
+
+// 집 (2026-10-15 밸런스)
+export const HOUSE_RULES = {
+  upkeepRate: 0.002, // 매 턴 관리비·재산세 = 시세의 0.2% (원룸 약 5만, 아파트 14만, 단독주택 28만)
+  scoreRate: 1, // 최종 자산에는 시세 그대로 (사용자 결정: 사는 게 조금이라도 이득이게)
+  rent: 15, // 집이 없으면 성인부터 매 턴 월세
+  forcedRate: 0.8, // 강제 청산 때 시세의 80%에 팔림
+}
+export const CAR_CRASH_LOSS = 0.15 // 사고 날 때마다 차 가치 -15%
+
+// 자녀 (숫자는 초안 — 밸런스 단계에서 조정)
+export const KIDS = {
+  birthGrant: 100, // 출산 지원금
+  adoptGrant: 50, // 입양 지원금
+  youngCost: 20, // 청년 때 양육비 (매 턴, 1명당)
+  eduNames: ['안 함', '보통', '많이'],
+  eduCost: [20, 40, 80], // 중년부터 성인이 될 때까지 양육비
+  eduBonus: [0, 2, 4], // 성장 판정 보너스
+  adoptPenalty: 1, // 입양 자녀는 같은 교육이어도 판정 -1
+  bigAt: 14, // 판정 점수가 이 이상이면 크게 성공
+  okAt: 10, // 이 이상이면 보통, 밑이면 잘 안 풀림
+  resultNames: ['잘 안 풀림', '보통', '크게 성공'],
+  allowance: [20, 60, 100], // 성인 자녀가 주는 용돈 (매 턴)
+  adoptAllowance: [10, 60, 80],
+  resultHappy: [-2, 2, 5],
+  eduGood: [0.02, 0.04, 0.06], // 7살 이상 어린 자녀 1명당 매 턴 좋은 사건 확률 (교육 고르기 전은 '안 함'으로)
+  birthdayGift: [50, 150, 300], // 육순·칠순 때 어른 자녀 1명이 주는 용돈 (잘 안 풀림 / 보통 / 크게 성공)
+  eduTrouble: [0.08, 0.03, 0.02], // 교육을 고른 뒤 어린 자녀 1명당 매 턴 나쁜 사건 확률 (안 함 / 보통 / 많이)
+}

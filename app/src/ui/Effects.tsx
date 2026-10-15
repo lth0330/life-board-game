@@ -16,23 +16,33 @@ const FACES: [number, string][] = [
   [4, 'rotateY(-90deg) translateZ(36px)'], [2, 'rotateX(90deg) translateZ(36px)'], [5, 'rotateX(-90deg) translateZ(36px)'],
 ]
 
-// 주사위가 보드 위로 던져져 굴러가다 멈춤. value가 없으면 계속 구르는 중
-export function DiceThrow({ value }: { value: number | null }) {
+function Cube({ value, offset }: { value: number | null; offset: number }) {
   return (
-    <div className="dice-throw" aria-live="polite" aria-label={value ? `주사위 ${value}` : '주사위 굴러가는 중'}>
-      <div className={`dice-flight ${value ? 'landed' : ''}`}>
-        <div className="dice-shadow" />
-        <div className="cube-wrap">
-          <div className={`cube ${value ? '' : 'tumbling'}`} style={value ? { transform: FACE_ROT[value] } : undefined}>
-            {FACES.map(([n, t]) => (
-              <div key={n} className="cube-face" style={{ transform: t }}>
-                {Array.from({ length: 9 }, (_, i) => <i key={i} className={PIPS[n].includes(i) ? (n === 1 ? 'pip red' : 'pip') : ''} />)}
-              </div>
-            ))}
-          </div>
+    <div className={`dice-flight ${value ? 'landed' : ''}`} style={{ marginLeft: offset }}>
+      <div className="dice-shadow" />
+      <div className="cube-wrap">
+        <div className={`cube ${value ? '' : 'tumbling'}`} style={value ? { transform: FACE_ROT[value] } : undefined}>
+          {FACES.map(([n, t]) => (
+            <div key={n} className="cube-face" style={{ transform: t }}>
+              {Array.from({ length: 9 }, (_, i) => <i key={i} className={PIPS[n].includes(i) ? (n === 1 ? 'pip red' : 'pip') : ''} />)}
+            </div>
+          ))}
         </div>
       </div>
-      {value && <div className="dice-number jua">{value}</div>}
+    </div>
+  )
+}
+
+// 주사위가 보드 위로 던져져 굴러가다 멈춤. value가 없으면 계속 구르는 중
+// second: 쌍둥이 주사위의 두 번째 (undefined면 주사위 1개, null이면 구르는 중)
+export function DiceThrow({ value, second }: { value: number | null; second?: number | null }) {
+  const twin = second !== undefined
+  const total = value && twin ? (second ? value + second : null) : value
+  return (
+    <div className="dice-throw" aria-live="polite" aria-label={total ? `주사위 ${total}` : '주사위 굴러가는 중'}>
+      <Cube value={value} offset={twin ? -84 : -36} />
+      {twin && <Cube value={second ?? null} offset={12} />}
+      {total && <div className="dice-number jua">{total}</div>}
     </div>
   )
 }

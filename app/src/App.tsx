@@ -2,13 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import { Character } from './art/Character'
 import { aiStep } from './engine/ai'
-import { CARS } from './engine/data'
+import { CARS, DICE_ITEMS } from './engine/data'
 import {
   ageOf, buyLottery, canAct, canUseCar, choose, createGame, cur, cureAddiction, finishMini, fortuneName, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, stageOf, startSabotage, takeLoan, toggleInsurance, tradeStock, useChance,
 } from './engine/game'
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
-import type { GameState } from './engine/types'
+import type { DiceItem, GameState } from './engine/types'
 import { currentProfile, deleteGame, loadGame, logout, saveGame, updateOutfit, type Profile } from './storage'
 import { Board, FullMap } from './ui/Board'
 import { Dresser } from './ui/Dresser'
@@ -94,6 +94,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
   const [rolling, setRolling] = useState(false)
   const [menu, setMenu] = useState(false)
   const [carMode, setCarMode] = useState(false)
+  const [itemMode, setItemMode] = useState<DiceItem | null>(null)
   const gameRef = useRef(game)
   gameRef.current = game
 
@@ -106,12 +107,12 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
   }, [setGame])
 
   // ── 주사위 결과 잠깐 보여주기 ──
-  const [diceShow, setDiceShow] = useState<number | null>(null)
+  const [diceShow, setDiceShow] = useState<{ value: number; second?: number } | null>(null)
   const lastDiceId = useRef(game.dice?.id ?? 0)
   useEffect(() => {
     if (!game.dice || game.dice.id === lastDiceId.current) return
     lastDiceId.current = game.dice.id
-    setDiceShow(game.dice.value)
+    setDiceShow({ value: game.dice.value, second: game.dice.second })
     const t = setTimeout(() => setDiceShow(null), DICE_SHOW_MS)
     return () => clearTimeout(t)
   }, [game.dice])
@@ -168,17 +169,19 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
     return () => clearTimeout(t)
   }, [banner, busy])
 
-  useEffect(() => { setCarMode(false) }, [game.turn])
+  useEffect(() => { setCarMode(false); setItemMode(null) }, [game.turn])
 
   const onCampus = p.campusTurns > 0 && stageOf(game).tiles[p.pos].kind === 'campus'
   const doRoll = () => {
     if (!myTurn) return
     if (onCampus) { act((s) => roll(s)); return } // 대학교에서는 주사위 대신 대학 생활
     const useCar = carMode
+    const item = itemMode
     setRolling(true)
-    setTimeout(() => { setRolling(false); act((s) => roll(s, 0, useCar)) }, DICE_ROLL_MS)
+    setTimeout(() => { setRolling(false); act((s) => roll(s, 0, useCar, item)) }, DICE_ROLL_MS)
   }
   const showCar = myTurn && canUseCar(p) && !onCampus
+  const heldItems = myTurn && !onCampus ? [...new Set(p.diceItems)] : []
   const recent = game.log.slice(-3)
   const stageBanner = banner && !busy && banner.title.endsWith('단계')
 
@@ -229,10 +232,19 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
         ))}
       </div>
 
-      {showCar && (
-        <button className={`car-toggle ${carMode ? 'on' : ''}`} aria-pressed={carMode} onClick={() => setCarMode(!carMode)}>
-          {CARS[p.car].name} ±1 {carMode ? '사용함' : '쓰기'} · 남은 {p.carCharges}번
-        </button>
+      {(showCar || heldItems.length > 0) && (
+        <div className="roll-mods">
+          {showCar && (
+            <button className={`car-toggle ${carMode ? 'on' : ''}`} aria-pressed={carMode} onClick={() => { setCarMode(!carMode); setItemMode(null) }}>
+              {CARS[p.car].name} ±1 {carMode ? '사용함' : '쓰기'} · 남은 {p.carCharges}번
+            </button>
+          )}
+          {heldItems.map((k) => (
+            <button key={k} className={`car-toggle ${itemMode === k ? 'on' : ''}`} aria-pressed={itemMode === k} onClick={() => { setItemMode(itemMode === k ? null : k); setCarMode(false) }}>
+              {DICE_ITEMS[k].name} {itemMode === k ? '사용함' : '쓰기'}{p.diceItems.filter((x) => x === k).length > 1 ? ' · 2개' : ''}
+            </button>
+          ))}
+        </div>
       )}
 
       <div className="controls">
@@ -243,7 +255,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
         <button className="mid" onClick={() => setSheet('finance')}>재테크</button>
       </div>
 
-      {(rolling || diceShow !== null) && <DiceThrow value={rolling ? null : diceShow} />}
+      {(rolling || diceShow !== null) && <DiceThrow value={rolling ? null : diceShow?.value ?? null} second={rolling ? (itemMode === 'twin' ? null : undefined) : diceShow?.second} />}
 
       {pending && (
         <div className="sheet-backdrop">

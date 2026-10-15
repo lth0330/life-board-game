@@ -14,6 +14,15 @@ export type MiniId =
   | 'oddEven' | 'highLow' | 'slot'
   | 'capital' | 'souvenir' | 'photo'
 export type DuelId = 'dice' | 'rps' | 'timing'
+export type DiceItem = 'twin' | 'even' | 'odd'
+
+// 자녀 한 명. 태어난(입양한) 뒤 20살이 되면 '어떻게 자랐나' 판정
+export interface Kid {
+  adopted: boolean
+  bornAge: number // 부모 나이 기준으로 아이가 0살이던 때 (입양은 부모 나이 - 아이 나이)
+  edu: 0 | 1 | 2 | null // 교육 투자: 안 함 / 보통 / 많이 (중년 시작 때나 입양할 때 고름)
+  result: 0 | 1 | 2 | null // 성인이 된 뒤: 잘 안 풀림 / 보통 / 크게 성공
+}
 export type PointKind = 'shop' | 'marriage'
 export type Personality = 'investor' | 'elite' | 'family' | 'gambler' | 'safe'
 export type Difficulty = 'easy' | 'normal' | 'hard'
@@ -128,6 +137,9 @@ export interface Player {
   insuranceCooldown: Record<InsuranceKind, number>
   car: CarTier
   carCharges: number
+  record: { shopBuys: number; spent: number; lotteryWon: number; deeds: number; duelWins: number } // 결산 상 계산용
+  celebrated: number[] // 이미 치른 육순(60)·칠순(70)
+  carValue: number // 차의 지금 가치 (산 값에서 사고마다 깎임, 최종 자산에 들어감)
   house: HouseTier
   loans: Loan[]
   creditBad: number
@@ -138,6 +150,8 @@ export interface Player {
   divorced: boolean
   children: number
   adopted: number
+  kids: Kid[]
+  diceItems: DiceItem[] // 상점에서 산 주사위 아이템 (1회용, 최대 2개)
   pet: { alive: boolean; turnsLeft: number } | null
   retire: 'city' | 'country' | null
   chance: ChanceCard | null
@@ -195,10 +209,11 @@ export interface GameState {
   path: number[] // 이번 이동에서 지나간 칸 (화면에서 한 칸씩 걷는 연출용)
   pathId: number
   pathPlayer: number
-  dice: { value: number; id: number } | null // 마지막으로 굴린 주사위 (연출용)
+  dice: { value: number; id: number; second?: number } | null // 마지막으로 굴린 주사위 (연출용)
   lastRoll: number | null
   log: LogEntry[]
   stockPrice: Record<Sector, number>
+  housePrice: number // 집 시세 (처음 100 = 상점 기본값 그대로)
   nextNews: { sector: Sector; up: boolean; size: number } | null
   finishCount: number
   friendLoans: FriendLoan[]

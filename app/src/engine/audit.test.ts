@@ -39,4 +39,4 @@ it('도달률 점검', () => {
   }
   const rows = Object.entries(reach).map(([k, v]) => `${k}: ${Math.round((v / players) * 100)}%`)
   console.log(`AI ${players}명 기준\n` + rows.join('\n'))
-})
+}, 30000) // AI 320명이라 다른 테스트와 같이 돌면 오래 걸림

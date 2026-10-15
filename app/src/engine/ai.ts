@@ -1,6 +1,6 @@
-import { CARS, HOUSES, JOBS, SECTORS } from './data'
+import { DICE_ITEMS, JOBS, SECTORS } from './data'
 import {
-  aiWantsCar, buyLottery, canAct, canBorrowFrom, choose, cur, cureAddiction, isAdultStage, loanLimit, loanTotal, repayFriendLoan,
+  aiDiceItem, aiWantsCar, buyLottery, canAct, canBorrowFrom, choose, cur, carCost, cureAddiction, houseCost, isAdultStage, loanLimit, loanTotal, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, rngOf, salaryOf, scoreOf, stageOf, startSabotage, stockHint, takeLoan, toggleInsurance,
   tradeStock, useChance,
 } from './game'
@@ -70,10 +70,15 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
     case 'retire': return id === 'city' ? (per === 'gambler' || per === 'investor' ? 3 : 1) : 2
     case 'shop': {
       if (id === 'pass') return per === 'safe' || per === 'investor' ? 2 : 1
-      if (id.startsWith('house')) { const i = +id.slice(5); return p.money > HOUSES[i].price * 1.5 ? 3 + i : 0 }
-      if (id.startsWith('car')) { const i = +id.slice(3); return p.money > CARS[i].price * 2 ? 2.5 + i * 0.5 : 0 }
+      if (id.startsWith('house')) { const i = +id.slice(5); return p.money >= houseCost(s, p, i) ? 3 + i : 0 } // 살 수 있으면 삼 (집은 사는 게 조금 이득)
+      if (id.startsWith('car')) { const i = +id.slice(3); return p.money > carCost(p, i) * 2 ? 2.5 + i * 0.5 : 0 }
       if (id === 'chance') return 0.5
       if (id === 'pet') return per === 'family' ? 2.4 : 0.8
+      if (id.startsWith('dice_')) {
+        const k = id.slice(5) as keyof typeof DICE_ITEMS
+        if (p.money < DICE_ITEMS[k].price * 5) return 0
+        return k === 'twin' ? (per === 'gambler' ? 2.6 : 1.3) : k === 'even' ? 1.4 : 0.9
+      }
       if (id.startsWith('agency')) {
         const want = !p.spouse && p.suitors.every((x) => x.affinity < 50)
         if (!want) return 0
@@ -98,6 +103,12 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
       return aff / 10
     }
     case 'wedding': return per === 'gambler' ? (id === '3' ? 3 : 1) : per === 'safe' || per === 'investor' ? (id === '1' ? 3 : 1) : id === '2' ? 3 : 1
+    case 'kidEdu': {
+      const e = +id
+      const n = p.kids.filter((k) => k.result === null).length
+      if (p.money < 0 && e > 0) return 0
+      return per === 'elite' || per === 'family' ? e + 1 : per === 'safe' ? (e === 1 ? 2 : 1) : per === 'investor' ? (p.money > 2000 * n ? e + 0.5 : 2 - e) : 1 + rng.next()
+    }
     case 'baby': return id === 'yes' ? (per === 'family' ? 5 : per === 'investor' ? 0.5 : 2) : 1.5
     case 'invest': return id === 'yes' ? (p.fortune >= 3 ? 3 : per === 'gambler' ? 2 : 0.5) : 1
     case 'overtime': return id === 'yes' ? (per === 'investor' || per === 'elite' ? 2 : 1) : per === 'family' ? 2 : 1
@@ -207,5 +218,8 @@ export function aiStep(s: GameState) {
   const p = cur(s)
   if (p.human || !canAct(s)) return
   aiPreRoll(s)
-  if (canAct(s)) roll(s, 0, aiWantsCar(s, cur(s)))
+  if (!canAct(s)) return
+  const q = cur(s)
+  const item = aiDiceItem(s, q)
+  roll(s, 0, !item && aiWantsCar(s, q), item)
 }

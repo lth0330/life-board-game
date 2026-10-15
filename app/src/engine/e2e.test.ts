@@ -38,7 +38,7 @@ function humanPlay(seed: number, startAdult: boolean, humans: number) {
       else if (x < 0.19) s.friendLoans.forEach((l, i) => { if (l.borrowerId === p.id) repayFriendLoan(s, i) })
       else if (x < 0.2) startSabotage(s)
       else if (x < 0.21) useChance(s)
-      if (canAct(s)) roll(s, 0, rand() < 0.5)
+      if (canAct(s)) roll(s, 0, rand() < 0.5, p.diceItems.length && rand() < 0.5 ? p.diceItems[0] : null)
     } else {
       aiStep(s)
     }

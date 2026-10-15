@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import { Character } from '../art/Character'
-import { CARS, CHANCE_NAMES, HOUSES, INSURANCE, JOBS, LOTTERY_PRICE, PERSONALITIES, SABOTAGE_NAMES, SECTORS } from '../engine/data'
+import { CARS, CHANCE_NAMES, DICE_ITEMS, HOUSE_RULES, HOUSES, INSURANCE, JOBS, KIDS, LOTTERY_PRICE, PERSONALITIES, SABOTAGE_NAMES, SECTORS } from '../engine/data'
 import {
-  ageOf, canBorrowFrom, fortuneName, friendDebt, isAdultStage, jobOf, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
+  ageOf, AWARD_POINTS, awardsOf, canBorrowFrom, fortuneName, friendDebt, houseValue, isAdultStage, jobOf, kidAllowance, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
   stars, stockHint, stocksValue,
 } from '../engine/game'
 import type { GameState, InsuranceKind, Player, Sector } from '../engine/types'
@@ -71,6 +71,7 @@ export function FinanceSheet(f: FinanceProps) {
             </div>
           ))}
           <p className="muted">주식 평가액 {won(stocksValue(s, p))}</p>
+          <p className="muted">집 시세 {s.housePrice} (처음 100){p.house ? ` · 내 ${HOUSES[p.house].name} ${won(houseValue(s, p))}, 매 턴 관리비 ${won(houseValue(s, p) * HOUSE_RULES.upkeepRate)}` : ''}</p>
         </div>
       )}
       {tab === 'lottery' && (
@@ -196,11 +197,12 @@ export function PeopleSheet({ s, onClose }: { s: GameState; onClose: () => void 
           const sc = scoreOf(s, p)
           const tags: string[] = []
           if (p.spouse) tags.push(`배우자 ${p.spouse.name} ${stars(p.spouse.grade)}${p.spouse.revealed ? ` (${p.spouse.trait})` : ''}`)
-          if (p.children) tags.push(`자녀 ${p.children}`)
-          if (p.adopted) tags.push('입양 자녀')
+          for (const k of p.kids) tags.push(`${k.adopted ? '입양 자녀' : '자녀'} ${k.result === null ? `(교육 ${KIDS.eduNames[k.edu ?? 0]})` : `· ${KIDS.resultNames[k.result]}`}`)
+          if (kidAllowance(p)) tags.push(`자녀 용돈 ${won(kidAllowance(p))}`)
+          for (const k of p.diceItems) tags.push(DICE_ITEMS[k].name)
           if (p.pet?.alive) tags.push('반려동물')
-          if (p.house) tags.push(HOUSES[p.house].name)
-          if (p.car) tags.push(CARS[p.car].name)
+          if (p.house) tags.push(`${HOUSES[p.house].name} (시세 ${won(houseValue(s, p))})`)
+          if (p.car) tags.push(`${CARS[p.car].name} (${won(p.carValue)})`)
           if (p.lottery.addicted) tags.push('도박중독')
           if (p.creditBad) tags.push('신용불량')
           if (p.agency) tags.push(`소개팅 ${p.agency.vip ? 'VIP' : '일반'}`)
@@ -242,7 +244,7 @@ export function GameOver({ s, onRestart }: { s: GameState; onRestart: () => void
     <div className="sheet-backdrop">
       <div className="sheet">
         <h2 className="jua center">인생 결산</h2>
-        <p className="center muted">점수 = 자산 100만당 1점 + 행복</p>
+        <p className="center muted">점수 = 자산 50만당 1점 + 행복 + 상 {AWARD_POINTS}점씩(공동이면 나눔) (집은 지금 시세, 차는 지금 가치로)</p>
         <div className="people">
           {ranked.map(({ p, sc }, i) => (
             <div key={p.id} className="person" style={{ borderColor: p.color }}>
@@ -254,10 +256,11 @@ export function GameOver({ s, onRestart }: { s: GameState; onRestart: () => void
                 <b className="jua total">{sc.total}점</b>
               </div>
               <div className="muted">
-                {jobOf(p)?.name ?? '백수'} · 자산 {won(sc.assets)} ({sc.assetScore}점) · 행복 {sc.happy}
+                {jobOf(p)?.name ?? '백수'} · 자산 {won(sc.assets)} ({sc.assetScore}점) · 행복 {sc.happy}{sc.awardScore ? ` · 상 ${sc.awardScore}점` : ''}
                 {p.spouse ? ` · ${p.spouse.name}와 결혼` : p.divorced ? ' · 이혼' : ' · 비혼'}
                 {p.children + p.adopted ? ` · 자녀 ${p.children + p.adopted}` : ''}
               </div>
+              {awardsOf(s, p).length > 0 && <div className="tags">{awardsOf(s, p).map((a) => <span key={a.id} title={a.desc}>{a.name} +{a.points}{a.ties > 1 ? ` (${a.ties}명 공동)` : ''}</span>)}</div>}
             </div>
           ))}
         </div>
