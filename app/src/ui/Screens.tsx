@@ -125,7 +125,7 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
   const [ai, setAi] = useState(3)
   const [adult, setAdult] = useState(false)
   const [difficulty, setDifficulty] = useState<Difficulty>('normal')
-  const [speed, setSpeed] = useState<Speed>('normal')
+  const [speed, setSpeed] = useState<Speed>('fast') // 기획: 기본은 빠르게 + 큰 일만 연출
   const [outfit, setOutfit] = useState(initialOutfit)
   const [dress, setDress] = useState(false)
   const [manual, setManual] = useState(false)

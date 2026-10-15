@@ -45,26 +45,26 @@ export const STAGE_DEFS: StageDef[] = [
   {
     id: 'student', name: '학생', ages: [8, 19], rolls: 8, length: 40,
     weights: [['grow', 30], ['card', 25], ['happy', 15], ['money', 15], ['risk', 15]],
-    stops: { 9: 'club' }, points: {},
+    stops: { 6: 'club' }, points: {},
     life: {
-      id: 'college', at: 24, rejoin: 31, title: '대학 vs 바로 취업', text: '대학에 가면 수능을 보고, 직업 고르기 전에 능력치를 키울 수 있어요. 대신 학자금 대출이 생겨요.',
+      id: 'college', at: 17, rejoin: 23, title: '대학 vs 바로 취업', text: '대학에 가면 수능을 보고, 직업 고르기 전에 능력치를 키울 수 있어요. 대신 학자금 대출이 생겨요.',
       roads: [
         { road: 'college', label: '대학 길', desc: '수능 → 능력치 +2, 학자금 대출 (수능 결과에 따라)' },
         { road: 'work', label: '취업 길', desc: '모아 둔 돈 +400만, 돈 칸이 많아요' },
       ],
     },
-    event: { at: 13, rejoin: 20, len: 9, name: '두뇌 올림피아드', minis: ['memory', 'pairs', 'quickmath'], desc: '지력 미니게임 (지력이 높을수록 쉬움)' },
+    event: { at: 9, rejoin: 15, len: 7, name: '두뇌 올림피아드', minis: ['memory', 'pairs', 'quickmath'], desc: '지력 미니게임 (지력이 높을수록 쉬움)' },
   },
   {
     id: 'young', name: '청년', ages: [20, 39], rolls: 10, length: 50,
     weights: [['money', 25], ['card', 22], ['date', 22], ['risk', 15], ['happy', 10], ['grow', 8]],
-    stops: { 1: 'job', 20: 'jobfair' }, points: { 7: 'shop', 13: 'marriage', 26: 'shop', 31: 'marriage' },
+    stops: { 1: 'job', 20: 'jobfair' }, points: { 7: 'shop', 13: 'marriage', 25: 'marriage', 28: 'shop' },
     event: { at: 16, rejoin: 24, len: 10, name: '축제 거리', minis: ['firstImpression', 'rhythm', 'confess'], desc: '연애·매력 미니게임 (매력이 높을수록 쉬움)' },
   },
   {
     id: 'middle', name: '중년', ages: [40, 59], rolls: 8, length: 40,
     weights: [['money', 25], ['risk', 25], ['happy', 20], ['card', 20], ['grow', 10]],
-    stops: { 3: 'middleBranch', 20: 'jobfair' }, points: { 13: 'marriage', 17: 'shop' },
+    stops: { 15: 'middleBranch', 20: 'jobfair' }, points: { 13: 'marriage', 17: 'shop' },
     life: {
       id: 'startup', at: 5, rejoin: 11, title: '창업 vs 회사', text: '인생 2막을 어떻게 할까요?',
       roads: [

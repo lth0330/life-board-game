@@ -96,7 +96,7 @@ function newPlayer(id: number, name: string, human: boolean, personality: Person
     stocks: { 생명: 0, IT: 0, 화학: 0, 의료: 0, 엔터: 0 },
     suitors: [], spouse: null, divorced: false, children: 0, adopted: 0, pet: null, retire: null,
     chance: null, sabotage: null, fortuneMod: 0, agency: null, borrowedFrom: [], forkChoice: null,
-    outfit: DEFAULT_OUTFIT,
+    outfit: DEFAULT_OUTFIT, sector: null, collegeDecided: false,
   }
 }
 
@@ -201,12 +201,13 @@ function beginTurn(s: GameState) {
     badEvent(s, p, { text: '빚 독촉에 시달렸다', loss: 0, happyLoss: 4 })
   }
   // 성인부터 시작한 판: 첫 차례에 대학 vs 취업
-  if (s.settings.startAdult && p.turnsPlayed === 1 && stageOf(s).id === 'young') {
+  if (stageOf(s).id === 'young' && !p.collegeDecided) {
     const opts: ForkOption[] = [
       { label: '대학 졸업', desc: '수능 → 능력치 +2, 학자금 대출', to: -1, road: 'college' },
       { label: '바로 취업', desc: '모아 둔 돈 +400만', to: -1, road: 'work' },
     ]
-    s.pending = { type: 'adultStart', playerId: p.id, title: '스무 살까지 어떻게 살았나요?', text: '대학을 나왔는지 고르세요.', options: opts.map((o) => ({ id: o.road, label: o.label, desc: o.desc })) }
+    const title = s.settings.startAdult ? '스무 살까지 어떻게 살았나요?' : '학생 때 진로를 못 정했어요'
+    s.pending = { type: 'adultStart', playerId: p.id, title, text: '대학을 나왔는지 고르세요.', options: opts.map((o) => ({ id: o.road, label: o.label, desc: o.desc })) }
   } else if (p.agency && !p.spouse && (stageOf(s).id === 'young' || stageOf(s).id === 'middle')) {
     agencyTurn(s, p)
   }
@@ -222,8 +223,9 @@ function economyTick(s: GameState, p: Player) {
     const tax = Math.round(sal * TAX_RATE(sal))
     p.money += sal - tax
     p.jobTurns++
+    jobPerkTick(s, p)
     if (!job.boom && p.jobRank < 2) {
-      const fast = p.stats[job.key] >= (job.req[job.key] ?? 0) + 2
+      const fast = p.stats[job.key] >= (job.req[job.key] ?? 0) + 2 || job.id === 'dev'
       const slow = p.stats[job.key] < (job.req[job.key] ?? 0) // 능력치가 조건 밑으로 떨어지면 승진이 느려짐
       if (p.jobTurns >= (fast ? 4 : slow ? 9 : 6)) {
         p.jobRank++
@@ -233,6 +235,7 @@ function economyTick(s: GameState, p: Player) {
       }
     }
   }
+  if (st.id !== 'old' && !job) p.happy += 1 // 백수: 월급은 없지만 여유
   if (st.id === 'old') {
     if (job?.pension) p.money += 120
     if (p.retire === 'city') {
@@ -246,6 +249,8 @@ function economyTick(s: GameState, p: Player) {
   upkeep += (p.children + p.adopted) * 20
   if (p.pet?.alive) upkeep += 5
   if (p.agency && !p.spouse && st.id !== 'old') upkeep += p.agency.vip ? 100 : 30
+  if (p.spouse?.trait === '짠돌이') upkeep = Math.round(upkeep * 0.8)
+  if (p.spouse?.trait === '명품 중독') upkeep += 15
   p.money -= upkeep
   for (const l of p.loans) l.amount = Math.round(l.amount * 1.01)
   const overdue = p.loans.filter((l) => p.turnsPlayed > l.dueTurn)
@@ -294,6 +299,10 @@ function familyTick(s: GameState, p: Player) {
       s.stockPrice[sp.sector] = Math.round(s.stockPrice[sp.sector] * 1.15)
       log(s, null, `${p.name}의 배우자 ${sp.name} 큰 성과! ${sp.sector}주 +15%`, 'good')
     }
+    if (sp.wealth >= 7 && rng.chance(0.06)) {
+      p.money += sc * 2
+      log(s, p.id, `${sp.name} 집안에서 도와줬다 +${won(sc * 2)}`, 'good')
+    }
     if (rng.chance(0.12)) traitEvent(s, p)
     if (s.stageIdx >= 3 && p.spouse) {
       // 배우자 잘못 사건 (성격이 낮을수록 잘 일어남)
@@ -306,9 +315,10 @@ function familyTick(s: GameState, p: Player) {
   if (p.children + p.adopted) p.happy += p.children + (p.adopted ? 1 : 0)
   if (p.pet?.alive) {
     p.happy += 1
-    p.pet.turnsLeft--
+    // 운세가 좋으면 더 오래, 나쁘면 조금 빨리
+    p.pet.turnsLeft -= p.fortune >= 4 && rng.chance(0.4) ? 0 : p.fortune === 0 && rng.chance(0.4) ? 2 : 1
     if (rng.chance(0.06)) badEvent(s, p, { text: '반려동물이 가구를 망가뜨렸다', loss: sc, happyLoss: 0 })
-    if (rng.chance(0.05)) badEvent(s, p, { text: '반려동물 병원비', loss: sc, happyLoss: 1, kind: 'health' })
+    if (rng.chance(0.05)) badEvent(s, p, { text: '반려동물 병원비', loss: sc, happyLoss: 1 })
     if (rng.chance(0.06)) { p.stats.str = clampStat(p.stats.str + 1); log(s, p.id, '반려동물과 꾸준히 산책해서 체력 +1', 'good') }
     if (p.pet.turnsLeft <= 0) {
       p.pet.alive = false
@@ -419,6 +429,7 @@ export function roll(s: GameState, bonus = 0, useCar = false) {
     p.stats[k] = clampStat(p.stats[k] + 1)
     p.money += scaleOf(s)
     log(s, p.id, `휴식 칸에서 쉬었다: ${STAT_NAMES[k]} +1, +${won(scaleOf(s))}`, 'good')
+    if (rng.chance(0.25) && !p.chance) giveChance(s, p, randomChance(rng))
     endTurn(s)
     return
   }
@@ -574,6 +585,7 @@ function applyRoadStart(s: GameState, p: Player, road: string) {
   switch (road) {
     case 'college': {
       p.college = true
+      p.collegeDecided = true
       // 수능: 문제 없이 지력 + 주사위 + 운세
       const dice = rng.int(1, 6)
       const score = p.stats.int + dice + (p.fortune >= 4 ? 1 : p.fortune <= 1 ? -1 : 0)
@@ -585,14 +597,16 @@ function applyRoadStart(s: GameState, p: Player, road: string) {
       s.pending = { type: 'collegeStat', playerId: p.id, title: '대학에서 키울 능력치', text: '무엇을 공부할까요?', options: [{ id: 'int', label: '지력 +2' }, { id: 'str', label: '체력 +2' }, { id: 'cha', label: '매력 +2' }] }
       break
     }
-    case 'work': p.money += 400; log(s, p.id, '바로 취업 준비. 모아 둔 돈 +400만', 'good'); break
+    case 'work': p.collegeDecided = true; p.money += 400; log(s, p.id, '바로 취업 준비. 모아 둔 돈 +400만', 'good'); break
     case 'startup': {
       const cost = p.jobId === 'chef' ? 1200 : 2000
       if (p.money < cost) { p.loans.push({ amount: cost - p.money, dueTurn: p.turnsPlayed + 20 }); p.money = cost; log(s, p.id, '빚을 내서 창업 자금을 마련했다', 'info') }
       p.money -= cost
+      const wasChef = p.jobId === 'chef'
       setJob(s, p, 'ceo')
-      p.jobRank = rng.chance(p.jobId === 'chef' ? 0.7 : p.stats.int >= 6 ? 0.6 : 0.4) ? 1 : 0
+      p.jobRank = rng.chance(wasChef ? 0.7 : p.stats.int >= 6 ? 0.6 : 0.4) ? 1 : 0
       say(s, p, 'startup')
+      s.pending = sectorPending(p, '어떤 분야로 창업할까요?', SECTORS)
       break
     }
     case 'city': p.retire = 'city'; break
@@ -702,6 +716,42 @@ function drawCard(s: GameState, p: Player) {
     () => contest(s, p),
     () => everyoneDraw(s),
   ]
+  // 단계별 카드 (그 나이에 맞는 일)
+  const id = stageOf(s).id
+  const stageCards: Record<string, (() => void)[]> = {
+    child: [
+      () => { p.happy += 3; log(s, p.id, '선생님께 칭찬 스티커를 받았다. 행복 +3', 'good') },
+      () => badEvent(s, p, { text: '친구랑 싸웠다', loss: 0, happyLoss: 3 }),
+      () => { p.money += sc * 2; log(s, p.id, `세뱃돈을 받았다 +${won(sc * 2)}`, 'good') },
+    ],
+    student: [
+      () => { p.stats.int = clampStat(p.stats.int + 1); p.happy += 2; log(s, p.id, '시험 100점! 지력 +1, 행복 +2', 'good') },
+      () => badEvent(s, p, { text: '지각해서 벌을 섰다', loss: 0, happyLoss: 2 }),
+      () => { p.money += sc * 3; log(s, p.id, `아르바이트 월급 +${won(sc * 3)}`, 'good') },
+    ],
+    young: [
+      () => { p.stats.cha = clampStat(p.stats.cha + 1); log(s, p.id, '첫 월급으로 옷을 샀다. 매력 +1', 'good') },
+      () => badEvent(s, p, { text: '자취방 보증금 문제', loss: sc * 2, happyLoss: 1, kind: 'property' }),
+    ],
+    middle: [
+      () => badEvent(s, p, { text: '건강검진에서 재검 판정', loss: sc * 2, happyLoss: 2, kind: 'health' }),
+      () => { p.happy += 4; log(s, p.id, '오랜 친구들과 동창회. 행복 +4', 'good') },
+    ],
+    old: [
+      () => { p.happy += 5; log(s, p.id, '손주가 찾아왔다. 행복 +5', 'good') },
+      () => badEvent(s, p, { text: '관절이 쑤신다', loss: sc, happyLoss: 2, kind: 'health' }),
+    ],
+  }
+  deck.push(...stageCards[id], ...stageCards[id]) // 단계 카드가 더 자주 나오게
+  if (adult && p.jobId && id !== 'old') {
+    deck.push(() => {
+      const safe = ['civil', 'teacher', 'police', 'fire'].includes(p.jobId!)
+      if (safe) { p.happy += 1; log(s, p.id, '회사들이 구조조정… 공무원이라 무사했다 (행복 +1)', 'good'); return }
+      const job = jobOf(p)
+      if (job && !job.boom && p.jobRank > 0 && p.fortune <= 2) { p.jobRank--; log(s, p.id, `구조조정으로 ${job.ranks[p.jobRank]}(으)로 밀려났다`, 'bad') }
+      else badEvent(s, p, { text: '회사 구조조정으로 월급이 깎였다', loss: sc * 2, happyLoss: 2 })
+    })
+  }
   if (adult) {
     deck.push(() => {
       s.pending = {
@@ -715,12 +765,14 @@ function drawCard(s: GameState, p: Player) {
       log(s, p.id, `바빠서 자기 관리를 못 했다. ${STAT_NAMES[k]} -1`, 'bad')
     })
     if (p.jobId) {
-      deck.push(() => {
+      const overtime = () => {
         s.pending = {
           type: 'overtime', playerId: p.id, title: '야근 부탁', text: '회사에서 야근을 부탁한다.',
           options: [{ id: 'yes', label: '한다', desc: `+${won(sc)}, 행복 -3` }, { id: 'no', label: '거절한다', desc: '행복 +2' }], data: { amt: sc },
         }
-      })
+      }
+      deck.push(overtime)
+      if (p.jobId === 'office') deck.push(overtime, overtime) // 회사원은 야근 카드가 자주
       deck.push(() => {
         const tax = Math.round(salaryOf(p) * 0.5)
         s.pending = {
@@ -843,6 +895,7 @@ function addAffinityOrMeet(s: GameState, p: Player, amount: number) {
 
 function miniReward(s: GameState, p: Player, game: MiniId, grade: number, stake?: number) {
   const name = MINI_NAMES[game]
+  if (grade === 2 && !p.chance && rngOf(s).chance(0.25)) giveChance(s, p, randomChance(rngOf(s)))
   const statUp = (k: StatKey, n: number) => { p.stats[k] = clampStat(p.stats[k] + n) }
   if (['race', 'tug', 'throw'].includes(game)) {
     if (grade === 2) { statUp('str', 2); p.happy += 3; log(s, p.id, `${name} 1등! 체력 +2, 행복 +3`, 'good') }
@@ -1132,6 +1185,32 @@ function stopTile(s: GameState, p: Player, t: Tile) {
   }
 }
 
+function sectorPending(p: Player, title: string, list: Sector[]) {
+  return {
+    type: 'sector', playerId: p.id, title, text: '고른 분야의 주가가 내 성과에 따라 오르내려요.',
+    options: list.map((k) => ({ id: k, label: k })),
+  }
+}
+
+// 직업별 특징 (docs/02-character.md)
+function jobPerkTick(s: GameState, p: Player) {
+  const rng = rngOf(s)
+  const sc = scaleOf(s)
+  switch (p.jobId) {
+    case 'teacher':
+      if (rng.chance(0.12)) { p.happy += 3; log(s, p.id, '방학이다! 행복 +3', 'good') }
+      break
+    case 'police': case 'fire':
+      if (rng.chance(0.08)) { p.happy += 3; log(s, p.id, `${p.jobId === 'police' ? '범인을 잡았다' : '불을 끄고 사람을 구했다'}! 행복 +3`, 'good') }
+      else if (rng.chance(0.06)) badEvent(s, p, { text: '출동 중에 다쳤다', loss: sc, happyLoss: 2, kind: 'health' })
+      break
+    case 'doctor':
+      if (rng.chance(0.15)) { p.happy -= 2; log(s, p.id, '밤샘 당직… 행복 -2', 'bad') }
+      break
+    default: break
+  }
+}
+
 function adoptPet(s: GameState, p: Player, text: string) {
   p.pet = { alive: true, turnsLeft: rngOf(s).int(15, 20) }
   p.happy += 3
@@ -1145,6 +1224,7 @@ function setJob(s: GameState, p: Player, id: string | null) {
   const j = jobOf(p)
   if (j) {
     log(s, p.id, `${j.name}${j.boom ? '' : ` ${j.ranks[p.jobRank]}`}(으)로 일을 시작했다`, 'good')
+    if (j.id === 'scientist') s.pending = sectorPending(p, '어떤 분야를 연구할까요?', ['생명', '화학'])
     if (j.id === 'idol') { s.stockPrice.엔터 = Math.round(s.stockPrice.엔터 * 1.1); log(s, null, `${p.name} 데뷔! 엔터주 +10%`, 'info'); say(s, p, 'debut') }
   } else log(s, p.id, '백수로 지내기로 했다', 'info')
 }
@@ -1356,6 +1436,10 @@ export function choose(s: GameState, optionId: string) {
       } else log(s, p.id, '세금을 정직하게 냈다', 'info')
       break
     }
+    case 'sector':
+      p.sector = optionId as Sector
+      log(s, p.id, `${optionId} 분야를 골랐다`, 'info')
+      break
     case 'rps': resolveRps(s, (pd.data as { ids: number[] }).ids, { [p.id]: +optionId }); break
     case 'sabotageTarget': {
       const target = s.players[+optionId]
@@ -1512,10 +1596,16 @@ function friendLoanTick(s: GameState, p: Player) {
 // 법적 공방: 주사위 + 운세 + 변호사. 빌린 돈 소송은 빌린 사람이 불리
 function lawsuit(s: GameState, plaintiff: Player, defendant: Player, kind: 'loan' | 'card', owe = 0) {
   const rng = rngOf(s)
-  const power = (q: Player) => rng.int(1, 6) + (q.fortune - 2) + (q.jobId === 'lawyer' ? 2 : 0)
+  const sc = scaleOf(s)
+  // 변호사 직업이면 +2, 아니면 돈이 있을 때 변호사를 사서 +1
+  const lawyer = (q: Player) => {
+    if (q.jobId === 'lawyer') return 2
+    if (q.money >= sc * 4) { q.money -= sc * 2; log(s, q.id, `변호사를 샀다 (-${won(sc * 2)})`, 'info'); return 1 }
+    return 0
+  }
+  const power = (q: Player) => rng.int(1, 6) + (q.fortune - 2) + lawyer(q)
   const a = power(plaintiff)
   const b = power(defendant) - (kind === 'loan' ? 1 : 0)
-  const sc = scaleOf(s)
   log(s, null, `[법적 공방] ${plaintiff.name}(${a}) vs ${defendant.name}(${b})`, 'info')
   s.banner = { title: '법적 공방', text: `${plaintiff.name} vs ${defendant.name}`, tone: 'info' }
   if (kind === 'loan') {
@@ -1651,8 +1741,9 @@ function roundEnd(s: GameState) {
   s.nextNews = rng.chance(0.35) ? { sector: rng.pick(SECTORS), up: rng.chance(0.5), size: 0.2 + rng.next() * 0.3 } : null
   for (const p of s.players) {
     if (p.jobId === 'scientist' && rng.chance(0.15)) {
-      s.stockPrice.화학 = Math.round(s.stockPrice.화학 * 1.12)
-      log(s, null, `${p.name}의 연구 성과! 화학주 +12%`, 'good')
+      const k = p.sector ?? '화학'
+      s.stockPrice[k] = Math.round(s.stockPrice[k] * 1.12)
+      log(s, null, `${p.name}의 연구 성과! ${k}주 +12%`, 'good')
     }
   }
 }
@@ -1672,8 +1763,17 @@ function careerRoll(s: GameState, p: Player) {
   const rng = rngOf(s)
   const below = p.stats[job.key] < (job.req[job.key] ?? 0) ? -1 : 0 // 능력치가 조건 밑이면 추락 확률↑
   const v = rng.int(1, 6) + (p.fortune >= 4 ? 1 : p.fortune <= 1 ? -1 : 0) + below
-  if (v >= 5 && p.jobRank < 2) { p.jobRank++; log(s, p.id, `커리어 주사위 ${v}: 대박! ${job.ranks[p.jobRank]}`, 'good'); say(s, p, 'promoted') }
-  else if (v <= 2 && p.jobRank > 0) { p.jobRank--; log(s, p.id, `커리어 주사위 ${v}: 추락… ${job.ranks[p.jobRank]}`, 'bad') }
+  const sector = job.id === 'ceo' ? p.sector : null
+  if (v >= 5 && p.jobRank < 2) {
+    p.jobRank++
+    log(s, p.id, `커리어 주사위 ${v}: 대박! ${job.ranks[p.jobRank]}`, 'good')
+    say(s, p, 'promoted')
+    if (sector) { s.stockPrice[sector] = Math.round(s.stockPrice[sector] * 1.1); log(s, null, `${p.name}의 회사가 커졌다! ${sector}주 +10%`, 'good') }
+  } else if (v <= 2 && p.jobRank > 0) {
+    p.jobRank--
+    log(s, p.id, `커리어 주사위 ${v}: 추락… ${job.ranks[p.jobRank]}`, 'bad')
+    if (sector) { s.stockPrice[sector] = Math.max(10, Math.round(s.stockPrice[sector] * 0.85)); log(s, null, `${p.name}의 회사가 휘청! ${sector}주 -15%`, 'bad') }
+  }
   else log(s, p.id, `커리어 주사위 ${v}: 유지 (${job.ranks[p.jobRank]})`, 'info')
 }
 

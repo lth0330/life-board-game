@@ -110,6 +110,7 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
     }
     case 'agencyMatch': return id === 'yes' ? (p.money > 600 ? 2 : 0.5) : 1
     case 'rps': return rng.next()
+    case 'sector': return rng.next() + (s.nextNews && s.nextNews.up && s.nextNews.sector === id && p.fortune >= 4 ? 1 : 0)
     case 'stray': return id === 'yes' ? (per === 'family' || per === 'safe' ? 2 : 0.8) : 1
     case 'loanRequest': return id === 'yes' ? 1 : 1.2
     case 'sabotageTarget': {

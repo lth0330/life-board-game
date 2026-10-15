@@ -147,6 +147,8 @@ export interface Player {
   borrowedFrom: number[] // 이미 돈을 빌린 상대 (상대마다 1번)
   forkChoice: number | null // 갈림길에서 고른 다음 칸
   outfit: Outfit
+  sector: Sector | null // 과학자·사업가가 고른 분야
+  collegeDecided: boolean // 대학/취업을 정했는지 (갈림길에 못 닿았으면 청년 첫 차례에 물어봄)
 }
 
 export interface ChoiceOption {

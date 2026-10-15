@@ -30,7 +30,7 @@ export default function App() {
   const [profile, setProfile] = useState<Profile | null>(() => currentProfile())
   const [screen, setScreen] = useState<Screen>(() => (currentProfile() ? 'menu' : 'title'))
   const [game, setGame] = useState<GameState | null>(null)
-  const [speed, setSpeed] = useState<Speed>('normal')
+  const [speed, setSpeed] = useState<Speed>('fast')
   const [dress, setDress] = useState(false)
   const outfit = profile?.outfit ?? DEFAULT_OUTFIT
 
@@ -180,8 +180,14 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
   const recent = game.log.slice(-3)
   const stageBanner = banner && !busy && banner.title.endsWith('단계')
 
+  // 화면을 위로 밀어서 주사위 던지기
+  const swipeY = useRef<number | null>(null)
   return (
-    <div className="play">
+    <div
+      className="play"
+      onPointerDown={(e) => { if ((e.target as HTMLElement).closest('.world')) swipeY.current = e.clientY }}
+      onPointerUp={(e) => { if (swipeY.current !== null && swipeY.current - e.clientY > 70) doRoll(); swipeY.current = null }}
+    >
       <Board s={game} focus={shown} posOf={posOf} showSteps={myTurn || (!p.human && game.phase === 'roll' && !busy)} />
 
       <header className="hud">
