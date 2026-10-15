@@ -8,7 +8,7 @@ import { DEFAULT_OUTFIT, randomOutfit, type Outfit } from './outfit'
 import { makeRng, type Rng } from './rng'
 import { speechLine, type SpeechKey } from './speech'
 import type {
-  ChanceCard, ChoiceOption, DuelId, ForkOption, GameState, InsuranceKind, JobDef, MiniId, Personality, Player,
+  ChanceCard, ChoiceOption, DuelId, GameState, InsuranceKind, JobDef, MiniId, Personality, Player,
   SabotageCard, Sector, Settings, Stage, StatKey, Suitor, Tile,
 } from './types'
 
@@ -174,6 +174,10 @@ function beginTurn(s: GameState) {
   s.meetCheck = false
   s.phase = 'roll'
   drawFortune(s, p)
+  if (p.agency && !canDate(s, p) && stageOf(s).id === 'middle') {
+    p.agency = null
+    log(s, p.id, '중년 결혼식장을 지나 소개팅 회사가 자동 해지됐다', 'info')
+  }
   for (const k of Object.keys(p.insuranceCooldown) as InsuranceKind[]) if (p.insuranceCooldown[k] > 0) p.insuranceCooldown[k]--
   if (p.creditBad > 0) p.creditBad--
 
@@ -201,17 +205,7 @@ function beginTurn(s: GameState) {
   if (p.money < 0 && rng.chance(0.25)) {
     badEvent(s, p, { text: '빚 독촉에 시달렸다', loss: 0, happyLoss: 4 })
   }
-  // 성인부터 시작한 판: 첫 차례에 대학 vs 취업
-  if (stageOf(s).id === 'young' && !p.collegeDecided) {
-    const opts: ForkOption[] = [
-      { label: '대학 졸업', desc: '수능 → 능력치 +2, 학자금 대출', to: -1, road: 'college' },
-      { label: '바로 취업', desc: '모아 둔 돈 +400만', to: -1, road: 'work' },
-    ]
-    const title = s.settings.startAdult ? '스무 살까지 어떻게 살았나요?' : '학생 때 진로를 못 정했어요'
-    s.pending = { type: 'adultStart', playerId: p.id, title, text: '대학을 나왔는지 고르세요.', options: opts.map((o) => ({ id: o.road, label: o.label, desc: o.desc })) }
-  } else if (p.agency && !p.spouse && (stageOf(s).id === 'young' || stageOf(s).id === 'middle')) {
-    agencyTurn(s, p)
-  }
+  if (p.agency && !p.spouse && (stageOf(s).id === 'young' || stageOf(s).id === 'middle')) agencyTurn(s, p)
   resume(s)
 }
 
@@ -1405,6 +1399,12 @@ export function choose(s: GameState, optionId: string) {
       log(s, p.id, `결혼해 보니 ${x.name}의 숨은 특성: ${x.trait}`, x.traitGood ? 'good' : 'bad')
       s.banner = { title: '결혼!', text: `${p.name} ♥ ${x.name}`, tone: 'good' }
       say(s, p, 'married')
+      if (stageOf(s).id === 'young' && p.children < 3) {
+        s.pending = {
+          type: 'baby', playerId: p.id, title: '아이를 가질까요?', text: '결혼 축하해요! 지금 아이를 가질 수 있어요. 나중에 데이트 칸에서도 가질 수 있어요 (최대 3명).',
+          options: [{ id: 'yes', label: '아이를 갖는다' }, { id: 'no', label: '나중에' }],
+        }
+      }
       break
     }
     case 'baby':
@@ -1620,7 +1620,8 @@ function lawsuit(s: GameState, plaintiff: Player, defendant: Player, kind: 'loan
       say(s, plaintiff, 'lawsuitWin'); say(s, defendant, 'lawsuitLose')
     } else {
       defendant.fortuneMod -= 1
-      log(s, defendant.id, `소송에서 이겨 빚 ${won(owe)}을 안 갚아도 된다 (대신 운세↓)`, 'info')
+      defendant.creditBad = 8 // 소송에서 이겨도 돈을 안 갚은 사실은 남음
+      log(s, defendant.id, `소송에서 이겨 빚 ${won(owe)}을 안 갚아도 된다 (대신 신용불량, 운세↓)`, 'info')
       log(s, plaintiff.id, `빌려준 돈을 떼였다…`, 'bad')
       say(s, defendant, 'lawsuitWin'); say(s, plaintiff, 'lawsuitLose')
     }

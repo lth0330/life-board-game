@@ -18,7 +18,7 @@ it('도달률 점검', () => {
       for (const p of s.players) {
         const t = st.tiles[p.pos]
         const d = t.d
-        if (st.id === 'student' && d >= 17) mark('학생: 대학/취업 갈림길(17)까지 감', p.id)
+        if (st.id === 'young' && d >= 7) mark('청년: 대학/취업 길 지나 직업 칸(7)', p.id)
         if (st.id === 'child' && d >= 5) mark('어린이: 학원/놀이 갈림길(5)', p.id)
         if (st.id === 'young' && d >= 13) mark('청년: 첫 결혼 지점(13)', p.id)
         if (st.id === 'young' && d >= 25) mark('청년: 둘째 결혼 지점(25)', p.id)
@@ -28,7 +28,7 @@ it('도달률 점검', () => {
         if (st.id === 'middle' && d >= 13) mark('중년: 결혼 지점(13)', p.id)
         if (st.id === 'middle' && d >= 21) mark('중년: 카지노 갈림길(21)', p.id)
         if (st.id === 'child' && d >= 12) mark('어린이: 운동회 갈림길(12)', p.id)
-        if (st.id === 'student' && d >= 9) mark('학생: 두뇌 올림피아드 갈림길(9)', p.id)
+        if (st.id === 'student' && d >= 13) mark('학생: 두뇌 올림피아드 갈림길(13)', p.id)
         if (st.id === 'young' && d >= 16) mark('청년: 축제 거리 갈림길(16)', p.id)
         if (p.college) mark('대학 감', p.id)
         if (p.spouse) mark('결혼함', p.id)
