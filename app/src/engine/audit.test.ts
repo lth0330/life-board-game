@@ -18,7 +18,7 @@ it('도달률 점검', () => {
       for (const p of s.players) {
         const t = st.tiles[p.pos]
         const d = t.d
-        if (st.id === 'young' && d >= 7) mark('청년: 대학/취업 길 지나 직업 칸(7)', p.id)
+        if (st.id === 'young' && d >= 1 && st.tiles[p.pos].kind !== 'campus') mark('청년: 본 길 직업 칸(1)까지 옴', p.id)
         if (st.id === 'child' && d >= 5) mark('어린이: 학원/놀이 갈림길(5)', p.id)
         if (st.id === 'young' && d >= 13) mark('청년: 첫 결혼 지점(13)', p.id)
         if (st.id === 'young' && d >= 25) mark('청년: 둘째 결혼 지점(25)', p.id)

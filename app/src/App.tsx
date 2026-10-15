@@ -170,13 +170,15 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
 
   useEffect(() => { setCarMode(false) }, [game.turn])
 
+  const onCampus = p.campusTurns > 0 && stageOf(game).tiles[p.pos].kind === 'campus'
   const doRoll = () => {
     if (!myTurn) return
+    if (onCampus) { act((s) => roll(s)); return } // 대학교에서는 주사위 대신 대학 생활
     const useCar = carMode
     setRolling(true)
     setTimeout(() => { setRolling(false); act((s) => roll(s, 0, useCar)) }, DICE_ROLL_MS)
   }
-  const showCar = myTurn && canUseCar(p)
+  const showCar = myTurn && canUseCar(p) && !onCampus
   const recent = game.log.slice(-3)
   const stageBanner = banner && !busy && banner.title.endsWith('단계')
 
@@ -236,7 +238,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
       <div className="controls">
         <button className="mid" onClick={() => setSheet('cards')}>카드{(p.chance || p.sabotage) ? <em>{(p.chance ? 1 : 0) + (p.sabotage ? 1 : 0)}</em> : null}</button>
         <button className="dice-btn" disabled={!myTurn} onClick={doRoll}>
-          <span>주사위<br />던지기</span>
+          {onCampus ? <span>대학<br />생활</span> : <span>주사위<br />던지기</span>}
         </button>
         <button className="mid" onClick={() => setSheet('finance')}>재테크</button>
       </div>

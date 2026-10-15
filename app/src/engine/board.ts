@@ -25,6 +25,7 @@ interface StageDef {
   stops: Record<number, StopEvent>
   points: Record<number, PointKind>
   dateUntil?: number // 이 깊이 뒤에는 데이트 칸 없음 (중년 결혼식장 뒤)
+  campus?: boolean // 본 길 옆 대학교 출발 칸 (대학 간 사람은 여기서 시작)
   life?: LifeFork
   event: EventRoad
 }
@@ -52,15 +53,8 @@ export const STAGE_DEFS: StageDef[] = [
   {
     id: 'young', name: '청년', ages: [20, 39], rolls: 10, length: 50,
     weights: [['money', 25], ['card', 22], ['date', 22], ['risk', 15], ['happy', 10], ['grow', 8]],
-    stops: { 7: 'job', 20: 'jobfair' }, points: { 9: 'shop', 13: 'marriage', 25: 'marriage', 28: 'shop' },
-    // 성인이 되자마자 진로를 정함 → 대학 길을 지나 직업 선택
-    life: {
-      id: 'college', at: 1, rejoin: 6, title: '대학 vs 바로 취업', text: '스무 살, 진로를 정할 때예요. 대학에 가면 수능을 보고 직업 고르기 전에 능력치를 키울 수 있어요. 대신 학자금 대출이 생겨요.',
-      roads: [
-        { road: 'college', label: '대학 길', desc: '수능 → 능력치 +2, 학자금 대출 (수능 결과에 따라)' },
-        { road: 'work', label: '취업 길', desc: '모아 둔 돈 +400만, 돈 칸이 많아요' },
-      ],
-    },
+    stops: { 1: 'job', 20: 'jobfair' }, points: { 7: 'shop', 13: 'marriage', 25: 'marriage', 28: 'shop' },
+    campus: true,
     event: { at: 16, rejoin: 24, len: 10, name: '축제 거리', minis: ['firstImpression', 'rhythm', 'confess'], desc: '연애·매력 미니게임 (매력이 높을수록 쉬움)' },
   },
   {
@@ -148,6 +142,12 @@ export function buildStage(d: StageDef, rng: Rng): Stage {
       id: lf.id, title: lf.title, text: lf.text,
       options: lf.roads.map((r, i) => ({ label: r.label, desc: r.desc, to: starts[i], road: r.road })),
     }
+  }
+
+  // 대학교: 대학 간 사람의 출발 칸. 정해진 차례 동안 머물다 졸업하면 직업 칸으로
+  if (d.campus) {
+    const jobDep = Number(Object.keys(d.stops).find((k) => d.stops[+k] === 'job'))
+    tiles.push({ kind: 'campus', next: [mainIdx[jobDep]], d: 0, lane: -1, road: 'campus' })
   }
 
   // 이벤트 길: 본 길 옆으로 빠졌다가 조금 앞에서 합류. 칸마다 미니게임

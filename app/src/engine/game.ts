@@ -97,7 +97,7 @@ function newPlayer(id: number, name: string, human: boolean, personality: Person
     stocks: { 생명: 0, IT: 0, 화학: 0, 의료: 0, 엔터: 0 },
     suitors: [], spouse: null, divorced: false, children: 0, adopted: 0, pet: null, retire: null,
     chance: null, sabotage: null, fortuneMod: 0, agency: null, borrowedFrom: [], forkChoice: null,
-    outfit: DEFAULT_OUTFIT, sector: null, collegeDecided: false,
+    outfit: DEFAULT_OUTFIT, sector: null, collegeDecided: false, campusTurns: 0,
   }
 }
 
@@ -205,7 +205,19 @@ function beginTurn(s: GameState) {
   if (p.money < 0 && rng.chance(0.25)) {
     badEvent(s, p, { text: '빚 독촉에 시달렸다', loss: 0, happyLoss: 4 })
   }
-  if (p.agency && !p.spouse && (stageOf(s).id === 'young' || stageOf(s).id === 'middle')) agencyTurn(s, p)
+  const sid = stageOf(s).id
+  const lastStudentTurn = sid === 'student' && p.rollsLeft === 1
+  if (!p.collegeDecided && (lastStudentTurn || sid === 'young')) {
+    s.pending = {
+      type: 'career', playerId: p.id,
+      title: sid === 'student' ? '고등학교 졸업! 진로를 정해요' : '스무 살까지 어떻게 살았나요?',
+      text: `대학에 가면 수능을 보고, 청년이 되어 대학교에서 ${CAMPUS_TURNS}번 차례 동안 능력치를 키운 뒤 직업을 골라요. 대신 학자금 대출이 생기고 그동안 월급이 없어요.`,
+      options: [
+        { id: 'college', label: '대학 진학', desc: `수능 → 대학교 ${CAMPUS_TURNS}번 차례 (매번 능력치 +1) → 🎓 직업 가능` },
+        { id: 'work', label: '바로 취업', desc: '모아 둔 돈 +400만, 청년 첫 차례부터 직업·월급' },
+      ],
+    }
+  } else if (p.agency && !p.spouse && (sid === 'young' || sid === 'middle')) agencyTurn(s, p)
   resume(s)
 }
 
@@ -417,6 +429,14 @@ export function roll(s: GameState, bonus = 0, useCar = false) {
   const p = cur(s)
   const rng = rngOf(s)
   const st = stageOf(s)
+  if (p.campusTurns > 0 && tileOf(s, p).kind === 'campus') {
+    s.pending = {
+      type: 'campus', playerId: p.id, title: `대학 생활 (남은 학기 ${p.campusTurns})`, text: '이번 학기에는 무엇을 키울까요?',
+      options: STATS.map((k) => ({ id: k, label: `${STAT_NAMES[k]} +1`, desc: `지금 ${p.stats[k]}` })),
+    }
+    s.phase = 'decision'
+    return
+  }
   if (st.rolls && isEnd(tileOf(s, p))) {
     s.lastRoll = rng.int(1, 6)
     s.dice = { value: s.lastRoll, id: (s.dice?.id ?? 0) + 1 }
@@ -581,6 +601,7 @@ function applyRoadStart(s: GameState, p: Player, road: string) {
     case 'college': {
       p.college = true
       p.collegeDecided = true
+      p.campusTurns = CAMPUS_TURNS
       // 수능: 문제 없이 지력 + 주사위 + 운세
       const dice = rng.int(1, 6)
       const score = p.stats.int + dice + (p.fortune >= 4 ? 1 : p.fortune <= 1 ? -1 : 0)
@@ -589,7 +610,8 @@ function applyRoadStart(s: GameState, p: Player, road: string) {
       log(s, p.id, `수능: 지력 ${p.stats.int} + 주사위 ${dice} → ${grade} (학자금 대출 ${won(loan)})`, score >= 12 ? 'good' : score >= 8 ? 'info' : 'bad')
       p.loans.push({ amount: loan, dueTurn: p.turnsPlayed + 40 })
       if (score >= 12) s.banner = { title: '수능 상위권!', text: `${p.name}: 장학금`, tone: 'good' }
-      s.pending = { type: 'collegeStat', playerId: p.id, title: '대학에서 키울 능력치', text: '무엇을 공부할까요?', options: [{ id: 'int', label: '지력 +2' }, { id: 'str', label: '체력 +2' }, { id: 'cha', label: '매력 +2' }] }
+      // 성인부터 시작한 판이면 지금 바로 대학교로
+      if (stageOf(s).id === 'young') p.pos = campusIdx(s)
       break
     }
     case 'work': p.collegeDecided = true; p.money += 400; log(s, p.id, '바로 취업 준비. 모아 둔 돈 +400만', 'good'); break
@@ -1180,6 +1202,9 @@ function stopTile(s: GameState, p: Player, t: Tile) {
   }
 }
 
+export const CAMPUS_TURNS = 3
+const campusIdx = (s: GameState) => stageOf(s).tiles.findIndex((t) => t.kind === 'campus')
+
 function sectorPending(p: Player, title: string, list: Sector[]) {
   return {
     type: 'sector', playerId: p.id, title, text: '고른 분야의 주가가 내 성과에 따라 오르내려요.',
@@ -1236,7 +1261,23 @@ export function choose(s: GameState, optionId: string) {
   switch (pd.type) {
     case 'afterRoll': applyAfterRoll(s, p, optionId); return
     case 'fork': applyForkChoice(s, p, +optionId); break
-    case 'adultStart': applyRoadStart(s, p, optionId); break
+    case 'adultStart': case 'career': applyRoadStart(s, p, optionId); break
+    case 'campus': {
+      const k = optionId as StatKey
+      p.stats[k] = clampStat(p.stats[k] + 1)
+      p.campusTurns--
+      log(s, p.id, `대학 생활: ${STAT_NAMES[k]} +1${p.campusTurns ? ` (남은 학기 ${p.campusTurns})` : ''}`, 'good')
+      if (p.campusTurns === 0) {
+        // 졸업 → 본 길 맨 앞 직업 선택 칸으로
+        const st = stageOf(s)
+        p.pos = st.tiles[campusIdx(s)].next[0]
+        log(s, p.id, '대학 졸업! 이제 직업을 골라요', 'good')
+        s.banner = { title: '대학 졸업', text: p.name, tone: 'good' }
+        stopTile(s, p, st.tiles[p.pos])
+      }
+      s.lastRoll = 0 // 이번 차례는 대학 생활로 끝 (주사위 1번 쓴 것으로 침)
+      break
+    }
     case 'cardSwap': {
       const d = pd.data as { kind: string; card: string }
       if (optionId === 'new') {
@@ -1785,7 +1826,7 @@ function nextStage(s: GameState) {
   s.pathId++
   const st = stageOf(s)
   for (const p of s.players) {
-    p.pos = 0
+    p.pos = st.id === 'young' && p.campusTurns > 0 ? campusIdx(s) : 0
     p.forkChoice = null
     p.rollsLeft = st.rolls ?? 0
     p.carCharges = CARS[p.car].charges[Math.max(0, s.stageIdx - 2)]

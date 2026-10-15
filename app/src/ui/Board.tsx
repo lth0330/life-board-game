@@ -16,6 +16,7 @@ const TILE_STYLE: Record<string, { label: string; bg: string; fg: string }> = {
   mini: { label: '게임', bg: '#E8742C', fg: '#fff' },
   rest: { label: '휴식', bg: '#E9DFC8', fg: '#2A2118' },
   goal: { label: '골', bg: '#FFD45C', fg: '#2A2118' },
+  campus: { label: '대학교', bg: '#8A4FA8', fg: '#fff' },
 }
 
 const STOP_LABEL: Record<string, string> = { club: '동아리', job: '직업', jobfair: '박람회', middleBranch: '새 가족' }
@@ -66,7 +67,7 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos }: Props) {
     const small = look.label.length > 3
     items.push(
       <div key={`t${i}`} className={`tile${t.kind === 'mini' ? ' tile-mini' : ''}`} style={{ left: xAt(t), top: yAt(t), background: look.bg, color: look.fg }}>
-        <TileIcon kind={t.stop ? 'stop' : t.kind} size={50} />
+        <TileIcon kind={t.stop ? 'stop' : t.kind === 'campus' ? 'grow' : t.kind} size={50} />
         <span className="tile-label" style={{ fontSize: small ? 17 : 21 }}>{look.label}</span>
         {step && <span className="tile-step">{step}</span>}
       </div>,
@@ -107,6 +108,13 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos }: Props) {
       items.push(
         <div key={`r${i}`} className="tree" style={{ ...stand, left, top: yAt(t) - 60 }}>
           <Tree variant={i} />
+        </div>,
+      )
+    }
+    if (t.kind === 'campus') {
+      items.push(
+        <div key={`u${i}`} className="bld" style={{ ...stand, left: xAt(t) - 300, top: yAt(t) - 220, width: 240, height: 290 }}>
+          <Building name="학교" color="#8A4FA8" />
         </div>,
       )
     }

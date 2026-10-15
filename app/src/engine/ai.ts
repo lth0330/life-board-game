@@ -28,6 +28,11 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
   switch (pd.type) {
     case 'academy': return id === 'study' ? (per === 'elite' ? 3 : 1) : per === 'family' ? 3 : 1.5
     case 'club': return p.stats[id as 'int'] < 4 ? 1 : 0.5 + (per === 'elite' && id === 'int' ? 2 : 0) + (per === 'gambler' && id === 'cha' ? 1 : 0)
+    case 'campus': {
+      const k = id as 'int' | 'str' | 'cha'
+      return 10 - p.stats[k] + (per === 'elite' && k === 'int' ? 3 : 0) + (per === 'family' && k === 'cha' ? 1 : 0) + rng.next()
+    }
+    case 'career':
     case 'adultStart': return id === 'college' ? (per === 'elite' ? 3 : per === 'gambler' ? 0.5 : 1.5) : 1
     case 'fork': {
       const st = stageOf(s)

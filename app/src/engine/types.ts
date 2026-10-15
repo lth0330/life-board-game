@@ -2,10 +2,10 @@ import type { Outfit } from './outfit'
 
 export type StageId = 'child' | 'student' | 'young' | 'middle' | 'old'
 export type StatKey = 'int' | 'str' | 'cha'
-export type TileKind = 'money' | 'grow' | 'happy' | 'risk' | 'card' | 'stop' | 'date' | 'mini' | 'rest' | 'goal'
+export type TileKind = 'money' | 'grow' | 'happy' | 'risk' | 'card' | 'stop' | 'date' | 'mini' | 'rest' | 'goal' | 'campus'
 export type StopEvent = 'club' | 'job' | 'jobfair' | 'middleBranch'
 // 갈라지는 길의 테마 (칸 효과가 그 길답게 바뀜)
-export type RoadId = 'main' | 'academy' | 'play' | 'college' | 'work' | 'startup' | 'company' | 'city' | 'country' | 'event'
+export type RoadId = 'main' | 'academy' | 'play' | 'college' | 'work' | 'startup' | 'company' | 'city' | 'country' | 'event' | 'campus'
 export type ForkId = 'academy' | 'college' | 'startup' | 'retire' | 'event'
 export type MiniId =
   | 'race' | 'tug' | 'throw'
@@ -148,7 +148,8 @@ export interface Player {
   forkChoice: number | null // 갈림길에서 고른 다음 칸
   outfit: Outfit
   sector: Sector | null // 과학자·사업가가 고른 분야
-  collegeDecided: boolean // 대학/취업을 정했는지 (갈림길에 못 닿았으면 청년 첫 차례에 물어봄)
+  collegeDecided: boolean // 대학/취업을 정했는지 (학생 마지막 차례, 성인부터 판은 첫 차례)
+  campusTurns: number // 대학교에서 남은 차례 (주사위 대신 능력치 +1)
 }
 
 export interface ChoiceOption {
