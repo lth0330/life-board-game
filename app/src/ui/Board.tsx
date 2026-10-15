@@ -47,6 +47,9 @@ export function Board({ s, focus, showSteps }: Props) {
   const visible = (t: Tile) => t.d >= fd - 1.2 && t.d <= fd + 10
   const steps = showSteps ? distancesFrom(st, focus.pos, 6) : new Map<number, number>()
   const items: ReactElement[] = []
+  // 갈라진 길이 지나는 쪽에는 건물·나무를 더 바깥으로 밀어냄
+  const sideBusy = (d: number, side: number) => st.tiles.some((x) => x.lane === side && Math.abs(x.d - d) < 2.5)
+  const decorX = (t: Tile, side: number, near: number, far: number) => xAt(t) + side * (sideBusy(t.d, side) ? far : near) + (side < 0 ? -110 : 0)
 
   st.tiles.forEach((t, i) => {
     if (!visible(t)) return
@@ -62,7 +65,7 @@ export function Board({ s, focus, showSteps }: Props) {
     // 갈림길 표지판
     if (t.fork) {
       items.push(
-        <div key={`f${i}`} className="sign-post" style={{ ...stand, left: xAt(t) - 70, top: yAt(t) - 250 }}>
+        <div key={`f${i}`} className="sign-post" style={{ ...stand, left: xAt(t) - 330, top: yAt(t) - 200 }}>
           <div className="sign-board">
             {t.fork.options.map((o) => {
               const target = st.tiles[o.to]
@@ -75,7 +78,7 @@ export function Board({ s, focus, showSteps }: Props) {
       )
     }
     if (t.point) {
-      const left = t.d % 2 ? xAt(t) + 170 : xAt(t) - 300
+      const left = decorX(t, t.d % 2 ? 1 : -1, 170, 420)
       const shop = t.point === 'shop'
       items.push(
         <div key={`p${i}`} className="bld" style={{ ...stand, left, top: yAt(t) - 260, width: 260, height: 330 }}>
@@ -87,7 +90,7 @@ export function Board({ s, focus, showSteps }: Props) {
       )
     } else if (t.road === 'main' && !t.fork && t.d % 4 === 2) {
       const name = DECOR[st.id][Math.floor(t.d / 4) % 4]
-      const left = (t.d / 4) % 2 ? xAt(t) + 190 : xAt(t) - 300
+      const left = decorX(t, (t.d / 4) % 2 ? 1 : -1, 190, 430)
       items.push(
         <div key={`d${i}`} className="bld" style={{ ...stand, left, top: yAt(t) - 200, width: 220, height: 270 }}>
           <div className="roof" style={{ width: 220, height: 80, background: ROOFS[i % ROOFS.length] }} />
@@ -97,7 +100,7 @@ export function Board({ s, focus, showSteps }: Props) {
         </div>,
       )
     } else if (t.road === 'main' && Math.round(t.d) % 2 === 1) {
-      const left = Math.round(t.d) % 3 ? xAt(t) - 210 : xAt(t) + 230
+      const left = decorX(t, Math.round(t.d) % 3 ? -1 : 1, 120, 400)
       items.push(
         <div key={`r${i}`} className="tree" style={{ ...stand, left, top: yAt(t) - 60 }}>
           <div className="leaf" /><div className="trunk" />

@@ -13,7 +13,7 @@ import { CardsSheet, FinanceSheet, GameOver, PeopleSheet, playerLine, won } from
 
 type Speed = 'fast' | 'normal' | 'slow'
 const SPEED_MS: Record<Speed, number> = { fast: 450, normal: 1000, slow: 1700 }
-const SAVE_KEY = 'life-board-game:save'
+const SAVE_KEY = 'life-board-game:save:v2' // 저장 형식이 바뀌면 숫자를 올림
 
 function loadSave(): GameState | null {
   try {
