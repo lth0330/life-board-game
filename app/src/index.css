@@ -1,0 +1,34 @@
+:root {
+  --ink: #2a2118;
+  --ink-soft: #5a4b3a;
+  --paper: #fbf5e8;
+  --paper-2: #f1e7d2;
+  --sky: #a9dbf2;
+  --grass: #8cc67a;
+  --accent: #c2452d;
+  --accent-dark: #7e2b1c;
+  --good: #1e7a4c;
+  --bad: #b33b2a;
+  --night: rgba(42, 33, 24, 0.82);
+  font-family: 'Gowun Dodum', system-ui, sans-serif;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { margin: 0; height: 100%; }
+
+body {
+  background: #6b4a2e;
+  overscroll-behavior: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+button:disabled { cursor: not-allowed; opacity: 0.45; }
+
+.jua { font-family: 'Jua', sans-serif; }
