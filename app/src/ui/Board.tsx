@@ -82,10 +82,9 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos }: Props) {
       </div>,
     )
     // 이벤트 길 입구 랜드마크 (표지판 반대쪽)
-    const ev = t.fork?.options.find((o) => o.road === 'event')
-    if (ev) {
+    for (const ev of t.fork?.options.filter((o) => o.road === 'event') ?? []) {
       items.push(
-        <div key={`lm${i}`} className="bld" style={{ ...stand, left: xAt(t) + (st.tiles[ev.to].lane >= 0 ? LANE + 150 : -LANE - 430), top: yAt(t) - 250, width: 280, height: 290 }}>
+        <div key={`lm${i}-${ev.to}`} className="bld" style={{ ...stand, left: xAt(t) + (st.tiles[ev.to].lane >= 0 ? LANE + 150 : -LANE - 430), top: yAt(t) - 250, width: 280, height: 290 }}>
           <Landmark name={ev.label} />
         </div>,
       )

@@ -204,8 +204,8 @@ function drawFortune(s: GameState, p: Player) {
   if (p.charmTurns > 0) { f++; p.charmTurns-- }
   f += p.fortuneMod
   p.fortuneMod = 0
-  p.fortune = Math.max(0, Math.min(5, f))
-  if (p.fortune === 5) say(s, p, 'greatFortune')
+  p.fortune = Math.max(0, Math.min(4, f))
+  if (p.fortune === 4) say(s, p, 'greatFortune')
 }
 
 function beginTurn(s: GameState) {
@@ -231,13 +231,14 @@ function beginTurn(s: GameState) {
   if (p.lottery.ticket) {
     p.lottery.ticket = false
     const r = rng.next()
-    // 1등 1% · 2등 7% · 3등 22% (전체 30%). 2026-10-15 사용자 결정
-    const rank = r < 0.01 ? 1 : r < 0.08 ? 2 : r < 0.3 ? 3 : 0
+    // 1등 1% · 2등 7% · 3등 22% (전체 30%). 운세로 전체 확률이 바뀜: 대흉·흉 -5%p, 길 +5%p, 대길 +10%p (비율은 그대로)
+    const luck = (0.3 + [-0.05, -0.05, 0, 0.05, 0.1][p.fortune]) / 0.3
+    const rank = r < 0.01 * luck ? 1 : r < 0.08 * luck ? 2 : r < 0.3 * luck ? 3 : 0
     const prize = [0, 3000, 300, 30][rank]
     if (prize > 0) {
       p.money += prize
       p.record.lotteryWon += prize
-      log(s, p.id, `복권 ${rank}등 당첨! +${won(prize)}`, 'good')
+      log(s, p.id, `[운세 ${fortuneName(p.fortune)}] 복권 ${rank}등 당첨! +${won(prize)}`, 'good')
       s.banner = { title: `복권 ${rank}등!`, text: `${p.name} +${won(prize)}`, tone: 'good' }
       if (rank <= 2) say(s, p, 'lotteryWin')
     } else log(s, p.id, '복권 꽝', 'info')
@@ -261,12 +262,14 @@ function beginTurn(s: GameState) {
     s.pending = {
       type: 'career', playerId: p.id,
       title: sid === 'student' ? '고등학교 졸업! 진로를 정해요' : '스무 살까지 어떻게 살았나요?',
-      text: `지금 능력치 지력 ${p.stats.int} · 체력 ${p.stats.str} · 매력 ${p.stats.cha}\n\n[직업 조건]\n${jobGuide(p, false)}\n\n대학에 가면 수능을 보고, 청년이 되어 대학 길 9칸을 주사위로 걸으며(공부·동아리·연애·알바·시험·축제·장학금) 능력치를 키운 뒤 직업을 골라요. 대신 학자금 대출이 생기고 그동안 월급이 없어요.`,
+      text: `대학은 3종류예요. 고른 대학의 능력치가 높을수록 합격 확률이 올라가요. 떨어지면 바로 취업하거나 재수(1번)를 해요.\n지금 능력치 지력 ${p.stats.int} · 체력 ${p.stats.str} · 매력 ${p.stats.cha}\n\n[직업 조건]\n${jobGuide(p, false)}\n\n대학에 가면 수능을 보고, 청년이 되어 대학 길 9칸을 주사위로 걸으며(공부·동아리·연애·알바·시험·축제·장학금) 능력치를 키운 뒤 직업을 골라요. 대신 학자금 대출이 생기고 그동안 월급이 없어요.`,
       options: [
-        { id: 'college', label: '대학 진학', desc: '수능 → 대학 길 9칸 (칸마다 사건) → 🎓 직업 가능' },
+        ...UNIS.map((u) => ({ id: `uni:${u.stat}`, label: `${u.name} 지원`, desc: `${STAT_NAMES[u.stat]} ${p.stats[u.stat]} → 합격 확률 ${Math.round(passChance(p, u.stat) * 100)}% (룰렛) · 대학 길에서 ${STAT_NAMES[u.stat]} 칸 +2` })),
         { id: 'work', label: '바로 취업', desc: '모아 둔 돈 +400만, 청년 첫 차례부터 직업·월급' },
       ],
     }
+  } else if (sid === 'young' && p.retake) {
+    s.pending = { type: 'retake', playerId: p.id, title: '재수 1년', text: `${STAT_NAMES[p.retake]} +1 하고 다시 시험을 봐요 (이번 차례는 이걸로 끝)`, options: [{ id: 'go', label: '시험 보기' }] }
   } else if (sid === 'young' && p.collegeDecided && !p.college && !p.jobId && p.pos === 0) {
     const st = stageOf(s)
     const jobIdx = st.tiles.findIndex((t) => t.stop === 'job')
@@ -734,13 +737,12 @@ export function badEvent(s: GameState, p: Player, b: Bad) {
   if (f === 0) { mult = 1.5; note = '더 나빠졌다' }
   else if (f === 1) { mult = 1.2; note = '조금 더 나빠졌다' }
   else if (f === 3 && rng.chance(0.6)) { mult = 0.5; note = '다행히 범인을 잡아 절반은 돌려받았다' }
-  else if (f === 4) { mult = rng.chance(0.8) ? 0 : 0.5; note = mult === 0 ? '다행히 큰일 없이 넘어갔다' : '다행히 절반은 돌려받았다' }
-  else if (f === 5) {
-    if (rng.chance(0.5)) {
+  else if (f === 4) {
+    if (rng.chance(0.3)) {
       const gain = Math.max(Math.round(loss * 0.5), 10)
       p.money += gain
       p.happy += 2
-      log(s, p.id, `${b.text} … [대대길] 전화위복! 오히려 +${won(gain)}`, 'good')
+      log(s, p.id, `${b.text} … [대길] 전화위복! 오히려 +${won(gain)}`, 'good')
       return
     }
     mult = 0
@@ -1033,11 +1035,11 @@ function uniTile(s: GameState, p: Player, ev: string) {
       s.pending = {
         type: 'growPick', playerId: p.id, title: '캠퍼스 생활', text: '이번엔 무엇을 할까요?',
         options: [
-          { id: 'int', label: '📚 도서관에서 공부', desc: `지력 +1 (현재 : ${p.stats.int})` },
-          { id: 'cha', label: '🎤 동아리 활동', desc: `매력 +1 (현재 : ${p.stats.cha})` },
-          { id: 'str', label: '🏃 운동', desc: `체력 +1 (현재 : ${p.stats.str})` },
+          { id: 'int', label: '📚 도서관에서 공부', desc: `지력 +${p.major === 'int' ? 2 : 1}${p.major === 'int' ? ' (전공)' : ''} (현재 : ${p.stats.int})` },
+          { id: 'cha', label: '🎤 동아리 활동', desc: `매력 +${p.major === 'cha' ? 2 : 1}${p.major === 'cha' ? ' (전공)' : ''} (현재 : ${p.stats.cha})` },
+          { id: 'str', label: '🏃 운동', desc: `체력 +${p.major === 'str' ? 2 : 1}${p.major === 'str' ? ' (전공)' : ''} (현재 : ${p.stats.str})` },
         ],
-        data: { add: 1 },
+        data: { add: 1, major: p.major },
       }
       break
     case 'love': up('cha', 1); up('int', -1); p.happy += 3; log(s, p.id, '캠퍼스 커플! 매력 +1, 지력 -1 (공부는 뒷전), 행복 +3', 'good'); break
@@ -1320,7 +1322,7 @@ const CASINO: MiniId[] = ['oddEven', 'highLow', 'slot']
 export function miniLevel(p: Player, game: MiniId | DuelId): number {
   const key = game in MINI_STAT ? MINI_STAT[game as MiniId] : game === 'timing' ? 'str' : null
   if (key === null) return 1
-  const v = key === 'fortune' ? [1, 3, 5, 7, 9, 10][p.fortune] : p.stats[key]
+  const v = key === 'fortune' ? [1, 3, 5, 8, 10][p.fortune] : p.stats[key]
   return v >= 7 ? 0 : v >= 4 ? 1 : 2
 }
 
@@ -1371,15 +1373,21 @@ export function finishMini(s: GameState, value: number) {
   resume(s)
 }
 
+// 데이트로 오르는 호감도: 등급이 낮을수록, 내 매력이 높을수록 많이 오름
+export function affinityGain(s: GameState, p: Player, x: Suitor) {
+  const [lo, hi] = ([[30, 40], [25, 33], [20, 27], [15, 22], [12, 18]] as const)[Math.max(0, Math.min(4, x.grade - 1))]
+  return rngOf(s).int(lo, hi) + Math.max(0, p.stats.cha - 4)
+}
+
+// 축제 거리: 호감도가 아니라 새 사람을 만나는 곳. 대성공이면 높은 등급이 잘 나옴
 function addAffinityOrMeet(s: GameState, p: Player, amount: number) {
   if (p.spouse) { p.happy += Math.round(amount / 5); log(s, p.id, `${p.spouse.name}와 축제를 즐겼다. 행복 +${Math.round(amount / 5)}`, 'good'); return }
-  const top = [...p.suitors].sort((a, b) => b.affinity - a.affinity)[0]
-  if (top) { top.affinity = Math.min(100, top.affinity + amount); log(s, p.id, `${top.name} 호감도 +${amount} (${top.affinity}%)`, 'good'); return }
-  const x = makeSuitor(s, p)
-  x.affinity = amount + 10
+  const x = makeSuitor(s, p, { vip: amount >= 30 })
+  x.affinity = amount + 10 // 축제에서 만나면 첫인상이 좋아 조금 높게 시작
   p.suitors.push(x)
-  log(s, p.id, `축제에서 ${x.name}를 만났다! 호감도 ${x.affinity}%`, 'good')
+  log(s, p.id, `축제에서 ${x.name}${stars(x.grade)}를 만났다! 호감도 ${x.affinity}% (데이트 칸에서 호감도를 올려요)`, 'good')
 }
+
 
 function miniReward(s: GameState, p: Player, game: MiniId, grade: number, stake?: number) {
   const name = MINI_NAMES[game]
@@ -1393,6 +1401,11 @@ function miniReward(s: GameState, p: Player, game: MiniId, grade: number, stake?
     if (grade === 2) { statUp('int', 2); log(s, p.id, `${name} 금메달! 지력 +2`, 'good') }
     else if (grade === 1) { statUp('int', 1); log(s, p.id, `${name} 통과! 지력 +1`, 'good') }
     else log(s, p.id, `${name} 아쉽게 탈락`, 'info')
+  } else if (['firstImpression', 'rhythm', 'confess'].includes(game) && stageOf(s).id === 'student') {
+    // 학교 축제: 연애 대신 매력
+    if (grade === 2) { statUp('cha', 2); p.happy += 2; log(s, p.id, `[학교 축제] ${name} 1등! 매력 +2`, 'good') }
+    else if (grade === 1) { statUp('cha', 1); log(s, p.id, `[학교 축제] ${name} 성공! 매력 +1`, 'good') }
+    else { p.happy -= 1; log(s, p.id, `[학교 축제] ${name}… 긴장해서 망쳤다. 행복 -1`, 'bad') }
   } else if (['firstImpression', 'rhythm', 'confess'].includes(game)) {
     if (grade === 2) { statUp('cha', 1); addAffinityOrMeet(s, p, 30) }
     else if (grade === 1) addAffinityOrMeet(s, p, 15)
@@ -1659,6 +1672,23 @@ function findSuitor(p: Player, key: string) {
 
 // ───────── 정지 칸 ─────────
 
+// 대학 3종: 능력치가 높을수록 합격 (룰렛)
+export const UNIS: { stat: StatKey; name: string }[] = [{ stat: 'int', name: '일반대' }, { stat: 'str', name: '체대' }, { stat: 'cha', name: '예대·방송대' }]
+export const passChance = (p: Player, k: StatKey) => Math.min(0.95, 0.15 + p.stats[k] * 0.09)
+function uniTry(s: GameState, p: Player, k: StatKey) {
+  const u = UNIS.find((x) => x.stat === k)!
+  const ch = passChance(p, k)
+  if (rngOf(s).next() < ch) {
+    p.major = k
+    log(s, p.id, `🎯 ${u.name} 합격! (확률 ${Math.round(ch * 100)}%)`, 'good')
+    s.banner = { title: `${u.name} 합격!`, text: p.name, tone: 'good' }
+    applyRoadStart(s, p, 'college')
+    return true
+  }
+  log(s, p.id, `${u.name} 불합격… (확률 ${Math.round(ch * 100)}%)`, 'bad')
+  return false
+}
+
 // 직업 조건 한눈에 보기 (진로·직업 선택 창 설명에 붙임). ✅ = 지금 조건이 됨
 export function jobGuide(p: Player, collegeAssumed = p.college) {
   const short = { int: '지력', str: '체력', cha: '매력' } as const
@@ -1785,7 +1815,34 @@ export function choose(s: GameState, optionId: string) {
       return
     }
     case 'fork': applyForkChoice(s, p, +optionId); break
-    case 'adultStart': case 'career': applyRoadStart(s, p, optionId); break
+    case 'adultStart': case 'career':
+      if (optionId.startsWith('uni:')) {
+        const k = optionId.slice(4) as StatKey
+        if (!uniTry(s, p, k)) {
+          s.pending = {
+            type: 'uniFail', playerId: p.id, title: '대학 불합격', text: '어떻게 할까요?',
+            options: [
+              { id: 'retake', label: '재수하기 (1번만)', desc: `다음 차례를 써서 ${STAT_NAMES[k]} +1 하고 다시 도전`, disabled: !!p.retook },
+              { id: 'work', label: '바로 취업', desc: '지금 능력치로 바로 직업 고르기' },
+            ],
+            data: { k },
+          }
+        }
+      } else applyRoadStart(s, p, optionId)
+      break
+    case 'uniFail':
+      if (optionId === 'retake') { p.retake = (pd.data as { k: StatKey }).k; p.retook = true; p.collegeDecided = true; log(s, p.id, '재수를 하기로 했다', 'info') }
+      else { p.collegeDecided = true; log(s, p.id, '대학 대신 바로 일을 하기로 했다', 'info') }
+      break
+    case 'retake': {
+      const k = p.retake!
+      p.retake = null
+      p.stats[k] = clampStat(p.stats[k] + 1)
+      log(s, p.id, `재수 1년: ${STAT_NAMES[k]} +1`, 'info')
+      if (!uniTry(s, p, k)) log(s, p.id, '또 떨어졌다… 바로 일을 하기로 했다', 'bad')
+      s.lastRoll = 0 // 재수한 차례는 이걸로 끝
+      break
+    }
     case 'campus': {
       const k = optionId as StatKey
       p.stats[k] = clampStat(p.stats[k] + 1)
@@ -1913,7 +1970,8 @@ export function choose(s: GameState, optionId: string) {
       break
     case 'growPick': {
       const k = optionId as StatKey
-      const add = (pd.data as { add: number }).add
+      const d = pd.data as { add: number; major?: StatKey | null }
+      const add = d.add + (d.major === k ? 1 : 0)
       p.stats[k] = clampStat(p.stats[k] + add)
       log(s, p.id, `${STAT_NAMES[k]} +${add}`, 'good')
       break
@@ -1956,7 +2014,7 @@ export function choose(s: GameState, optionId: string) {
         }
       } else {
         const x = findSuitor(p, optionId)
-        if (x) { const add = rng.int(15, 25); x.affinity = Math.min(100, x.affinity + add); log(s, p.id, `${x.name}와 데이트. 호감도 ${x.affinity}% (+${add})`, 'good') }
+        if (x) { const add = affinityGain(s, p, x); x.affinity = Math.min(100, x.affinity + add); log(s, p.id, `${x.name}와 데이트. 호감도 ${x.affinity}% (+${add})`, 'good') }
       }
       break
     }
@@ -1978,7 +2036,7 @@ export function choose(s: GameState, optionId: string) {
         log(s, p.id, `${x.name}와 첫 데이트! 호감도 ${x.affinity}%`, 'good')
       } else {
         const x = findSuitor(p, optionId)
-        if (x) { const add = rng.int(15, 25); x.affinity = Math.min(100, x.affinity + add); log(s, p.id, `${x.name}와 데이트. 호감도 ${x.affinity}% (+${add})`, 'good') }
+        if (x) { const add = affinityGain(s, p, x); x.affinity = Math.min(100, x.affinity + add); log(s, p.id, `${x.name}와 데이트. 호감도 ${x.affinity}% (+${add})`, 'good') }
       }
       p.happy += 1
       break
@@ -2441,14 +2499,6 @@ function roundEnd(s: GameState) {
   }
 }
 
-export function stockHint(s: GameState, p: Player): string | null {
-  const n = s.nextNews
-  if (p.fortune < 3) return null
-  if (!n) return p.fortune >= 4 ? '다음 바퀴엔 큰 소식이 없을 것 같다' : null
-  if (p.fortune === 3) return '어떤 분야에 소식이 있을 것 같다…'
-  if (p.fortune === 4) return `${n.sector} 쪽에 소식이 있다`
-  return `${n.sector}에 ${n.up ? '좋은' : '나쁜'} 소식이 있다`
-}
 
 function careerRoll(s: GameState, p: Player) {
   const job = jobOf(p)

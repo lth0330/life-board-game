@@ -2,8 +2,8 @@ import type { JobDef, Personality, Sector, StageId } from './types'
 
 export const SECTORS: Sector[] = ['생명', 'IT', '화학', '의료', '엔터']
 
-export const FORTUNES = ['최악', '악', '평타', '길', '대길', '대대길'] as const
-export const FORTUNE_WEIGHTS = [6, 16, 40, 24, 11, 3]
+export const FORTUNES = ['대흉', '흉', '평', '길', '대길'] as const // 2026-10-16 5단계로
+export const FORTUNE_WEIGHTS = [6, 18, 42, 24, 10]
 
 export const STAT_NAMES = { int: '지력', str: '체력', cha: '매력' } as const
 
@@ -110,7 +110,7 @@ export const HOUSE_RULES = {
 export const BIZ = {
   cost: 2000, chefCost: 1200,
   base: [300, 700, 1500], // 회사 크기별 매 턴 기본 수익 (소 / 중소 / 중견)
-  fortune: [-0.6, -0.2, 0.5, 1, 1.5, 2.2], // 운세별 배율 (최악 ~ 대대길)
+  fortune: [-0.6, -0.2, 0.5, 1, 1.8], // 운세별 배율 (대흉 ~ 대길)
   growPerStat: 0.05, // 운세 평타 이상일 때 커질 확률 = 능력치 × 5%
   fallBase: 0.3, fallPerStat: 0.02, // 악 이하일 때 작아질 확률 = 30% - 능력치 × 2%
   sale: [1000, 4000, 10000], // 노년에 팔 때

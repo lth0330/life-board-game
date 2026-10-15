@@ -1,12 +1,12 @@
 import { BUSINESSES, DICE_ITEMS, JOBLESS_BUSINESSES, JOBS, SECTORS } from './data'
 import {
-  aiDiceItem, aiWantsCar, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, loanLimit, loanTotal, repayFriendLoan,
-  repayLoans, requestFriendLoan, roll, rngOf, salaryOf, scoreOf, stageOf, startSabotage, stockHint, takeLoan, toggleInsurance,
+  aiDiceItem, aiWantsCar, passChance, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, loanLimit, loanTotal, repayFriendLoan,
+  repayLoans, requestFriendLoan, roll, rngOf, salaryOf, scoreOf, stageOf, startSabotage, takeLoan, toggleInsurance,
   tradeStock, useChance,
 } from './game'
 import type { GameState, Pending, Player } from './types'
 
-// 규칙 기반 AI. 사람과 같은 정보만 본다 (미래 뉴스는 운세 힌트로만)
+// 규칙 기반 AI. 사람과 같은 정보만 본다 (미래 뉴스는 아무도 모름)
 
 const jobValue = (id: string, p: Player): number => {
   const j = JOBS.find((x) => x.id === id)
@@ -33,7 +33,12 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
       return 10 - p.stats[k] + (per === 'elite' && k === 'int' ? 3 : 0) + (per === 'family' && k === 'cha' ? 1 : 0) + rng.next()
     }
     case 'career':
-    case 'adultStart': return id === 'college' ? (per === 'elite' ? 3 : per === 'gambler' ? 0.5 : 1.5) : 1
+    case 'adultStart': {
+      if (!id.startsWith('uni:')) return 1
+      const k = id.slice(4) as 'int' | 'str' | 'cha'
+      return passChance(p, k) * 2.5 + (per === 'elite' && k === 'int' ? 1 : 0) - (per === 'gambler' ? 1 : 0)
+    }
+    case 'uniFail': return id === 'retake' ? (per === 'elite' || per === 'family' ? 2 : 0.8) : 1
     case 'fork': {
       const st = stageOf(s)
       const tile = st.tiles[(pd.data as { tile: number }).tile]
@@ -146,7 +151,7 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
     }
     case 'agencyMatch': return id === 'yes' ? (p.money > 600 ? 2 : 0.5) : 1
     case 'rps': return rng.next()
-    case 'sector': return rng.next() + (s.nextNews && s.nextNews.up && s.nextNews.sector === id && p.fortune >= 4 ? 1 : 0)
+    case 'sector': return rng.next()
     case 'stray': return id === 'yes' ? (per === 'family' || per === 'safe' ? 2 : 0.8) : 1
     case 'loanRequest': return id === 'yes' ? 1 : 1.2
     case 'sabotageTarget': {
@@ -195,16 +200,14 @@ export function aiPreRoll(s: GameState) {
     if (p.house && !p.insurance.property && rng.chance(wantIns)) toggleInsurance(s, 'property')
     if (p.car && !p.insurance.car && rng.chance(wantIns)) toggleInsurance(s, 'car')
   }
-  // 주식: 힌트가 있을 때 위주로 사고, 현금은 남겨 둠 (월세·관리비로 빚이 쌓이지 않게)
-  const hint = stockHint(s, p)
-  const n = s.nextNews
+  // 주식: 미래 정보 없이. 재테크형은 싸진 종목을 조금씩 사고, 현금은 남겨 둠 (월세·관리비로 빚이 쌓이지 않게)
   const spare = Math.max(0, p.money - (800 + salaryOf(p) * 2)) // 주식에 넣어도 되는 돈
-  if (hint && n && p.fortune >= 4) {
-    if (p.fortune === 5 && !n.up && p.stocks[n.sector] > 0) tradeStock(s, n.sector, -p.stocks[n.sector])
-    // 대대길은 방향까지 알려 줌 → 크게 / 재테크형은 대길(분야만 앎)에도 조금
-    const share = p.fortune === 5 && n.up ? 0.5 : p.fortune === 4 && per === 'investor' ? 0.15 : 0
-    const qty = Math.floor((spare * share) / s.stockPrice[n.sector])
-    if (qty > 0) tradeStock(s, n.sector, qty)
+  if ((per === 'investor' || (per === 'gambler' && rng.chance(0.3))) && spare > 0 && rng.chance(0.4)) {
+    const cheap = [...SECTORS].sort((a, b) => s.stockPrice[a] - s.stockPrice[b])[0]
+    if (s.stockPrice[cheap] < 100) {
+      const qty = Math.floor((spare * (per === 'gambler' ? 0.3 : 0.15)) / s.stockPrice[cheap])
+      if (qty > 0) tradeStock(s, cheap, qty)
+    }
   }
   // 재테크형·엘리트: 많이 오르면 팔고(익절), 많이 떨어지면 손해 보고 팔기(손절)
   if (per === 'investor' || (per === 'elite' && rng.chance(0.25))) {

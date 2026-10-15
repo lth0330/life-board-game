@@ -4,7 +4,7 @@ import { Trophy } from '../art/More'
 import { CARS, CHANCE_NAMES, DICE_ITEMS, HOUSE_RULES, HOUSES, INSURANCE, JOBS, KIDS, LOTTERY_PRICE, MEDALS, PERSONALITIES, SABOTAGE_NAMES, SECTORS } from '../engine/data'
 import {
   ageOf, AWARD_POINTS, awardsOf, bankDebt, canBorrowFrom, fortuneName, friendDebt, houseValue, isAdultStage, jobOf, kidAllowance, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
-  stars, stockHint, stocksValue,
+  stars, stocksValue,
 } from '../engine/game'
 import type { GameState, InsuranceKind, Player, Sector } from '../engine/types'
 
@@ -57,7 +57,6 @@ export function FinanceSheet(f: FinanceProps) {
   const [term, setTerm] = useState(10)
   const { s, p } = f
   const adult = isAdultStage(s)
-  const hint = stockHint(s, p)
   const locked = !f.canUse || !adult
   return (
     <Sheet title="재테크" onClose={f.onClose}>
@@ -70,7 +69,7 @@ export function FinanceSheet(f: FinanceProps) {
       </div>
       {tab === 'stock' && (
         <div className="list">
-          <p className="note">{hint ? `오늘의 운세 힌트: ${hint}` : `운세 ${fortuneName(p.fortune)}: 힌트 없음 (길 이상이면 힌트)`}</p>
+          <p className="note">주가는 바퀴가 끝날 때 뉴스와 함께 오르내려요. 미리 알 방법은 없어요.</p>
           {SECTORS.map((k) => (
             <div key={k} className="row">
               <div className="grow">

@@ -174,6 +174,9 @@ export interface Player {
   forkChoice: number | null // 갈림길에서 고른 다음 칸
   outfit: Outfit
   sector: Sector | null // 과학자·사업가가 고른 분야
+  major?: StatKey | null // 대학 종류: int 일반대 · str 체대 · cha 예대·방송대
+  retake?: StatKey | null // 재수하는 대학 (청년 첫 차례에 다시 봄)
+  retook?: boolean // 재수는 1번만
   collegeDecided: boolean // 대학/취업을 정했는지 (학생 마지막 차례, 성인부터 판은 첫 차례)
   campusTurns: number // 대학교에서 남은 차례 (주사위 대신 능력치 +1)
 }

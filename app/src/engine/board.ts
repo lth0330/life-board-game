@@ -28,6 +28,7 @@ interface StageDef {
   campus?: boolean // 본 길 옆 대학교 출발 칸 (대학 간 사람은 여기서 시작)
   life?: LifeFork
   event: EventRoad
+  event2?: EventRoad // 같은 갈림길에서 고르는 두 번째 이벤트 길 (반대쪽)
 }
 
 export const STAGE_DEFS: StageDef[] = [
@@ -49,6 +50,7 @@ export const STAGE_DEFS: StageDef[] = [
     weights: [['grow', 30], ['card', 25], ['happy', 15], ['money', 15], ['risk', 15]],
     stops: { 6: 'club' }, points: {},
     event: { at: 13, rejoin: 20, len: 9, name: '두뇌 올림피아드', minis: ['memory', 'pairs', 'quickmath'], desc: '지력 미니게임 (지력이 높을수록 쉬움)' },
+    event2: { at: 13, rejoin: 20, len: 9, name: '학교 축제', minis: ['rhythm', 'firstImpression'], desc: '매력 미니게임 (매력이 높을수록 쉬움, 이기면 매력↑)' },
   },
   {
     id: 'young', name: '청년', ages: [20, 39], rolls: 10, length: 50,
@@ -159,31 +161,39 @@ export function buildStage(d: StageDef, rng: Rng): Stage {
     tiles[prev].next = [mainIdx[jobDep]]
   }
 
-  // 이벤트 길: 본 길 옆으로 빠졌다가 조금 앞에서 합류. 칸마다 미니게임
-  const ev = d.event
-  const minis = [...ev.minis]
-  const order: MiniId[] = []
-  for (let k = 0; k < ev.len; k++) {
-    if (k % minis.length === 0) minis.sort(() => rng.next() - 0.5)
-    order.push(minis[k % minis.length])
+  // 이벤트 길: 본 길 옆으로 빠졌다가 조금 앞에서 합류. 칸마다 미니게임 (학생은 양쪽에 하나씩, 둘 중 고름)
+  const buildEvent = (ev: EventRoad, lane: number) => {
+    const minis = [...ev.minis]
+    const order: MiniId[] = []
+    for (let k = 0; k < ev.len; k++) {
+      if (k % minis.length === 0) minis.sort(() => rng.next() - 0.5)
+      order.push(minis[k % minis.length])
+    }
+    const spacing = (ev.rejoin - ev.at) / (ev.len + 1)
+    let prev = -1
+    let first = -1
+    order.forEach((mini, k) => {
+      const idx = tiles.push({ kind: 'mini', mini, next: [], d: ev.at + (k + 1) * spacing, lane, road: 'event' }) - 1
+      if (prev >= 0) tiles[prev].next.push(idx)
+      else first = idx
+      prev = idx
+    })
+    tiles[prev].next.push(mainIdx[ev.rejoin])
+    return first
   }
-  const spacing = (ev.rejoin - ev.at) / (ev.len + 1)
-  let prev = -1
-  let first = -1
-  order.forEach((mini, k) => {
-    const idx = tiles.push({ kind: 'mini', mini, next: [], d: ev.at + (k + 1) * spacing, lane: d.life && d.life.at < ev.at && ev.at < d.life.rejoin ? -1 : 1, road: 'event' }) - 1
-    if (prev >= 0) tiles[prev].next.push(idx)
-    else first = idx
-    prev = idx
-  })
-  tiles[prev].next.push(mainIdx[ev.rejoin])
+  const ev = d.event
+  const lane1 = d.life && d.life.at < ev.at && ev.at < d.life.rejoin ? -1 : 1
+  const first = buildEvent(ev, lane1)
+  const second = d.event2 ? buildEvent(d.event2, -lane1) : -1
   const evFork = tiles[mainIdx[ev.at]]
-  evFork.next = [...evFork.next, first]
+  const mainNext = evFork.next[0]
+  evFork.next = [...evFork.next, first, ...(second >= 0 ? [second] : [])]
   evFork.fork = {
-    id: 'event', title: `${ev.name}로 갈까요?`, text: `옆길로 빠지면 칸마다 미니게임이 있어요. ${ev.desc}`,
+    id: 'event', title: d.event2 ? `${ev.name}? ${d.event2.name}?` : `${ev.name}로 갈까요?`, text: `옆길로 빠지면 칸마다 미니게임이 있어요. ${ev.desc}${d.event2 ? ` / ${d.event2.name}: ${d.event2.desc}` : ''}`,
     options: [
-      { label: '본 길로 가기', desc: '그대로 가요', to: evFork.next[0], road: 'main' },
+      { label: '본 길로 가기', desc: '그대로 가요', to: mainNext, road: 'main' },
       { label: `${ev.name} 길`, desc: ev.desc, to: first, road: 'event' },
+      ...(d.event2 ? [{ label: `${d.event2.name} 길`, desc: d.event2.desc, to: second, road: 'event' as RoadId }] : []),
     ],
   }
   return { id: d.id, name: d.name, ages: d.ages, rolls: d.rolls, tiles }

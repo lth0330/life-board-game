@@ -14,7 +14,7 @@ const sign = (name: string, bg: string, y = 228) => (
 // 이벤트 길 이름 → 입구 랜드마크
 const LANDMARKS = ['운동회', '두뇌 올림피아드', '축제 거리', '카지노', '세계일주']
 export function Landmark({ name }: { name: string }) {
-  switch (LANDMARKS.find((k) => name.includes(k))) {
+  switch (name.includes('학교 축제') ? '축제 거리' : LANDMARKS.find((k) => name.includes(k))) {
     case '운동회':
       return (
         <svg viewBox="0 0 260 270" {...S}>
