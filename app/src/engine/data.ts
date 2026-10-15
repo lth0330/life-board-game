@@ -1,4 +1,4 @@
-import type { JobDef, Personality, PointKind, Sector, StageId, StopEvent, TileKind } from './types'
+import type { JobDef, Personality, Sector, StageId } from './types'
 
 export const SECTORS: Sector[] = ['생명', 'IT', '화학', '의료', '엔터']
 
@@ -17,47 +17,6 @@ export const PERSONALITIES: Record<Personality, string> = {
 
 export const PLAYER_COLORS = ['#1B4DDB', '#E08A00', '#0E9F6E', '#B02E8C']
 export const AI_NAMES = ['민트', '보리', '자두', '호두', '살구', '앵두']
-
-interface StageDef {
-  id: StageId
-  name: string
-  ages: [number, number]
-  rolls: number | null
-  length: number
-  weights: [TileKind, number][]
-  stops: Record<number, StopEvent>
-  points: Record<number, PointKind>
-  maps: number[]
-}
-
-// 단계별 주사위 횟수·칸 수는 docs/01-structure.md 초안
-export const STAGE_DEFS: StageDef[] = [
-  {
-    id: 'child', name: '어린이', ages: [1, 7], rolls: 4, length: 20,
-    weights: [['grow', 35], ['happy', 30], ['money', 10], ['card', 15], ['risk', 10]],
-    stops: { 7: 'academy' }, points: {}, maps: [13],
-  },
-  {
-    id: 'student', name: '학생', ages: [8, 19], rolls: 8, length: 40,
-    weights: [['grow', 30], ['card', 25], ['happy', 15], ['money', 15], ['risk', 15]],
-    stops: { 9: 'club', 24: 'college' }, points: {}, maps: [17],
-  },
-  {
-    id: 'young', name: '청년', ages: [20, 39], rolls: 10, length: 50,
-    weights: [['money', 25], ['card', 20], ['date', 22], ['risk', 15], ['happy', 10], ['grow', 8]],
-    stops: { 1: 'job', 20: 'jobfair' }, points: { 7: 'shop', 13: 'marriage', 24: 'shop', 29: 'marriage' }, maps: [16],
-  },
-  {
-    id: 'middle', name: '중년', ages: [40, 59], rolls: 8, length: 40,
-    weights: [['money', 25], ['risk', 25], ['happy', 20], ['card', 20], ['grow', 10]],
-    stops: { 5: 'middleBranch', 19: 'careerChange' }, points: { 11: 'marriage', 15: 'shop' }, maps: [24],
-  },
-  {
-    id: 'old', name: '노년', ages: [60, 80], rolls: null, length: 22,
-    weights: [['card', 35], ['happy', 30], ['money', 15], ['risk', 20]],
-    stops: { 2: 'retire' }, points: {}, maps: [11],
-  },
-]
 
 // 돈 단위: 만 원. 단계마다 칸 효과 크기
 export const STAGE_SCALE: Record<StageId, number> = { child: 2, student: 5, young: 60, middle: 90, old: 70 }
@@ -104,7 +63,7 @@ export const INSURANCE = {
 } as const
 
 export const CHANCE_NAMES = { reroll: '다시 굴리기', block: '방해 막기', charm: '행운 부적', coupon: '할인 쿠폰', shortcut: '지름길' } as const
-export const SABOTAGE_NAMES = { rumor: '소문 퍼뜨리기', stockRumor: '주가 루머', love: '연애 방해' } as const
+export const SABOTAGE_NAMES = { rumor: '소문 퍼뜨리기', stockRumor: '주가 루머', love: '연애 방해', lawsuit: '소송 걸기' } as const
 
 export const LOTTERY_PRICE = 10
 
