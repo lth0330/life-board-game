@@ -385,7 +385,7 @@ function paySeverance(s: GameState, p: Player) {
 
 function startCompany(s: GameState, p: Player, biz: { name: string; stat: StatKey; sector: Sector | null }) {
   const cost = bizCost(p)
-  if (p.money < cost) { p.loans.push({ amount: cost - p.money, dueTurn: p.turnsPlayed + 20, kind: '창업' }); p.money = cost; log(s, p.id, '빚을 내서 창업 자금을 마련했다', 'info') }
+  if (p.money < cost) { p.loans.push({ amount: cost - p.money, dueTurn: p.turnsPlayed + 12, kind: '창업' }); p.money = cost; log(s, p.id, '빚을 내서 창업 자금을 마련했다', 'info') }
   p.money -= cost
   setJob(s, p, 'ceo') // 다니던 직장 퇴직금은 여기서 받음
   p.jobRank = 0 // 모두 소기업부터
@@ -886,7 +886,7 @@ function applyRoadStart(s: GameState, p: Player, road: string) {
       const loan = score >= 12 ? 300 : score >= 8 ? 800 : 1200
       const grade = score >= 12 ? '상위권! 장학금을 받았다' : score >= 8 ? '중간' : '하위권… 등록금 비싼 대학'
       log(s, p.id, `수능: 지력 ${p.stats.int} + 주사위 ${dice} → ${grade} (학자금 대출 ${won(loan)})`, score >= 12 ? 'good' : score >= 8 ? 'info' : 'bad')
-      p.loans.push({ amount: loan, dueTurn: p.turnsPlayed + 40, kind: '학자금' })
+      p.loans.push({ amount: loan, dueTurn: p.turnsPlayed + 99, kind: '학자금' }) // 기한은 졸업할 때 정함 (졸업 + 8턴)
       if (score >= 12) s.banner = { title: '수능 상위권!', text: `${p.name}: 장학금`, tone: 'good' }
       // 성인부터 시작한 판이면 지금 바로 대학교로
       if (stageOf(s).id === 'young') p.pos = campusIdx(s)
@@ -1025,7 +1025,8 @@ function land(s: GameState) {
     case 'stop':
       if (t.stop === 'job' && p.campusTurns > 0) {
         p.campusTurns = 0
-        log(s, p.id, '대학 졸업! 이제 직업을 골라요', 'good')
+        for (const l of p.loans) if (l.kind === '학자금') l.dueTurn = p.turnsPlayed + 8 // 학자금은 졸업 뒤 8턴 안에
+        log(s, p.id, '대학 졸업! 이제 직업을 골라요 (학자금은 8턴 안에 갚기)', 'good')
         s.banner = { title: '대학 졸업', text: p.name, tone: 'good' }
       }
       stopTile(s, p, t)
@@ -2023,9 +2024,9 @@ export function takeLoan(s: GameState, amount: number) {
   const p = cur(s)
   if (!canAct(s) || !isAdultStage(s) || p.creditBad > 0) return
   if (loanTotal(p) + amount > loanLimit(p)) return
-  p.loans.push({ amount, dueTurn: p.turnsPlayed + 15, kind: '일반' })
+  p.loans.push({ amount, dueTurn: p.turnsPlayed + 8, kind: '일반' })
   p.money += amount
-  log(s, p.id, `은행에서 ${won(amount)} 빌렸다 (15턴 안에 갚기)`, 'info')
+  log(s, p.id, `은행에서 ${won(amount)} 빌렸다 (8턴 안에 갚기)`, 'info')
 }
 
 export function repayLoans(s: GameState, amount?: number) {

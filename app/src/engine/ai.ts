@@ -84,8 +84,8 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
     case 'retire': return id === 'city' ? (per === 'gambler' || per === 'investor' ? 3 : 1) : 2
     case 'shop': {
       if (id === 'pass') return per === 'safe' || per === 'investor' ? 2 : 1
-      if (id.startsWith('house')) { const i = +id.slice(5); return p.money >= houseCost(s, p, i) ? 3 + i : 0 } // 살 수 있으면 삼 (집은 사는 게 조금 이득)
-      if (id.startsWith('car')) { const i = +id.slice(3); return p.money > carCost(p, i) * 2 ? 2.5 + i * 0.5 : 0 }
+      if (id.startsWith('house')) { const i = +id.slice(5); return p.money - houseCost(s, p, i) >= loanTotal(p) ? 3 + i : 0 } // 빚 갚을 돈은 남기고 살 수 있으면 삼
+      if (id.startsWith('car')) { const i = +id.slice(3); return p.money - loanTotal(p) > carCost(p, i) * 2 ? 2.5 + i * 0.5 : 0 }
       if (id === 'chance') return 0.5
       if (id === 'pet') return per === 'family' ? 2.4 : 0.8
       if (id.startsWith('dice_')) {
@@ -212,6 +212,7 @@ export function aiPreRoll(s: GameState) {
     if (need > 0) takeLoan(s, Math.round(need))
   }
   if (p.loans.length && p.money > loanTotal(p) + salaryOf(p) * 3) repayLoans(s)
+  else if (p.loans.some((l) => l.dueTurn - p.turnsPlayed <= 2) && p.money > 0) repayLoans(s) // 기한이 다가오면 있는 만큼 갚기
   // 친구 돈: 여유 있으면 갚고, 은행이 막히면 친구에게 부탁
   s.friendLoans.forEach((l, i) => { if (l.borrowerId === p.id && p.money > l.owe * 2) repayFriendLoan(s, i) })
   if (p.money < 0 && (p.creditBad > 0 || loanTotal(p) >= loanLimit(p) - 200)) {
