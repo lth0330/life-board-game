@@ -225,7 +225,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
       <header className="hud">
         <div className="hud-row">
           <div className="hud-who">
-            <span className="hud-face" style={{ borderColor: shown.color }}><Character outfit={shown.outfit} size={22} /></span>
+            <span className="hud-face" style={{ borderColor: shown.color }}><Character outfit={shown.outfit} size={22} age={ageOf(game, shown)} /></span>
             <div className="jua hud-stage">{st.name} · {ageOf(game, shown)}세</div>
           </div>
           <div className="hud-money">돈 <b>{won(shown.money)}</b> · 행복 <b>{shown.happy}</b></div>

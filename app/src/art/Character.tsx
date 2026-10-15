@@ -9,12 +9,18 @@ const darken = (hex: string, amt = 0.18) => {
   return `rgb(${f(n >> 16)}, ${f((n >> 8) & 255)}, ${f(n & 255)})`
 }
 
-// 나이에 따라: 어린이는 작게, 학생은 조금 작게, 중년은 흰머리 섞임, 노년은 흰머리 + 지팡이
-function aged(o: Outfit, age?: number): { o: Outfit; scale: number; cane: boolean } {
-  if (age === undefined) return { o, scale: 1, cane: false }
-  const scale = age < 4 ? 0.55 : age < 8 ? 0.68 : age < 14 ? 0.8 : age < 20 ? 0.9 : 1
+// 나이에 따라 모습이 바뀜: 아기(배냇저고리·기저귀) → 유치원생(노란 모자·가방) → 학생(교복·책가방) → 청년·중년(내 옷, 중년은 흰머리 섞임) → 노인(흰머리·지팡이)
+type Extra = 'baby' | 'kinder' | 'student' | null
+function aged(o: Outfit, age?: number): { o: Outfit; scale: number; cane: boolean; extra: Extra } {
+  if (age === undefined) return { o, scale: 1, cane: false, extra: null }
+  if (age < 4) return { o: { ...o, hair: 'buzz', hat: 'none', top: 'tee', topColor: '#CFE7F5', outer: 'none', bottom: 'shorts', bottomColor: '#FFFFFF', acc: 'none' }, scale: 0.55, cane: false, extra: 'baby' }
+  if (age < 8) return { o: { ...o, hat: 'cap', hatColor: '#F2C230', top: 'tee', outer: 'none', bottom: 'shorts', acc: 'none' }, scale: 0.68, cane: false, extra: 'kinder' }
+  if (age < 20) {
+    const skirt = o.bottom === 'skirt' || o.top === 'dress'
+    return { o: { ...o, hat: 'none', top: 'shirt', topColor: '#F4EBD6', outer: 'jacket', outerColor: '#1E2A44', bottom: skirt ? 'skirt' : 'pants', bottomColor: '#2C3A5C', acc: 'none' }, scale: age < 14 ? 0.8 : 0.9, cane: false, extra: 'student' }
+  }
   const hairColor = age >= 60 ? '#DCDCDC' : age >= 45 ? mix(o.hairColor, '#C8C8C8', 0.4) : o.hairColor
-  return { o: { ...o, hairColor }, scale, cane: age >= 65 }
+  return { o: { ...o, hairColor }, scale: 1, cane: age >= 65, extra: null }
 }
 const mix = (a: string, b: string, t: number) => {
   const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16)
@@ -23,7 +29,7 @@ const mix = (a: string, b: string, t: number) => {
 }
 
 export function Character({ outfit, view = 'front', size = 100, title, age }: Props) {
-  const { o, scale, cane } = aged(outfit, age)
+  const { o, scale, cane, extra } = aged(outfit, age)
   const back = view === 'back'
   const dress = o.top === 'dress'
   const longSleeve = o.top === 'hoodie' || o.top === 'shirt'
@@ -127,6 +133,13 @@ export function Character({ outfit, view = 'front', size = 100, title, age }: Pr
 
       {/* 모자 */}
       <Hat o={o} back={back} />
+      {/* 가방: 뒤에서는 가방 전체, 앞에서는 멜빵만 */}
+      {(extra === 'kinder' || extra === 'student') && (back
+        ? <g><rect x="31" y="74" width="38" height={extra === 'kinder' ? 34 : 44} rx="9" fill={extra === 'kinder' ? '#F2C230' : outfit.topColor} stroke={darken(extra === 'kinder' ? '#F2C230' : outfit.topColor, 0.3)} strokeWidth="2" /><rect x="38" y="90" width="24" height="10" rx="3" fill="rgba(255,255,255,0.35)" /></g>
+        : <path d="M36 68v40M64 68v40" stroke={extra === 'kinder' ? '#F2C230' : outfit.topColor} strokeWidth="4" />)}
+      {extra === 'student' && !back && <path d="M44 68l6 10 6-10z" fill="#C2452D" />}
+      {extra === 'baby' && !back && <g><circle cx="50" cy="56" r="5" fill="#F3A3C0" /><circle cx="50" cy="56" r="2" fill="#fff" /></g>}
+      {extra === 'baby' && back && <path d="M30 128q20 10 40 0v10q-20 8-40 0z" fill="#E8E8E8" />}
       {cane && <path d="M86 112v80M86 112q0-8 8-8" stroke="#7A5232" strokeWidth="5" fill="none" strokeLinecap="round" />}
       </g>
     </svg>
