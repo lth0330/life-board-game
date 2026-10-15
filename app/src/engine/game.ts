@@ -42,7 +42,7 @@ export function ageOf(s: GameState, p: Player): number {
   const [a, b] = st.ages
   if (st.rolls) {
     const used = st.rolls - p.rollsLeft
-    return a + Math.floor((used / st.rolls) * (b - a + 1))
+    return Math.min(b, a + Math.floor((used / st.rolls) * (b - a + 1))) // 마지막 주사위 뒤에도 단계 나이를 넘지 않게
   }
   return a + Math.floor((tileOf(s, p).d / maxDepth(st)) * (b - a))
 }
@@ -75,9 +75,10 @@ function meetsReq(p: Player, job: JobDef, relax = 0) {
   if (job.college && !p.college) return false
   return (Object.keys(job.req) as StatKey[]).every((k) => p.stats[k] + relax >= (job.req[k] ?? 0))
 }
-export function eligibleJobs(p: Player) {
+export function eligibleJobs(p: Player, stageIdx = 2) {
   const relax = p.spouse && p.spouse.fame >= 7 ? 1 : 0 // 명성 높은 배우자: 인맥으로 조건 1 완화
-  return JOBS.filter((j) => j.id !== 'ceo' && meetsReq(p, j, relax))
+  // 운동선수는 중년이 되면 은퇴하므로 중년부터는 새로 될 수 없음
+  return JOBS.filter((j) => j.id !== 'ceo' && !(j.id === 'athlete' && stageIdx >= 3) && meetsReq(p, j, relax))
 }
 
 // ───────── 게임 만들기 ─────────
@@ -1155,8 +1156,8 @@ function findSuitor(p: Player, key: string) {
 
 // ───────── 정지 칸 ─────────
 
-function jobOptions(p: Player, includeStay: boolean): ChoiceOption[] {
-  const opts = eligibleJobs(p).map((j) => ({
+function jobOptions(s: GameState, p: Player, includeStay: boolean): ChoiceOption[] {
+  const opts = eligibleJobs(p, s.stageIdx).map((j) => ({
     id: `job:${j.id}`, label: j.name, desc: `${j.boom ? '대박형' : '꾸준형'} · 월급 ${won(j.salary)} · ${j.note}`,
   }))
   opts.push({ id: includeStay ? 'stay' : 'jobless', label: includeStay ? '지금 그대로' : '백수로 지내기', desc: includeStay ? '' : '월급 없음, 성장 칸 효과 +1' })
@@ -1169,10 +1170,10 @@ function stopTile(s: GameState, p: Player, t: Tile) {
       s.pending = { type: 'club', playerId: p.id, title: '동아리', text: '어떤 동아리에 들어갈까요?', options: [{ id: 'int', label: '공부 동아리', desc: '지력 +2' }, { id: 'str', label: '운동부', desc: '체력 +2' }, { id: 'cha', label: '예체능', desc: '매력 +2' }] }
       break
     case 'job':
-      s.pending = { type: 'job', playerId: p.id, title: '직업 선택', text: `지력 ${p.stats.int} · 체력 ${p.stats.str} · 매력 ${p.stats.cha}${p.college ? ' · 대학 졸업' : ''}`, options: jobOptions(p, false) }
+      s.pending = { type: 'job', playerId: p.id, title: '직업 선택', text: `지력 ${p.stats.int} · 체력 ${p.stats.str} · 매력 ${p.stats.cha}${p.college ? ' · 대학 졸업' : ''}`, options: jobOptions(s, p, false) }
       break
     case 'jobfair':
-      s.pending = { type: 'job', playerId: p.id, title: '취업 박람회', text: '직업을 바꿀 수 있어요.', options: jobOptions(p, true) }
+      s.pending = { type: 'job', playerId: p.id, title: '취업 박람회', text: '직업을 바꿀 수 있어요.', options: jobOptions(s, p, true) }
       break
     case 'middleBranch': {
       const opts: ChoiceOption[] = []
