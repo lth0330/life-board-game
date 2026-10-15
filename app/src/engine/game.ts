@@ -4,6 +4,7 @@ import {
   PERSONALITIES, PLAYER_COLORS, PRESTIGE_JOBS, SABOTAGE_NAMES, SECTORS, SPOUSE_NAMES, STAGE_SCALE, STAT_NAMES,
   TAX_RATE, TRAITS,
 } from './data'
+import { DEFAULT_OUTFIT, randomOutfit, type Outfit } from './outfit'
 import { makeRng, type Rng } from './rng'
 import { speechLine, type SpeechKey } from './speech'
 import type {
@@ -95,6 +96,7 @@ function newPlayer(id: number, name: string, human: boolean, personality: Person
     stocks: { 생명: 0, IT: 0, 화학: 0, 의료: 0, 엔터: 0 },
     suitors: [], spouse: null, divorced: false, children: 0, adopted: 0, pet: null, retire: null,
     chance: null, sabotage: null, fortuneMod: 0, agency: null, borrowedFrom: [], forkChoice: null,
+    outfit: DEFAULT_OUTFIT,
   }
 }
 
@@ -102,6 +104,7 @@ export interface NewGameOptions {
   humanName: string
   aiCount: number
   humans?: number
+  outfits?: Outfit[] // 사람 플레이어 옷차림 (없으면 무작위)
   settings: Settings
   seed?: number
 }
@@ -114,7 +117,7 @@ export function createGame(o: NewGameOptions): GameState {
     stages: [],
     players: [],
     current: 0, turn: 0, round: 1,
-    phase: 'roll', pending: null, move: null, lastRoll: null, log: [],
+    phase: 'roll', pending: null, move: null, path: [], pathId: 0, pathPlayer: 0, dice: null, lastRoll: null, log: [],
     stockPrice: { 생명: 100, IT: 100, 화학: 100, 의료: 100, 엔터: 100 },
     nextNews: null, finishCount: 0, friendLoans: [], mini: null, meetCheck: false, speech: null, banner: null,
   }
@@ -130,6 +133,7 @@ export function createGame(o: NewGameOptions): GameState {
   }
   const st = stageOf(s)
   for (const p of s.players) {
+    p.outfit = (p.human && o.outfits?.[p.id]) || randomOutfit(rng, p.color)
     p.rollsLeft = st.rolls ?? 0
     if (o.settings.startAdult) {
       p.stats = { int: rng.int(2, 5), str: rng.int(2, 5), cha: rng.int(2, 5) }
@@ -410,6 +414,7 @@ export function roll(s: GameState, bonus = 0, useCar = false) {
   const st = stageOf(s)
   if (st.rolls && isEnd(tileOf(s, p))) {
     s.lastRoll = rng.int(1, 6)
+    s.dice = { value: s.lastRoll, id: (s.dice?.id ?? 0) + 1 }
     const k = rng.pick(STATS)
     p.stats[k] = clampStat(p.stats[k] + 1)
     p.money += scaleOf(s)
@@ -418,6 +423,7 @@ export function roll(s: GameState, bonus = 0, useCar = false) {
     return
   }
   const value = rng.int(1, 6)
+  s.dice = { value, id: (s.dice?.id ?? 0) + 1 }
   s.lastRoll = value + bonus
   log(s, p.id, `주사위 ${value}${bonus ? ` +${bonus}` : ''}`, 'info')
   const carOn = useCar && canUseCar(p)
@@ -488,6 +494,9 @@ function applyAfterRoll(s: GameState, p: Player, choice: string) {
 
 function startMove(s: GameState, steps: number) {
   s.move = { remaining: steps, from: cur(s).pos }
+  s.path = [cur(s).pos]
+  s.pathId++
+  s.pathPlayer = cur(s).id
   continueMove(s)
 }
 
@@ -507,6 +516,7 @@ function continueMove(s: GameState) {
       p.forkChoice = null
     }
     p.pos = to
+    s.path.push(to)
     s.move.remaining--
     const t = st.tiles[p.pos]
     if (t.kind === 'stop' || t.kind === 'goal') s.move.remaining = 0
@@ -1669,6 +1679,8 @@ function careerRoll(s: GameState, p: Player) {
 
 function nextStage(s: GameState) {
   s.stageIdx++
+  s.path = [] // 단계가 바뀌면 칸 번호가 달라지므로 걷는 연출 생략
+  s.pathId++
   const st = stageOf(s)
   for (const p of s.players) {
     p.pos = 0

@@ -1,118 +1,97 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
+import { Character } from './art/Character'
 import { aiStep } from './engine/ai'
+import { CARS } from './engine/data'
 import {
   ageOf, buyLottery, canAct, canUseCar, choose, createGame, cur, cureAddiction, finishMini, fortuneName, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, stageOf, startSabotage, takeLoan, toggleInsurance, tradeStock, useChance,
 } from './engine/game'
-import { CARS } from './engine/data'
-import type { Difficulty, GameState } from './engine/types'
+import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
+import type { GameState } from './engine/types'
+import { currentProfile, deleteGame, loadGame, logout, saveGame, updateOutfit, type Profile } from './storage'
 import { Board, FullMap } from './ui/Board'
+import { Dresser } from './ui/Dresser'
+import { Confetti, DiceThrow, StageCard } from './ui/Effects'
+import { Manual } from './ui/Manual'
 import { MiniGame } from './ui/MiniGames'
+import { MenuScreen, SetupScreen, TitleScreen, type Speed } from './ui/Screens'
 import { CardsSheet, FinanceSheet, GameOver, PeopleSheet, playerLine, won } from './ui/Sheets'
 
-type Speed = 'fast' | 'normal' | 'slow'
 const SPEED_MS: Record<Speed, number> = { fast: 450, normal: 1000, slow: 1700 }
-const SAVE_KEY = 'life-board-game:save:v2' // 저장 형식이 바뀌면 숫자를 올림
+const WALK_MS = 230
+const DICE_ROLL_MS = 750
+const DICE_SHOW_MS = 650
+const CELEBRATE = ['결혼!', '복권 당첨!', '아기 탄생', '수능 상위권!', '게임 끝!']
 
-function loadSave(): GameState | null {
-  try {
-    const raw = localStorage.getItem(SAVE_KEY)
-    return raw ? (JSON.parse(raw) as GameState) : null
-  } catch { return null }
-}
+type Screen = 'title' | 'menu' | 'setup' | 'play'
 
 export default function App() {
+  const [profile, setProfile] = useState<Profile | null>(() => currentProfile())
+  const [screen, setScreen] = useState<Screen>(() => (currentProfile() ? 'menu' : 'title'))
   const [game, setGame] = useState<GameState | null>(null)
   const [speed, setSpeed] = useState<Speed>('normal')
-  const [saved, setSaved] = useState<GameState | null>(() => loadSave())
+  const [dress, setDress] = useState(false)
+  const outfit = profile?.outfit ?? DEFAULT_OUTFIT
 
+  // 로그인했으면 매번 자동 저장
   useEffect(() => {
-    if (!game) return
-    try {
-      if (game.phase === 'gameover') localStorage.removeItem(SAVE_KEY)
-      else localStorage.setItem(SAVE_KEY, JSON.stringify(game))
-    } catch { /* 저장 못 해도 게임은 계속 */ }
-  }, [game])
+    if (!game || !profile) return
+    if (game.phase === 'gameover') deleteGame(profile.name)
+    else saveGame(profile.name, game)
+  }, [game, profile])
 
-  if (!game) {
+  const changeOutfit = (o: Outfit) => {
+    if (!profile) return
+    updateOutfit(profile.name, o)
+    setProfile({ ...profile, outfit: o })
+  }
+
+  if (screen === 'title') {
+    return <TitleScreen onProfile={(p) => { setProfile(p); setScreen('menu') }} onGuest={() => { setProfile(null); setScreen('menu') }} />
+  }
+  if (screen === 'menu') {
+    const slot = profile ? loadGame(profile.name) : null
     return (
-      <Setup
-        saved={saved}
-        onContinue={() => saved && setGame(saved)}
+      <>
+        <MenuScreen
+          profile={profile}
+          slot={slot}
+          onContinue={() => { if (slot) { setGame(slot.state); setScreen('play') } }}
+          onNew={() => { if (profile) deleteGame(profile.name); setScreen('setup') }}
+          onLogout={() => { logout(); setProfile(null); setScreen('title') }}
+          onDress={() => setDress(true)}
+        />
+        {dress && <Dresser value={outfit} onChange={changeOutfit} onDone={() => setDress(false)} />}
+      </>
+    )
+  }
+  if (screen === 'setup' || !game) {
+    return (
+      <SetupScreen
+        defaultName={profile?.name ?? '나'}
+        outfit={outfit}
+        onOutfit={changeOutfit}
+        onBack={() => setScreen('menu')}
         onStart={(o) => {
-          setSaved(null)
           setSpeed(o.speed)
-          setGame(createGame({ humanName: o.name, humans: o.humans, aiCount: o.ai, settings: { startAdult: o.adult, difficulty: o.difficulty } }))
+          setGame(createGame({
+            humanName: o.name, humans: o.humans, aiCount: o.ai, outfits: [o.outfit],
+            settings: { startAdult: o.adult, difficulty: o.difficulty },
+          }))
+          setScreen('play')
         }}
       />
     )
   }
-  return <Play game={game} setGame={setGame} speed={speed} onQuit={() => { setSaved(loadSave()); setGame(null) }} />
+  return <Play game={game} setGame={setGame} speed={speed} saving={!!profile} onQuit={() => { setGame(null); setScreen('menu') }} />
 }
 
-interface SetupResult { name: string; humans: number; ai: number; adult: boolean; difficulty: Difficulty; speed: Speed }
+type SheetKind = null | 'finance' | 'cards' | 'people' | 'map' | 'manual'
 
-function Choice<T extends string | number | boolean>({ value, options, onChange }: { value: T; options: [T, string][]; onChange: (v: T) => void }) {
-  return (
-    <div className="seg">
-      {options.map(([v, l]) => (
-        <button key={String(v)} className={v === value ? 'on' : ''} aria-pressed={v === value} onClick={() => onChange(v)}>{l}</button>
-      ))}
-    </div>
-  )
-}
-
-function Setup({ onStart, saved, onContinue }: { onStart: (o: SetupResult) => void; saved: GameState | null; onContinue: () => void }) {
-  const [name, setName] = useState('나')
-  const [humans, setHumans] = useState(1)
-  const [ai, setAi] = useState(3)
-  const [adult, setAdult] = useState(false)
-  const [difficulty, setDifficulty] = useState<Difficulty>('normal')
-  const [speed, setSpeed] = useState<Speed>('normal')
-  const maxAi = 4 - humans
-  return (
-    <div className="setup">
-      <div className="setup-card">
-        <h1 className="jua">인생게임</h1>
-        <p className="muted">주사위 하나로 1살부터 노년까지. 돈과 행복을 합친 점수로 승부해요.</p>
-        {saved && (
-          <button className="wide big secondary" onClick={onContinue}>
-            이어 하기 · {saved.stages[saved.stageIdx].name} 단계
-          </button>
-        )}
-        <label className="field">
-          <span>내 이름</span>
-          <input value={name} maxLength={8} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <div className="field"><span>이 폰으로 같이 할 사람 (나 포함)</span>
-          <Choice value={humans} options={[[1, '혼자'], [2, '2명'], [3, '3명'], [4, '4명']]} onChange={(v) => { setHumans(v); setAi(Math.min(ai, 4 - v)) }} />
-        </div>
-        <div className="field"><span>AI 수</span>
-          <Choice value={Math.min(ai, maxAi)} options={([0, 1, 2, 3] as number[]).filter((n) => n <= maxAi && n + humans >= 2).map((n) => [n, `${n}명`] as [number, string])} onChange={setAi} />
-        </div>
-        <div className="field"><span>시작 나이</span>
-          <Choice value={adult} options={[[false, '1살부터 (약 45분)'], [true, '성인부터 (약 30분)']]} onChange={setAdult} />
-        </div>
-        <div className="field"><span>AI 난이도</span>
-          <Choice value={difficulty} options={[['easy', '쉬움'], ['normal', '보통'], ['hard', '어려움']]} onChange={setDifficulty} />
-        </div>
-        <div className="field"><span>AI 차례 속도</span>
-          <Choice value={speed} options={[['fast', '빠르게'], ['normal', '보통'], ['slow', '천천히']]} onChange={setSpeed} />
-        </div>
-        <button className="wide big" disabled={humans + Math.min(ai, maxAi) < 2} onClick={() => onStart({ name, humans, ai: Math.min(ai, maxAi), adult, difficulty, speed })}>
-          게임 시작
-        </button>
-      </div>
-    </div>
-  )
-}
-
-type SheetKind = null | 'finance' | 'cards' | 'people' | 'map'
-
-function Play({ game, setGame, speed, onQuit }: { game: GameState; setGame: (g: GameState) => void; speed: Speed; onQuit: () => void }) {
+function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGame: (g: GameState) => void; speed: Speed; saving: boolean; onQuit: () => void }) {
   const [sheet, setSheet] = useState<SheetKind>(null)
-  const [rolling, setRolling] = useState<number | null>(null)
+  const [rolling, setRolling] = useState(false)
   const [menu, setMenu] = useState(false)
   const [carMode, setCarMode] = useState(false)
   const gameRef = useRef(game)
@@ -126,28 +105,54 @@ function Play({ game, setGame, speed, onQuit }: { game: GameState; setGame: (g: 
     setGame(next)
   }, [setGame])
 
+  // ── 주사위 결과 잠깐 보여주기 ──
+  const [diceShow, setDiceShow] = useState<number | null>(null)
+  const lastDiceId = useRef(game.dice?.id ?? 0)
+  useEffect(() => {
+    if (!game.dice || game.dice.id === lastDiceId.current) return
+    lastDiceId.current = game.dice.id
+    setDiceShow(game.dice.value)
+    const t = setTimeout(() => setDiceShow(null), DICE_SHOW_MS)
+    return () => clearTimeout(t)
+  }, [game.dice])
+
+  // ── 한 칸씩 걷기 ──
+  const [walk, setWalk] = useState({ id: game.pathId, idx: Math.max(0, game.path.length - 1) })
+  const walkIdx = walk.id === game.pathId ? walk.idx : 0
+  const walking = game.path.length > 1 && walkIdx < game.path.length - 1
+  useEffect(() => {
+    if (walk.id !== game.pathId) setWalk({ id: game.pathId, idx: 0 })
+  }, [game.pathId, walk.id])
+  useEffect(() => {
+    if (!walking || diceShow !== null) return
+    const t = setTimeout(() => setWalk((w) => ({ ...w, idx: w.idx + 1 })), WALK_MS)
+    return () => clearTimeout(t)
+  }, [walking, walkIdx, diceShow])
+  const posOf = (q: GameState['players'][number]) => (walking && q.id === game.pathPlayer ? game.path[walkIdx] : q.pos)
+
+  const busy = rolling || diceShow !== null || walking
   const p = cur(game)
-  const pending = game.pending
-  const viewerIsActor = p.human
-  const myTurn = p.human && canAct(game)
+  const shown = walking ? game.players[game.pathPlayer] : p
+  const pending = busy ? null : game.pending
+  const myTurn = p.human && canAct(game) && !busy
   const st = stageOf(game)
 
-  // AI 진행
+  // ── AI 진행 ──
   useEffect(() => {
-    if (game.phase === 'gameover' || rolling !== null) return
-    const aiPending = pending && !game.players[pending.playerId].human
-    const aiTurn = !pending && !p.human && game.phase === 'roll'
+    if (game.phase === 'gameover' || busy) return
+    const aiPending = game.pending && !game.players[game.pending.playerId].human
+    const aiTurn = !game.pending && !game.mini && !p.human && game.phase === 'roll'
     if (!aiPending && !aiTurn) return
     const t = setTimeout(() => {
       if (aiTurn) {
-        setRolling(1)
-        setTimeout(() => { setRolling(null); act(aiStep) }, Math.min(700, SPEED_MS[speed]))
+        setRolling(true)
+        setTimeout(() => { setRolling(false); act(aiStep) }, Math.min(DICE_ROLL_MS, SPEED_MS[speed]))
       } else act(aiStep)
-    }, SPEED_MS[speed] + (game.banner ? 900 : 0))
+    }, SPEED_MS[speed])
     return () => clearTimeout(t)
-  }, [game, pending, p.human, rolling, speed, act])
+  }, [game, busy, p.human, speed, act])
 
-  // AI 말풍선도 잠깐 보였다가 사라짐
+  // ── 말풍선·배너 ──
   const [speech, setSpeech] = useState(game.speech)
   useEffect(() => {
     if (!game.speech) return
@@ -155,53 +160,52 @@ function Play({ game, setGame, speed, onQuit }: { game: GameState; setGame: (g: 
     const t = setTimeout(() => setSpeech(null), 2600)
     return () => clearTimeout(t)
   }, [game.speech])
-
-  // 배너는 잠깐 보였다가 사라짐
   const [banner, setBanner] = useState(game.banner)
+  useEffect(() => { if (game.banner) setBanner(game.banner) }, [game.banner])
   useEffect(() => {
-    if (!game.banner) return
-    setBanner(game.banner)
-    const t = setTimeout(() => setBanner(null), 1800)
+    if (!banner || busy) return
+    const t = setTimeout(() => setBanner(null), banner.title.endsWith('단계') ? 2000 : 1800)
     return () => clearTimeout(t)
-  }, [game.banner])
+  }, [banner, busy])
 
-  // 차 능력은 차례마다 새로 고름
   useEffect(() => { setCarMode(false) }, [game.turn])
 
   const doRoll = () => {
     if (!myTurn) return
     const useCar = carMode
-    setRolling(1)
-    setTimeout(() => { setRolling(null); act((s) => roll(s, 0, useCar)) }, 650)
+    setRolling(true)
+    setTimeout(() => { setRolling(false); act((s) => roll(s, 0, useCar)) }, DICE_ROLL_MS)
   }
   const showCar = myTurn && canUseCar(p)
-
   const recent = game.log.slice(-3)
-  const order = game.players
+  const stageBanner = banner && !busy && banner.title.endsWith('단계')
 
   return (
     <div className="play">
-      <Board s={game} focus={p} showSteps={myTurn || (!p.human && game.phase === 'roll')} />
+      <Board s={game} focus={shown} posOf={posOf} showSteps={myTurn || (!p.human && game.phase === 'roll' && !busy)} />
 
       <header className="hud">
         <div className="hud-row">
-          <div className="jua hud-stage">{st.name} · {ageOf(game, p)}세</div>
-          <div className="hud-money">돈 <b>{won(p.money)}</b> · 행복 <b>{p.happy}</b></div>
-          <div className={`fortune f${p.fortune}`} title="오늘의 운세">{fortuneName(p.fortune)}</div>
+          <div className="hud-who">
+            <span className="hud-face" style={{ borderColor: shown.color }}><Character outfit={shown.outfit} size={22} /></span>
+            <div className="jua hud-stage">{st.name} · {ageOf(game, shown)}세</div>
+          </div>
+          <div className="hud-money">돈 <b>{won(shown.money)}</b> · 행복 <b>{shown.happy}</b></div>
+          <div className={`fortune f${shown.fortune}`} title="오늘의 운세">{fortuneName(shown.fortune)}</div>
         </div>
         <div className="hud-row">
           <div className="order">
-            {order.map((q) => <i key={q.id} className={q.id === p.id ? 'now' : ''} style={{ background: q.color }} title={q.name} />)}
+            {game.players.map((q) => <i key={q.id} className={q.id === shown.id ? 'now' : ''} style={{ background: q.color }} title={q.name} />)}
             <span className="muted">
-              {p.human ? `${p.name} 차례` : `${p.name}(AI) 차례 · 보는 중`}
-              {st.rolls ? ` · 남은 주사위 ${p.rollsLeft}/${st.rolls}` : ' · 골까지 경주'}
+              {shown.human ? `${shown.name} 차례` : `${shown.name}(AI) 차례 · 보는 중`}
+              {st.rolls ? ` · 남은 주사위 ${shown.rollsLeft}/${st.rolls}` : ' · 골까지 경주'}
             </span>
           </div>
           <button className="gear" aria-label="설정" onClick={() => setMenu(true)}>
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" /></svg>
           </button>
         </div>
-        <div className="hud-sub muted">{playerLine(game, p)}</div>
+        <div className="hud-sub muted">{playerLine(game, shown)}</div>
       </header>
 
       <div className="side-buttons">
@@ -209,7 +213,7 @@ function Play({ game, setGame, speed, onQuit }: { game: GameState; setGame: (g: 
         <button onClick={() => setSheet('people')}>사람들</button>
       </div>
 
-      <div className="ticker">
+      <div className="ticker" style={{ visibility: busy ? "hidden" : "visible" }}>
         {recent.map((l, i) => (
           <div key={game.log.length - 3 + i} className={`log-${l.tone}`}>
             {l.playerId !== null && <b style={{ color: game.players[l.playerId].color }}>{game.players[l.playerId].name} </b>}{l.text}
@@ -225,11 +229,13 @@ function Play({ game, setGame, speed, onQuit }: { game: GameState; setGame: (g: 
 
       <div className="controls">
         <button className="mid" onClick={() => setSheet('cards')}>카드{(p.chance || p.sabotage) ? <em>{(p.chance ? 1 : 0) + (p.sabotage ? 1 : 0)}</em> : null}</button>
-        <button className="dice-btn" disabled={!myTurn || rolling !== null} onClick={doRoll}>
-          {rolling !== null ? <Dice spinning /> : game.lastRoll && !myTurn ? <Dice value={game.lastRoll} /> : <span>주사위<br />던지기</span>}
+        <button className="dice-btn" disabled={!myTurn} onClick={doRoll}>
+          <span>주사위<br />던지기</span>
         </button>
         <button className="mid" onClick={() => setSheet('finance')}>재테크</button>
       </div>
+
+      {(rolling || diceShow !== null) && <DiceThrow value={rolling ? null : diceShow} />}
 
       {pending && (
         <div className="sheet-backdrop">
@@ -246,6 +252,10 @@ function Play({ game, setGame, speed, onQuit }: { game: GameState; setGame: (g: 
             </div>
           </div>
         </div>
+      )}
+
+      {!busy && game.mini && game.players[game.mini.playerId].human && (
+        <MiniGame key={`${game.turn}-${game.mini.game}`} mini={game.mini} onFinish={(v) => act((s) => finishMini(s, v))} />
       )}
 
       {sheet === 'finance' && (
@@ -268,10 +278,7 @@ function Play({ game, setGame, speed, onQuit }: { game: GameState; setGame: (g: 
       )}
       {sheet === 'people' && <PeopleSheet s={game} onClose={() => setSheet(null)} />}
       {sheet === 'map' && <FullMap s={game} onClose={() => setSheet(null)} />}
-
-      {game.mini && game.players[game.mini.playerId].human && (
-        <MiniGame key={`${game.turn}-${game.mini.game}`} mini={game.mini} onFinish={(v) => act((s) => finishMini(s, v))} />
-      )}
+      {sheet === 'manual' && <Manual onClose={() => setSheet(null)} />}
 
       {speech && (
         <div className="speech" style={{ borderColor: game.players[speech.playerId].color }} role="status">
@@ -279,38 +286,28 @@ function Play({ game, setGame, speed, onQuit }: { game: GameState; setGame: (g: 
         </div>
       )}
 
-      {banner && (
+      {stageBanner && <StageCard title={banner.title} text={banner.text} />}
+      {banner && !busy && !stageBanner && (
         <div className={`banner b-${banner.tone}`} role="status">
           <b className="jua">{banner.title}</b>
           <span>{banner.text}</span>
         </div>
       )}
+      {banner && !busy && CELEBRATE.includes(banner.title) && <Confetti key={banner.title + game.turn} />}
 
       {menu && (
         <div className="sheet-backdrop" onClick={() => setMenu(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <h2 className="jua">설정</h2>
-            <p className="muted">게임은 자동 저장돼요. 처음 화면에서 이어 할 수 있어요.</p>
+            <p className="muted">{saving ? '게임은 자동 저장돼요. 메뉴에서 이어 할 수 있어요.' : '손님 모드라 저장되지 않아요.'}</p>
             <button className="wide" onClick={() => setMenu(false)}>계속하기</button>
-            <button className="wide secondary" onClick={onQuit}>처음 화면으로</button>
+            <button className="wide secondary" onClick={() => { setMenu(false); setSheet('manual') }}>게임 설명서</button>
+            <button className="wide secondary" onClick={onQuit}>메뉴로 나가기</button>
           </div>
         </div>
       )}
 
-      {game.phase === 'gameover' && <GameOver s={game} onRestart={onQuit} />}
-      {!viewerIsActor && <div className="spectate-badge">관전 중 · 조작은 {p.name}만</div>}
+      {game.phase === 'gameover' && !busy && <GameOver s={game} onRestart={onQuit} />}
     </div>
-  )
-}
-
-const PIPS: Record<number, number[]> = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] }
-
-function Dice({ value = 1, spinning = false }: { value?: number; spinning?: boolean }) {
-  const v = Math.max(1, Math.min(6, value))
-  return (
-    <span className={`dice ${spinning ? 'spin' : ''}`} aria-label={spinning ? '주사위 굴러가는 중' : `주사위 ${value}`}>
-      {Array.from({ length: 9 }, (_, i) => <i key={i} className={PIPS[v].includes(i) ? 'pip' : ''} />)}
-      {value > 6 && <em>+{value - 6}</em>}
-    </span>
   )
 }

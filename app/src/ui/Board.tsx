@@ -1,4 +1,6 @@
 import type { CSSProperties, ReactElement } from 'react'
+import { Building, TileIcon, Tree } from '../art/Art'
+import { Character } from '../art/Character'
 import { distancesFrom, EVENT_ROAD_NAME } from '../engine/board'
 import { MINI_NAMES } from '../engine/game'
 import type { GameState, Player, Tile } from '../engine/types'
@@ -37,15 +39,21 @@ const TILT = 62
 const LANE = 250
 const stand: CSSProperties = { transformOrigin: '50% 100%', transform: `rotateX(-${TILT}deg)` }
 
-interface Props { s: GameState; focus: Player; showSteps: boolean }
+interface Props {
+  s: GameState
+  focus: Player
+  showSteps: boolean
+  posOf?: (p: Player) => number // 걷는 연출 중에는 실제 위치 대신 지금 보여줄 칸
+}
 
-export function Board({ s, focus, showSteps }: Props) {
+export function Board({ s, focus, showSteps, posOf = (p) => p.pos }: Props) {
   const st = s.stages[s.stageIdx]
-  const fd = st.tiles[focus.pos].d
+  const focusPos = posOf(focus)
+  const fd = st.tiles[focusPos].d
   const xAt = (t: Tile) => 540 + Math.round(Math.sin(t.d * 0.55) * 150) + t.lane * LANE - 60
   const yAt = (t: Tile) => 1600 - (t.d - fd) * 150
   const visible = (t: Tile) => t.d >= fd - 1.2 && t.d <= fd + 10
-  const steps = showSteps ? distancesFrom(st, focus.pos, 6) : new Map<number, number>()
+  const steps = showSteps ? distancesFrom(st, focusPos, 6) : new Map<number, number>()
   const items: ReactElement[] = []
   // 갈라진 길이 지나는 쪽에는 건물·나무를 더 바깥으로 밀어냄
   const sideBusy = (d: number, side: number) => st.tiles.some((x) => x.lane === side && Math.abs(x.d - d) < 2.5)
@@ -57,8 +65,9 @@ export function Board({ s, focus, showSteps }: Props) {
     const step = steps.get(i)
     const small = look.label.length > 3
     items.push(
-      <div key={`t${i}`} className={`tile${t.kind === 'mini' ? ' tile-mini' : ''}`} style={{ left: xAt(t), top: yAt(t), background: look.bg, color: look.fg, fontSize: small ? 22 : undefined }}>
-        {look.label}
+      <div key={`t${i}`} className={`tile${t.kind === 'mini' ? ' tile-mini' : ''}`} style={{ left: xAt(t), top: yAt(t), background: look.bg, color: look.fg }}>
+        <TileIcon kind={t.stop ? 'stop' : t.kind} size={50} />
+        <span className="tile-label" style={{ fontSize: small ? 17 : 21 }}>{look.label}</span>
         {step && <span className="tile-step">{step}</span>}
       </div>,
     )
@@ -81,11 +90,8 @@ export function Board({ s, focus, showSteps }: Props) {
       const left = decorX(t, t.d % 2 ? 1 : -1, 170, 420)
       const shop = t.point === 'shop'
       items.push(
-        <div key={`p${i}`} className="bld" style={{ ...stand, left, top: yAt(t) - 260, width: 260, height: 330 }}>
-          <div className="roof" style={{ width: 260, height: 100, background: shop ? '#2C5E8A' : '#E9A3BC' }} />
-          <div className="wall" style={{ width: 220, background: shop ? '#fff' : '#FFF5F8' }}>
-            <span className="sign" style={{ background: shop ? '#2C5E8A' : '#B0476F' }}>{shop ? '상점' : '결혼식장'}</span>
-          </div>
+        <div key={`p${i}`} className="bld" style={{ ...stand, left, top: yAt(t) - 260, width: 260, height: 320 }}>
+          <Building name={shop ? '상점' : '결혼식장'} />
         </div>,
       )
     } else if (t.road === 'main' && !t.fork && t.d % 4 === 2) {
@@ -93,17 +99,14 @@ export function Board({ s, focus, showSteps }: Props) {
       const left = decorX(t, (t.d / 4) % 2 ? 1 : -1, 190, 430)
       items.push(
         <div key={`d${i}`} className="bld" style={{ ...stand, left, top: yAt(t) - 200, width: 220, height: 270 }}>
-          <div className="roof" style={{ width: 220, height: 80, background: ROOFS[i % ROOFS.length] }} />
-          <div className="wall" style={{ width: 180, background: '#F2E2C4' }}>
-            <span className="sign" style={{ background: '#5A3A21' }}>{name}</span>
-          </div>
+          <Building name={name} color={ROOFS[i % ROOFS.length]} />
         </div>,
       )
     } else if (t.road === 'main' && Math.round(t.d) % 2 === 1) {
       const left = decorX(t, Math.round(t.d) % 3 ? -1 : 1, 120, 400)
       items.push(
         <div key={`r${i}`} className="tree" style={{ ...stand, left, top: yAt(t) - 60 }}>
-          <div className="leaf" /><div className="trunk" />
+          <Tree variant={i} />
         </div>,
       )
     }
@@ -121,7 +124,10 @@ export function Board({ s, focus, showSteps }: Props) {
 
   // 사람들 (같은 칸이면 옆으로 비켜 섬)
   const byTile = new Map<number, Player[]>()
-  for (const p of s.players) if (visible(st.tiles[p.pos])) byTile.set(p.pos, [...(byTile.get(p.pos) ?? []), p])
+  for (const p of s.players) {
+    const pos = posOf(p)
+    if (visible(st.tiles[pos])) byTile.set(pos, [...(byTile.get(pos) ?? []), p])
+  }
   for (const [i, ps] of byTile) {
     const t = st.tiles[i]
     ps.forEach((p, k) => {
@@ -129,10 +135,9 @@ export function Board({ s, focus, showSteps }: Props) {
       const me = p.id === focus.id
       items.push(
         <div key={`s${p.id}`} className="shadow" style={{ left: xAt(t) + 20 + dx, top: yAt(t) + 70 }} />,
-        <div key={`c${p.id}`} className="char" style={{ ...stand, left: xAt(t) + 25 + dx, top: yAt(t) - 50 }}>
-          <div className="head" style={{ borderColor: p.color }} />
-          <div className="body" style={{ background: p.color }} />
-          <div className="name-tag" style={{ background: me ? '#2A2118' : 'rgba(42,33,24,0.6)', top: -48 - k * 34 }}>{p.name}</div>
+        <div key={`c${p.id}`} className="char" style={{ ...stand, left: xAt(t) + 20 + dx, top: yAt(t) - 90 }}>
+          <Character outfit={p.outfit} view="back" size={80} />
+          <div className="name-tag" style={{ background: me ? p.color : 'rgba(42,33,24,0.6)', top: -40 - k * 34 }}>{p.name}</div>
         </div>,
       )
     })

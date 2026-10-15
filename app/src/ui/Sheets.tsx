@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { Character } from '../art/Character'
 import { CARS, CHANCE_NAMES, HOUSES, INSURANCE, JOBS, LOTTERY_PRICE, PERSONALITIES, SABOTAGE_NAMES, SECTORS } from '../engine/data'
 import {
   ageOf, canBorrowFrom, fortuneName, friendDebt, isAdultStage, jobOf, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
@@ -208,7 +209,7 @@ export function PeopleSheet({ s, onClose }: { s: GameState; onClose: () => void 
           return (
             <div key={p.id} className="person" style={{ borderColor: p.color }}>
               <div className="person-head">
-                <i style={{ background: p.color }} />
+                <span className="person-face" style={{ borderColor: p.color }}><Character outfit={p.outfit} size={24} /></span>
                 <b className="jua">{p.name}</b>
                 <span className="muted">{p.human ? '사람' : PERSONALITIES[p.personality]}</span>
                 <span className="fortune">{fortuneName(p.fortune)}</span>
@@ -247,6 +248,7 @@ export function GameOver({ s, onRestart }: { s: GameState; onRestart: () => void
             <div key={p.id} className="person" style={{ borderColor: p.color }}>
               <div className="person-head">
                 <b className="jua rank">{i + 1}위</b>
+                <span className="person-face" style={{ borderColor: p.color }}><Character outfit={p.outfit} size={24} /></span>
                 <b className="jua">{p.name}</b>
                 <span className="muted">{p.human ? '사람' : PERSONALITIES[p.personality]}</span>
                 <b className="jua total">{sc.total}점</b>

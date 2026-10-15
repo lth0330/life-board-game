@@ -1,3 +1,5 @@
+import type { Outfit } from './outfit'
+
 export type StageId = 'child' | 'student' | 'young' | 'middle' | 'old'
 export type StatKey = 'int' | 'str' | 'cha'
 export type TileKind = 'money' | 'grow' | 'happy' | 'risk' | 'card' | 'stop' | 'date' | 'mini' | 'rest' | 'goal'
@@ -144,6 +146,7 @@ export interface Player {
   agency: { vip: boolean; attr: 'looks' | 'wealth' | 'fame' | 'kindness' | null } | null
   borrowedFrom: number[] // 이미 돈을 빌린 상대 (상대마다 1번)
   forkChoice: number | null // 갈림길에서 고른 다음 칸
+  outfit: Outfit
 }
 
 export interface ChoiceOption {
@@ -186,6 +189,10 @@ export interface GameState {
   phase: 'roll' | 'decision' | 'mini' | 'gameover'
   pending: Pending | null
   move: { remaining: number; from: number } | null
+  path: number[] // 이번 이동에서 지나간 칸 (화면에서 한 칸씩 걷는 연출용)
+  pathId: number
+  pathPlayer: number
+  dice: { value: number; id: number } | null // 마지막으로 굴린 주사위 (연출용)
   lastRoll: number | null
   log: LogEntry[]
   stockPrice: Record<Sector, number>

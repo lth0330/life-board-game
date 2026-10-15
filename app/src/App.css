@@ -328,3 +328,116 @@ button.wide.secondary { background: #fff; color: var(--ink); border: 2px solid v
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2); animation: pop-left 0.2s ease-out;
 }
 @keyframes pop-left { from { transform: scale(0.8); opacity: 0; } }
+
+/* ───── 처음·메뉴·설정 화면 (기본 버전) ───── */
+.setup { position: relative; overflow: hidden; }
+.setup-scene { position: absolute; inset: 0; pointer-events: none; }
+.setup-scene .hill { position: absolute; border-radius: 50% 50% 0 0; }
+.setup-scene .hill.a { left: -20%; bottom: 0; width: 80%; height: 22%; background: #7fb8a0; }
+.setup-scene .hill.b { right: -25%; bottom: 0; width: 90%; height: 28%; background: #8cc67a; }
+.setup-scene .cloud { position: absolute; background: #fff; opacity: 0.85; border-radius: 40px; }
+.setup-scene .cloud.a { left: 8%; top: 8%; width: 120px; height: 34px; }
+.setup-scene .cloud.b { right: 10%; top: 16%; width: 90px; height: 28px; }
+.setup-card { position: relative; }
+.title-logo { display: flex; justify-content: center; }
+.title-cast { display: flex; justify-content: center; gap: 10px; margin-top: -6px; }
+button.wide.ghost { background: transparent; color: var(--ink); border: none; text-decoration: underline; min-height: 44px; }
+.btn-sub { display: block; font-family: 'Gowun Dodum', sans-serif; font-size: 13px; opacity: 0.85; }
+.menu-hello { display: flex; gap: 10px; align-items: center; background: var(--paper-2); border-radius: 14px; padding: 8px 12px; }
+.menu-hello p { margin: 2px 0 0; }
+.login-form { display: flex; flex-direction: column; gap: 12px; }
+.login-form h2 { margin: 0; }
+.setup-head { display: flex; justify-content: space-between; align-items: center; }
+.setup-head h1 { font-size: 32px; }
+.ghost-btn { min-height: 44px; padding: 0 14px; border-radius: 12px; border: 2px solid var(--ink); background: #fff; font-family: 'Jua', sans-serif; }
+.setup-me { display: flex; gap: 12px; align-items: flex-end; }
+.setup-me .grow { flex: 1; }
+.me-preview {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 10px; min-width: 76px;
+  border-radius: 14px; border: 2px dashed var(--ink); background: #fff; font-family: 'Jua', sans-serif; font-size: 13px;
+}
+
+/* ───── 캐릭터 꾸미기 ───── */
+.sheet.dresser { max-height: 92%; }
+.dresser-top { display: flex; gap: 12px; align-items: center; }
+.dresser-preview { display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--sky); border-radius: 16px; padding: 10px 14px; }
+.dresser-skin { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.mini-btn { min-height: 44px; border-radius: 10px; border: 2px solid var(--ink); background: #fff; padding: 0 12px; font-family: 'Jua', sans-serif; font-size: 14px; }
+.scroll-tabs { overflow-x: auto; }
+.scroll-tabs button { flex: 0 0 auto; padding: 0 14px; }
+.dresser-items { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.dresser-items button {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; min-height: 44px;
+  border-radius: 12px; border: 2px solid var(--paper-2); background: #fff; font-size: 12px;
+}
+.dresser-items button.on { border-color: var(--ink); background: var(--paper-2); }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.swatches button { width: 44px; height: 44px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px var(--paper-2); }
+.swatches button.on { box-shadow: 0 0 0 3px var(--ink); }
+
+/* ───── 설명서 ───── */
+.manual-tabs { flex-wrap: wrap; }
+.manual-tabs button { flex: 1 1 22%; font-size: 13px; }
+.manual-body { display: flex; flex-direction: column; gap: 8px; line-height: 1.55; min-height: 180px; }
+.manual-body p { margin: 0; }
+.manual-tiles { display: flex; flex-direction: column; gap: 6px; }
+.manual-tile { display: grid; grid-template-columns: 40px 44px 1fr; align-items: center; gap: 8px; font-size: 14px; }
+.manual-tile > span:first-child { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.mt-money { background: #2F8F5B; } .mt-grow { background: #2E6FD8; } .mt-happy { background: #F2C230; } .mt-risk { background: #C2452D; }
+.mt-card { background: #6F45BD; } .mt-stop { background: #2A2118; } .mt-date { background: #F3A3C0; } .mt-mini { background: #E8742C; } .mt-rest { background: #E9DFC8; }
+.row button.grow { min-height: 44px; border-radius: 12px; border: 2px solid var(--ink); background: #fff; font-family: 'Jua', sans-serif; }
+
+/* ───── 보드 그림 ───── */
+.tile { flex-direction: column; gap: 0; }
+.tile-label { font-family: 'Jua', sans-serif; line-height: 1; margin-top: -2px; }
+.char { width: 80px; height: 160px; display: block; }
+.char svg { display: block; }
+.char .name-tag { left: 50%; transform: translateX(-50%); }
+.hud-who { display: flex; align-items: center; gap: 6px; }
+.hud-face { width: 30px; height: 30px; border-radius: 50%; border: 3px solid; overflow: hidden; background: var(--sky); display: flex; justify-content: center; }
+.hud-face svg { margin-top: 2px; }
+
+/* ───── 주사위 던지기 연출 ───── */
+.dice-throw { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.dice-flight { position: absolute; left: 50%; top: 52%; width: 72px; height: 72px; margin: -36px 0 0 -36px; animation: dice-fly 0.75s cubic-bezier(.3,.7,.4,1) both; }
+.dice-flight.landed { animation: none; }
+.dice-shadow { position: absolute; left: 6px; right: 6px; bottom: -22px; height: 14px; border-radius: 50%; background: rgba(0,0,0,0.25); }
+.cube-wrap { width: 72px; height: 72px; perspective: 400px; }
+.cube { position: relative; width: 72px; height: 72px; transform-style: preserve-3d; transition: transform 0.25s ease-out; }
+.cube.tumbling { animation: tumble3d 0.45s linear infinite; }
+.cube-face {
+  position: absolute; inset: 0; background: #fbf8f1; border-radius: 12px; border: 2px solid #d6cbb4;
+  display: grid; grid-template-columns: repeat(3, 1fr); padding: 10px; gap: 2px; backface-visibility: hidden;
+}
+.cube-face i { display: flex; align-items: center; justify-content: center; }
+.cube-face i.pip::after { content: ''; width: 12px; height: 12px; border-radius: 50%; background: var(--ink); }
+.cube-face i.pip.red::after { background: var(--accent); width: 16px; height: 16px; }
+.dice-number {
+  position: absolute; left: 50%; top: 36%; transform: translateX(-50%); font-size: 64px; color: #fff;
+  text-shadow: 0 4px 0 var(--accent-dark), 0 0 18px rgba(0,0,0,0.3); animation: pop 0.25s ease-out;
+}
+@keyframes tumble3d { from { transform: rotateX(0) rotateY(0) rotateZ(0); } to { transform: rotateX(360deg) rotateY(720deg) rotateZ(180deg); } }
+@keyframes dice-fly {
+  0% { transform: translate(120px, 300px) scale(1.4); }
+  55% { transform: translate(-20px, -60px) scale(1.1); }
+  80% { transform: translate(6px, 8px) scale(1); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+/* ───── 축하·단계 전환 ───── */
+.confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 6; }
+.confetti i { position: absolute; top: -20px; height: 12px; border-radius: 2px; animation-name: confetti-fall; animation-timing-function: ease-in; animation-fill-mode: forwards; }
+@keyframes confetti-fall { to { transform: translateY(110vh) rotate(540deg); opacity: 0.9; } }
+.stage-card { position: absolute; inset: 0; background: rgba(42,33,24,0.55); display: flex; align-items: center; justify-content: center; z-index: 7; animation: fade 0.3s ease-out; }
+.stage-card-inner {
+  background: var(--paper); border: 5px solid var(--ink); border-radius: 26px; padding: 26px 34px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; animation: pop 0.35s ease-out;
+}
+.stage-card-inner b { font-size: 44px; color: var(--accent); }
+@keyframes fade { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .cube.tumbling, .dice-flight, .confetti i, .stage-card, .stage-card-inner, .banner { animation: none !important; }
+}
+.person-face { width: 32px; height: 32px; border-radius: 50%; border: 3px solid; overflow: hidden; background: var(--sky); display: flex; justify-content: center; flex: none; }
+.person-face svg { margin-top: 2px; }
