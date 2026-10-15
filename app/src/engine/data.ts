@@ -31,8 +31,8 @@ export const JOBS: JobDef[] = [
   { id: 'chef', name: '요리사', boom: false, req: { str: 2, cha: 2 }, college: false, salary: 160, ranks: ['보조', '셰프', '오너 셰프'], key: 'cha', note: '창업 성공률 크게↑' },
   { id: 'scientist', name: '과학자', boom: false, req: { int: 5 }, college: true, salary: 240, ranks: ['연구원', '책임연구원', '연구소장'], key: 'int', sector: '화학', note: '연구 성과 → 분야 주가↑' },
   { id: 'lawyer', name: '변호사', boom: false, req: { int: 5, cha: 3 }, college: true, salary: 300, ranks: ['변호사', '파트너', '대표 변호사'], key: 'int', note: '높은 등급 배우자↑' },
-  { id: 'doctor', name: '의사', boom: false, req: { int: 6, str: 3 }, college: true, salary: 360, ranks: ['레지던트', '전문의', '병원장'], key: 'int', sector: '의료', note: '병원비 위기↓, 높은 등급 배우자↑' },
-  { id: 'athlete', name: '운동선수', boom: true, req: { str: 6 }, college: false, salary: 260, ranks: ['2군', '주전', '국가대표'], key: 'str', note: '중년에 은퇴' },
+  { id: 'doctor', name: '의사', boom: false, req: { int: 7, str: 3 }, college: true, salary: 360, ranks: ['레지던트', '전문의', '병원장'], key: 'int', sector: '의료', note: '병원비 위기↓, 높은 등급 배우자↑' },
+  { id: 'athlete', name: '운동선수', boom: true, req: { str: 5 }, college: false, salary: 260, ranks: ['2군', '주전', '국가대표'], key: 'str', note: '중년에 은퇴' },
   { id: 'idol', name: '아이돌·배우', boom: true, req: { cha: 6 }, college: false, salary: 280, ranks: ['연습생', '신인', '톱스타'], key: 'cha', sector: '엔터', note: '대박 아니면 쪽박' },
   { id: 'youtuber', name: '유튜버', boom: true, req: { cha: 3 }, college: false, salary: 180, ranks: ['구독자 1만', '10만', '100만'], key: 'cha', sector: '엔터', note: '떡상·떡락' },
   { id: 'ceo', name: '사업가', boom: true, req: {}, college: false, salary: 300, ranks: ['소기업', '중소기업', '중견기업'], key: 'int', note: '중년 창업으로만' },
@@ -117,7 +117,7 @@ export const BIZ = {
   oldMult: 0.7, // 노년에 계속 경영하면 수익 배율
 }
 // 직업별 창업 업종 (자기 직업에 맞춰서). 백수는 능력치로 고름
-export const BUSINESSES: Record<string, { name: string; stat: 'int' | 'str' | 'cha'; sector: Sector | null }> = {
+export const BUSINESSES: Record<string, { name: string; stat: 'int' | 'str' | 'cha'; sector: Sector | null; maxRank?: number }> = {
   office: { name: '유통 회사', stat: 'int', sector: null },
   civil: { name: '유통 회사', stat: 'int', sector: null },
   teacher: { name: '학원', stat: 'cha', sector: null },
@@ -130,17 +130,19 @@ export const BUSINESSES: Record<string, { name: string; stat: 'int' | 'str' | 'c
   doctor: { name: '개인 병원', stat: 'int', sector: '의료' },
   idol: { name: '엔터 기획사', stat: 'cha', sector: '엔터' },
   youtuber: { name: '엔터 기획사', stat: 'cha', sector: '엔터' },
-  coach: { name: '스포츠 센터', stat: 'str', sector: null },
-  athlete: { name: '스포츠 센터', stat: 'str', sector: null },
+  coach: { name: '스포츠 센터', stat: 'str', sector: null, maxRank: 1 }, // 체인점(중소기업)까지
+  athlete: { name: '스포츠 센터', stat: 'str', sector: null, maxRank: 1 }, // 체인점(중소기업)까지
 }
-export const JOBLESS_BUSINESSES = [
-  { name: 'IT 스타트업', stat: 'int', sector: 'IT' },
-  { name: '헬스장', stat: 'str', sector: null },
-  { name: '카페', stat: 'cha', sector: null },
-] as const
+// 백수 창업: 카페 하나. 이것저것 다 해야 해서 세 능력치 평균으로 벎. 단계 이름과 수입·판 값이 일반 회사보다 조금 낮음
+export const CAFE = {
+  name: '카페', stat: 'int' as const, sector: null, avg: true,
+  ranks: ['동네 카페', '유명 카페', '인스타 유명 카페'],
+  base: [300, 600, 1100], // 일반 회사 300 / 700 / 1,500
+  sale: [1000, 3000, 6000], // 일반 회사 1,000 / 4,000 / 1억
+}
 // 퇴직금 = 그만둘 때 월급 × 그 직업에서 일한 턴 × 0.3. 꾸준형만 (아이돌·유튜버·운동선수·사업가 없음)
 export const SEVERANCE_RATE = 0.3
-export const PENSION = 120 // 공무원·교사·경찰·소방관: 노년 매 턴
+export const PENSION = 180 // 공무원·교사·경찰·소방관: 노년 매 턴
 // 운동선수 메달: 국가대표일 때 매 턴 체력 × 2% 확률, 최대 3개. 그때부터 매 턴 메달 연금
 export const MEDALS = [{ name: '금', pension: 40 }, { name: '은', pension: 25 }, { name: '동', pension: 15 }]
 export const CAR_CRASH_LOSS = 0.15 // 사고 날 때마다 차 가치 -15%

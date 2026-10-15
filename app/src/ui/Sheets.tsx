@@ -215,7 +215,7 @@ export function CardsSheet({ p, canUse, onUseChance, onSabotage, onClose }: {
 
 export function playerLine(s: GameState, p: Player) {
   const job = jobOf(p)
-  const jobText = job?.id === 'ceo' && p.biz ? `${p.biz.name} 사장 · ${job.ranks[p.jobRank]}` : job ? `${job.name}${job.boom ? ` · ${job.ranks[p.jobRank]}` : ` ${job.ranks[p.jobRank]}`}` : isAdultStage(s) ? (p.biz ? `${p.biz.name} 팔고 은퇴` : '백수') : '학생'
+  const jobText = job?.id === 'ceo' && p.biz ? `${p.biz.name} 사장 · ${p.biz.ranks?.[p.jobRank] ?? job.ranks[p.jobRank]}` : job ? `${job.name}${job.boom ? ` · ${job.ranks[p.jobRank]}` : ` ${job.ranks[p.jobRank]}`}` : isAdultStage(s) ? (p.biz ? `${p.biz.name} 팔고 은퇴` : '백수') : '학생'
   return jobText
 }
 

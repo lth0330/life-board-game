@@ -1,6 +1,6 @@
 import { buildStages, isEnd, maxDepth, walkAhead } from './board'
 import {
-  AI_NAMES, BIZ, BUSINESSES, CARS, CHANCE_NAMES, DICE_ITEMS, FORTUNES, FORTUNE_WEIGHTS, HOUSES, CAR_CRASH_LOSS, CAR_RESALE, HOUSE_RULES, INSURANCE, JOBLESS_BUSINESSES, JOBS, KIDS, LOTTERY_PRICE, MAX_DICE_ITEMS, MEDALS, PENSION, SEVERANCE_RATE,
+  AI_NAMES, BIZ, BUSINESSES, CARS, CHANCE_NAMES, DICE_ITEMS, FORTUNES, FORTUNE_WEIGHTS, HOUSES, CAR_CRASH_LOSS, CAR_RESALE, HOUSE_RULES, INSURANCE, CAFE, JOBS, KIDS, LOTTERY_PRICE, MAX_DICE_ITEMS, MEDALS, PENSION, SEVERANCE_RATE,
   PERSONALITIES, PLAYER_COLORS, PRESTIGE_JOBS, SABOTAGE_NAMES, SECTORS, SPOUSE_NAMES, STAGE_SCALE, STAT_NAMES,
   TAX_RATE, TRAITS,
 } from './data'
@@ -9,7 +9,7 @@ import { makeRng, type Rng } from './rng'
 import { speechLine, type SpeechKey } from './speech'
 import type {
   ChanceCard, ChoiceOption, DiceItem, DuelId, GameState, InsuranceKind, JobDef, MiniId, Personality, Player,
-  Kid, SabotageCard, Sector, Settings, Stage, StatKey, Suitor, Tile,
+  Biz, Kid, SabotageCard, Sector, Settings, Stage, StatKey, Suitor, Tile,
 } from './types'
 
 // ───────── 기본 도우미 ─────────
@@ -51,7 +51,7 @@ export function ageOf(s: GameState, p: Player): number {
 export function salaryOf(p: Player): number {
   const job = jobOf(p)
   if (!job) return 0
-  if (job.id === 'ceo') return Math.round(BIZ.base[p.jobRank] * bizStatMult(p)) // 사업가: 운세 '길'일 때 수익 (실제는 매 턴 운세로 바뀜)
+  if (job.id === 'ceo') return Math.round(bizBase(p) * bizStatMult(p)) // 사업가: 운세 '길'일 때 수익 (실제는 매 턴 운세로 바뀜)
   const mult = job.boom ? [0.4, 1, 2.6][p.jobRank] : [1, 1.4, 1.9][p.jobRank]
   return Math.round(job.salary * mult)
 }
@@ -284,9 +284,9 @@ function beginTurn(s: GameState) {
     }
   } else if (sid === 'old' && p.jobId === 'ceo' && p.bizKeep === null) {
     s.pending = {
-      type: 'bizRetire', playerId: p.id, title: '사업가의 노년', text: `${p.biz?.name} · ${bizRank(p.jobRank)}`,
+      type: 'bizRetire', playerId: p.id, title: '사업가의 노년', text: `${p.biz?.name} · ${bizRankOf(p)}`,
       options: [
-        { id: 'sell', label: '회사 팔고 은퇴', desc: `+${won(BIZ.sale[p.jobRank])}` },
+        { id: 'sell', label: '회사 팔고 은퇴', desc: `+${won(bizSale(p))}` },
         { id: 'keep', label: '계속 경영', desc: `수익 ${BIZ.oldMult}배, 매 턴 행복 -1, 골인할 때 팖` },
       ],
     }
@@ -391,30 +391,34 @@ const hasMortgage = (p: Player) => p.loans.some((l) => l.kind === '주담대')
 
 // ───────── 창업·퇴직금·메달 ─────────
 
-const bizStatMult = (p: Player) => 0.5 + (p.biz ? p.stats[p.biz.stat] : p.stats.int) / 10
+// 사업 능력치: 업종 능력치 하나, 동네 가게는 세 능력치 평균
+const bizStat = (p: Player) => (p.biz?.avg ? Math.round((p.stats.int + p.stats.str + p.stats.cha) / 3) : p.stats[p.biz?.stat ?? 'int'])
+const bizStatMult = (p: Player) => 0.5 + bizStat(p) / 10
 export const medalPension = (p: Player) => p.medals.reduce((a, m) => a + MEDALS[m].pension, 0)
 export const bizCost = (p: Player) => (p.jobId === 'chef' ? BIZ.chefCost : BIZ.cost)
-const bizRank = (r: number) => JOBS.find((j) => j.id === 'ceo')!.ranks[r]
+const bizRankOf = (p: Player, r = p.jobRank) => p.biz?.ranks?.[r] ?? JOBS.find((j) => j.id === 'ceo')!.ranks[r]
+export const bizBase = (p: Player) => (p.biz?.base ?? BIZ.base)[p.jobRank]
+const bizSale = (p: Player) => (p.biz?.sale ?? BIZ.sale)[p.jobRank]
 
 // 매 턴 사업 수익 = 회사 크기 기본 × 능력치 배율 × 운세 배율. 그다음 회사가 크거나 작아질 수 있음
 function bizTick(s: GameState, p: Player, mult: number) {
   const rng = rngOf(s)
   const biz = p.biz!
-  const raw = BIZ.base[p.jobRank] * bizStatMult(p) * BIZ.fortune[p.fortune] * mult
+  const raw = bizBase(p) * bizStatMult(p) * BIZ.fortune[p.fortune] * mult
   const income = Math.round(raw > 0 ? raw * (1 - TAX_RATE(raw)) : raw)
   p.money += income
   if (income < 0) log(s, p.id, `[운세 ${fortuneName(p.fortune)}] ${biz.name} 적자 ${won(income)}`, 'bad')
   if (mult < 1) p.happy -= 1 // 노년까지 일하느라 지침
-  const stat = p.stats[biz.stat]
-  if (p.fortune >= 2 && p.jobRank < 2 && rng.chance(stat * BIZ.growPerStat)) {
+  const stat = bizStat(p)
+  if (p.fortune >= 2 && p.jobRank < (biz.maxRank ?? 2) && rng.chance(stat * BIZ.growPerStat)) {
     p.jobRank++
-    log(s, p.id, `${biz.name}가 커졌다! ${bizRank(p.jobRank)} (${STAT_NAMES[biz.stat]} ${stat} 덕분)`, 'good')
+    log(s, p.id, `${biz.name}가 커졌다! ${bizRankOf(p)} (${biz.avg ? '능력치 평균' : STAT_NAMES[biz.stat]} ${stat} 덕분)`, 'good')
     s.banner = { title: '회사 성장!', text: `${p.name}: ${biz.name}`, tone: 'good' }
     say(s, p, 'promoted')
     if (biz.sector) { s.stockPrice[biz.sector] = Math.round(s.stockPrice[biz.sector] * 1.1); log(s, null, `${p.name}의 회사가 커졌다! ${biz.sector}주 +10%`, 'good') }
   } else if (p.fortune <= 1 && p.jobRank > 0 && rng.chance(Math.max(0.05, BIZ.fallBase - stat * BIZ.fallPerStat))) {
     p.jobRank--
-    log(s, p.id, `${biz.name}가 휘청… ${bizRank(p.jobRank)}로 줄었다`, 'bad')
+    log(s, p.id, `${biz.name}가 휘청… ${bizRankOf(p)}로 줄었다`, 'bad')
     if (biz.sector) { s.stockPrice[biz.sector] = Math.max(10, Math.round(s.stockPrice[biz.sector] * 0.85)); log(s, null, `${p.name}의 회사가 휘청! ${biz.sector}주 -15%`, 'bad') }
   }
 }
@@ -429,7 +433,7 @@ function paySeverance(s: GameState, p: Player) {
   p.jobTenure = 0
 }
 
-function startCompany(s: GameState, p: Player, biz: { name: string; stat: StatKey; sector: Sector | null }) {
+function startCompany(s: GameState, p: Player, biz: Biz) {
   const cost = bizCost(p)
   if (p.money < cost) { p.loans.push({ amount: cost - p.money, dueTurn: p.turnsPlayed + 12, kind: '창업' }); p.money = cost; log(s, p.id, '빚을 내서 창업 자금을 마련했다', 'info') }
   p.money -= cost
@@ -438,14 +442,14 @@ function startCompany(s: GameState, p: Player, biz: { name: string; stat: StatKe
   p.biz = { ...biz }
   p.sector = biz.sector
   p.bizKeep = null
-  log(s, p.id, `${biz.name} 창업! (${STAT_NAMES[biz.stat]}이 높을수록 잘 벌고 잘 큼)`, 'good')
+  log(s, p.id, `${biz.name} 창업! (${biz.avg ? '지력·체력·매력 평균' : STAT_NAMES[biz.stat]}이 높을수록 잘 벌고 잘 큼)`, 'good')
   say(s, p, 'startup')
 }
 
 function sellCompany(s: GameState, p: Player) {
-  const amt = BIZ.sale[p.jobRank]
+  const amt = bizSale(p)
   p.money += amt
-  log(s, p.id, `${p.biz?.name ?? '회사'}(${bizRank(p.jobRank)})를 팔고 은퇴 +${won(amt)}`, 'good')
+  log(s, p.id, `${p.biz?.name ?? '회사'}(${bizRankOf(p)})를 팔고 은퇴 +${won(amt)}`, 'good')
   s.banner = { title: '회사 매각', text: `${p.name}: +${won(amt)}`, tone: 'good' }
   p.bizKeep = false
   p.jobId = null
@@ -986,11 +990,8 @@ function applyRoadStart(s: GameState, p: Player, road: string) {
     }
     case 'work': p.collegeDecided = true; p.money += 400; log(s, p.id, '바로 취업 준비. 모아 둔 돈 +400만', 'good'); if (stageOf(s).id === 'young') goToJob(s, p); break
     case 'startup': {
-      // 백수만 이 길로 옴: 능력치에 맞춰 업종을 고름
-      s.pending = {
-        type: 'bizPick', playerId: p.id, title: '어떤 가게를 열까요?', text: `지력 ${p.stats.int} · 체력 ${p.stats.str} · 매력 ${p.stats.cha} — 고른 능력치가 높을수록 잘 벌어요`,
-        options: JOBLESS_BUSINESSES.map((b, i) => ({ id: String(i), label: b.name, desc: `${STAT_NAMES[b.stat]} ${p.stats[b.stat]} · 자금 ${won(bizCost(p))}` })),
-      }
+      // 백수만 이 길로 옴: 카페 창업
+      startCompany(s, p, { ...CAFE, ranks: [...CAFE.ranks], base: [...CAFE.base], sale: [...CAFE.sale] })
       break
     }
     case 'city': p.retire = 'city'; break
@@ -1334,7 +1335,7 @@ function startMini(s: GameState, p: Player, game: MiniId) {
     }
     return
   }
-  const stake = casino ? ({ gambler: 300, investor: 200, elite: 200, family: 100, safe: 100 } as const)[p.personality] : undefined
+  const stake = casino ? (p.personality === 'gambler' ? [100, 100, 200, 300, 300][p.fortune] : ({ investor: 200, elite: 200, family: 100, safe: 100 } as const)[p.personality]) : undefined
   if (stake) {
     // 카지노: 할 때마다 도박중독 확률과 연결
     const rng = rngOf(s)
@@ -1912,7 +1913,6 @@ export function choose(s: GameState, optionId: string) {
       else if (optionId === 'biz' && p.jobId) startCompany(s, p, BUSINESSES[p.jobId])
       else if (optionId !== 'stay') setJob(s, p, optionId.slice(4))
       break
-    case 'bizPick': startCompany(s, p, JOBLESS_BUSINESSES[+optionId]); break
     case 'bizRetire':
       if (optionId === 'sell') sellCompany(s, p)
       else { p.bizKeep = true; log(s, p.id, `노년에도 ${p.biz?.name}를 계속 경영한다`, 'info') }

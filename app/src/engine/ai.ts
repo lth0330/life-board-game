@@ -1,4 +1,4 @@
-import { BUSINESSES, DICE_ITEMS, JOBLESS_BUSINESSES, JOBS, SECTORS } from './data'
+import { BUSINESSES, DICE_ITEMS, JOBS, SECTORS } from './data'
 import {
   aiDiceItem, aiWantsCar, passChance, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, loanLimit, loanTotal, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, rngOf, salaryOf, scoreOf, stageOf, startSabotage, takeLoan, toggleInsurance,
@@ -19,6 +19,10 @@ const jobValue = (id: string, p: Player): number => {
     case 'elite': if (j.college) v *= 1.3; break
     case 'investor': break
   }
+  // 월급만 보지 않고 잘 맞는 직업: 핵심 능력치가 조건보다 높을수록, 대학 전공에 맞을수록
+  v *= 1 + 0.08 * Math.max(0, p.stats[j.key] - (j.req[j.key] ?? 0))
+  if (p.major === 'str' && (j.id === 'athlete' || j.key === 'str')) v *= 1.6
+  if (p.major === 'cha' && (j.id === 'idol' || j.id === 'youtuber' || j.id === 'teacher')) v *= 1.5
   return v
 }
 
@@ -83,7 +87,6 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
       return jobValue(id.slice(4), p)
     }
     case 'middleBranch': return id === 'adopt' ? (per === 'family' ? 5 : 2) : id === 'pet' ? (per === 'family' ? 4 : 2.5) : 1
-    case 'bizPick': return p.stats[JOBLESS_BUSINESSES[+id].stat] + rng.next()
     case 'bizRetire': return id === 'sell' ? 2 : p.jobRank >= 1 && (per === 'gambler' || per === 'investor') ? 2.5 : 1
     case 'athleteNext': return id === 'coach' ? 2 + p.stats.str / 10 : id === 'biz' ? (per === 'gambler' || per === 'investor' ? 3 : 1.5) : 0.5
     case 'retire': return id === 'city' ? (per === 'gambler' || per === 'investor' ? 3 : 1) : 2
@@ -92,7 +95,7 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
       if (id.startsWith('mortgage')) {
         const i = +id.slice(8)
         const m = mortgagePlan(s, p, i)
-        if (per === 'safe' || m.installment > salaryOf(p) * 0.4 || p.money - m.down < bankDebt(p)) return 0
+        if (m.installment > salaryOf(p) * (per === 'safe' ? 0.25 : 0.4) || p.money - m.down < bankDebt(p)) return 0
         return 2.6 + i * 0.5 + (per === 'investor' || per === 'gambler' ? 0.6 : 0)
       }
       if (id.startsWith('house')) { const i = +id.slice(5); return p.money - houseCost(s, p, i) >= loanTotal(p) ? 3 + i : 0 } // 빚 갚을 돈은 남기고 살 수 있으면 삼

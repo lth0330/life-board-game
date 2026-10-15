@@ -67,7 +67,7 @@ export const STAGE_DEFS: StageDef[] = [
     life: {
       id: 'startup', at: 5, rejoin: 11, title: '인생 2막', text: '앞으로 어떻게 살까요? (창업 길은 백수만. 직장인은 중년 중반 취업 박람회에서 창업)',
       roads: [
-        { road: 'startup', label: '창업 길', desc: '사업가가 돼요. 큰돈과 위기가 섞인 길' },
+        { road: 'startup', label: '카페 창업 길', desc: '동네 카페 → 유명 카페 → 인스타 유명 카페. 큰돈과 위기가 섞인 길' },
         { road: 'company', label: '하던 일 계속', desc: '지금 하는 일을 이어 가요. 안정적인 길' },
       ],
     },

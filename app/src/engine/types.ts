@@ -118,6 +118,9 @@ export interface MiniState {
   duel?: { ids: number[]; results: Record<number, number> }
 }
 
+// 창업한 회사. 회사 크기는 Player.jobRank. avg: 세 능력치 평균으로 / ranks·base·sale: 업종만의 단계 이름·수입·판 값
+export interface Biz { name: string; stat: StatKey; sector: Sector | null; maxRank?: number; avg?: boolean; ranks?: string[]; base?: number[]; sale?: number[] }
+
 export interface Player {
   id: number
   name: string
@@ -146,7 +149,7 @@ export interface Player {
   record: { shopBuys: number; spent: number; lotteryWon: number; deeds: number; duelWins: number } // 결산 상 계산용
   celebrated: number[] // 이미 치른 육순(60)·칠순(70)
   jobTenure: number // 지금 직업에서 일한 턴 (퇴직금 계산)
-  biz: { name: string; stat: StatKey; sector: Sector | null } | null // 창업한 회사 (회사 크기는 jobRank)
+  biz: Biz | null // 창업한 회사 (회사 크기는 jobRank)
   bizKeep: boolean | null // 노년에 회사를 계속 경영하는지 (null = 아직 안 정함)
   medals: number[] // 운동선수 메달 (0 금, 1 은, 2 동). 메달마다 매 턴 연금
   exAthlete: number | null // 중년에 은퇴한 운동선수의 마지막 등급 (창업/감독 고르기 전까지)
