@@ -1,4 +1,4 @@
-import { DICE_ITEMS, JOBS, SECTORS } from './data'
+import { BUSINESSES, DICE_ITEMS, JOBLESS_BUSINESSES, JOBS, SECTORS } from './data'
 import {
   aiDiceItem, aiWantsCar, buyLottery, canAct, canBorrowFrom, choose, cur, carCost, cureAddiction, houseCost, isAdultStage, loanLimit, loanTotal, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, rngOf, salaryOf, scoreOf, stageOf, startSabotage, stockHint, takeLoan, toggleInsurance,
@@ -62,11 +62,21 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
     case 'job':
     case 'careerChange': {
       if (id === 'stay') return p.jobId ? jobValue(p.jobId, p) * 1.05 : 0
+      if (id === 'biz') {
+        // 창업: 업종 능력치가 높고 운을 거는 성격일수록. 기대 수익을 지금 월급과 비교
+        const b = p.jobId ? BUSINESSES[p.jobId] : null
+        if (!b) return 0
+        const expect = 200 * (0.5 + p.stats[b.stat] / 10) * (per === 'gambler' ? 2.2 : per === 'investor' ? 1.8 : per === 'safe' ? 0.8 : 1.3)
+        return expect
+      }
       if (id === 'jobless') return 1
       if (id === 'ceo') return per === 'gambler' || per === 'investor' ? 500 : p.jobId === 'chef' ? 450 : 50
       return jobValue(id.slice(4), p)
     }
-    case 'middleBranch': return id === 'adopt' ? (per === 'family' ? 5 : 2) : id === 'pet' ? (per === 'family' ? 4 : 2.5) : per === 'investor' ? 3 : 1
+    case 'middleBranch': return id === 'adopt' ? (per === 'family' ? 5 : 2) : id === 'pet' ? (per === 'family' ? 4 : 2.5) : 1
+    case 'bizPick': return p.stats[JOBLESS_BUSINESSES[+id].stat] + rng.next()
+    case 'bizRetire': return id === 'sell' ? 2 : p.jobRank >= 1 && (per === 'gambler' || per === 'investor') ? 2.5 : 1
+    case 'athleteNext': return id === 'coach' ? 2 + p.stats.str / 10 : id === 'biz' ? (per === 'gambler' || per === 'investor' ? 3 : 1.5) : 0.5
     case 'retire': return id === 'city' ? (per === 'gambler' || per === 'investor' ? 3 : 1) : 2
     case 'shop': {
       if (id === 'pass') return per === 'safe' || per === 'investor' ? 2 : 1
@@ -109,7 +119,7 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
       if (p.money < 0 && e > 0) return 0
       return per === 'elite' || per === 'family' ? e + 1 : per === 'safe' ? (e === 1 ? 2 : 1) : per === 'investor' ? (p.money > 2000 * n ? e + 0.5 : 2 - e) : 1 + rng.next()
     }
-    case 'baby': return id === 'yes' ? (per === 'family' ? 5 : per === 'investor' ? 0.5 : 2) : 1.5
+    case 'baby': return id === 'yes' ? (per === 'family' ? 5 : 2) : 1.5
     case 'invest': return id === 'yes' ? (p.fortune >= 3 ? 3 : per === 'gambler' ? 2 : 0.5) : 1
     case 'overtime': return id === 'yes' ? (per === 'investor' || per === 'elite' ? 2 : 1) : per === 'family' ? 2 : 1
     case 'taxEvade': return id === 'yes' ? (per === 'gambler' ? 3 : p.fortune >= 4 ? 2 : 0.2) : 1
@@ -175,24 +185,23 @@ export function aiPreRoll(s: GameState) {
     if (p.house && !p.insurance.property && rng.chance(wantIns)) toggleInsurance(s, 'property')
     if (p.car && !p.insurance.car && rng.chance(wantIns)) toggleInsurance(s, 'car')
   }
-  // 주식: 힌트를 따르고, 재테크형은 적극적으로
+  // 주식: 힌트가 있을 때 위주로 사고, 현금은 남겨 둠 (월세·관리비로 빚이 쌓이지 않게)
   const hint = stockHint(s, p)
   const n = s.nextNews
+  const spare = Math.max(0, p.money - (800 + salaryOf(p) * 2)) // 주식에 넣어도 되는 돈
   if (hint && n && p.fortune >= 4) {
     if (p.fortune === 5 && !n.up && p.stocks[n.sector] > 0) tradeStock(s, n.sector, -p.stocks[n.sector])
-    if ((p.fortune === 5 && n.up) || (p.fortune === 4 && per === 'investor')) {
-      const qty = Math.floor((p.money * 0.4) / s.stockPrice[n.sector])
-      if (qty > 0) tradeStock(s, n.sector, qty)
-    }
+    // 대대길은 방향까지 알려 줌 → 크게 / 재테크형은 대길(분야만 앎)에도 조금
+    const share = p.fortune === 5 && n.up ? 0.5 : p.fortune === 4 && per === 'investor' ? 0.15 : 0
+    const qty = Math.floor((spare * share) / s.stockPrice[n.sector])
+    if (qty > 0) tradeStock(s, n.sector, qty)
   }
-  if (per === 'investor' && p.money > 1500 && rng.chance(0.4)) {
-    const k = rng.pick(SECTORS)
-    const qty = Math.floor((p.money * 0.25) / s.stockPrice[k])
-    if (qty > 0) tradeStock(s, k, qty)
+  // 재테크형·엘리트: 많이 오르면 팔고(익절), 많이 떨어지면 손해 보고 팔기(손절)
+  if (per === 'investor' || (per === 'elite' && rng.chance(0.25))) {
+    for (const k of SECTORS) if (p.stocks[k] && (s.stockPrice[k] > 130 || s.stockPrice[k] < 75)) tradeStock(s, k, -p.stocks[k])
   }
-  if ((per === 'investor' || per === 'elite') && rng.chance(0.25)) {
-    for (const k of SECTORS) if (p.stocks[k] && s.stockPrice[k] > 130) tradeStock(s, k, -p.stocks[k])
-  }
+  // 돈이 마이너스면 주식부터 팔아서 메움
+  if (p.money < 0) for (const k of SECTORS) if (p.money < 0 && p.stocks[k]) tradeStock(s, k, -p.stocks[k])
   // 대출: 마이너스면 메우고, 여유 있으면 갚기
   if (p.money < 0 && !p.creditBad) {
     const need = Math.min(-p.money + 200, loanLimit(p) - loanTotal(p))

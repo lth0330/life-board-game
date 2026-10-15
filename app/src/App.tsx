@@ -10,6 +10,7 @@ import {
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
 import type { DiceItem, GameState } from './engine/types'
 import { currentProfile, deleteGame, loadGame, logout, saveGame, updateOutfit, type Profile } from './storage'
+import { BannerArt, EventArt } from './art/More'
 import { Board, FullMap } from './ui/Board'
 import { Dresser } from './ui/Dresser'
 import { Confetti, DiceThrow, StageCard } from './ui/Effects'
@@ -22,7 +23,7 @@ const SPEED_MS: Record<Speed, number> = { fast: 450, normal: 1000, slow: 1700 }
 const WALK_MS = 230
 const DICE_ROLL_MS = 750
 const DICE_SHOW_MS = 650
-const CELEBRATE = ['결혼!', '복권 당첨!', '아기 탄생', '수능 상위권!', '게임 끝!']
+const CELEBRATE = ['결혼!', '복권 당첨!', '아기 탄생', '수능 상위권!', '게임 끝!', '회사 성장!', '감독 도전 성공!', '자녀 대성공!', '금메달!', '은메달!', '동메달!', '육순 잔치', '칠순 잔치']
 
 type Screen = 'title' | 'menu' | 'setup' | 'play'
 
@@ -260,6 +261,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
       {pending && (
         <div className="sheet-backdrop">
           <div className="sheet decision">
+            <EventArt type={pending.type} />
             <h2 className="jua">{pending.title}</h2>
             <p>{pending.text}</p>
             {!game.players[pending.playerId].human && <p className="note">{game.players[pending.playerId].name}(AI)가 고르는 중…</p>}
@@ -309,6 +311,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
       {stageBanner && <StageCard title={banner.title} text={banner.text} />}
       {banner && !busy && !stageBanner && (
         <div className={`banner b-${banner.tone}`} role="status">
+          <BannerArt title={banner.title} tone={banner.tone} />
           <b className="jua">{banner.title}</b>
           <span>{banner.text}</span>
         </div>

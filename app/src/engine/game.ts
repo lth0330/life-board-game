@@ -1,6 +1,6 @@
 import { buildStages, isEnd, maxDepth, walkAhead } from './board'
 import {
-  AI_NAMES, CARS, CHANCE_NAMES, DICE_ITEMS, FORTUNES, FORTUNE_WEIGHTS, HOUSES, CAR_CRASH_LOSS, HOUSE_RULES, INSURANCE, JOBS, KIDS, LOTTERY_PRICE, MAX_DICE_ITEMS,
+  AI_NAMES, BIZ, BUSINESSES, CARS, CHANCE_NAMES, DICE_ITEMS, FORTUNES, FORTUNE_WEIGHTS, HOUSES, CAR_CRASH_LOSS, CAR_RESALE, HOUSE_RULES, INSURANCE, JOBLESS_BUSINESSES, JOBS, KIDS, LOTTERY_PRICE, MAX_DICE_ITEMS, MEDALS, PENSION, SEVERANCE_RATE,
   PERSONALITIES, PLAYER_COLORS, PRESTIGE_JOBS, SABOTAGE_NAMES, SECTORS, SPOUSE_NAMES, STAGE_SCALE, STAT_NAMES,
   TAX_RATE, TRAITS,
 } from './data'
@@ -50,6 +50,7 @@ export function ageOf(s: GameState, p: Player): number {
 export function salaryOf(p: Player): number {
   const job = jobOf(p)
   if (!job) return 0
+  if (job.id === 'ceo') return Math.round(BIZ.base[p.jobRank] * bizStatMult(p)) // 사업가: 운세 '길'일 때 수익 (실제는 매 턴 운세로 바뀜)
   const mult = job.boom ? [0.4, 1, 2.6][p.jobRank] : [1, 1.4, 1.9][p.jobRank]
   return Math.round(job.salary * mult)
 }
@@ -64,9 +65,10 @@ export function assetsOf(s: GameState, p: Player) {
   return p.money + Math.round(houseValue(s, p) * HOUSE_RULES.scoreRate) + p.carValue + stocksValue(s, p) - loanTotal(p) - friendDebt(s, p) + friendCredit(s, p)
 }
 // 집 시세: 상점 값 × 판 전체 시세
-// 차를 바꿀 때: 지금 차를 지금 가치로 넘기고 모자란 만큼만 냄
+// 차를 바꿀 때: 지금 차를 지금 가치의 80%에 팔고 모자란 만큼만 냄
+export const carResale = (p: Player) => Math.round(p.carValue * CAR_RESALE)
 export const carCost = (p: Player, tier: number, coupon = p.chance === 'coupon') =>
-  Math.max(0, Math.round(CARS[tier].price * (coupon ? 0.7 : 1)) - p.carValue)
+  Math.max(0, Math.round(CARS[tier].price * (coupon ? 0.7 : 1)) - carResale(p))
 export const housePriceOf = (s: GameState, tier: number) => Math.round(HOUSES[tier].price * s.housePrice / 100)
 export const houseValue = (s: GameState, p: Player) => housePriceOf(s, p.house)
 // 집을 바꿀 때: 지금 집을 시세대로 팔고 모자란 만큼만 냄
@@ -116,7 +118,7 @@ function meetsReq(p: Player, job: JobDef, relax = 0) {
 export function eligibleJobs(p: Player, stageIdx = 2) {
   const relax = p.spouse && p.spouse.fame >= 7 ? 1 : 0 // 명성 높은 배우자: 인맥으로 조건 1 완화
   // 운동선수는 중년이 되면 은퇴하므로 중년부터는 새로 될 수 없음
-  return JOBS.filter((j) => j.id !== 'ceo' && !(j.id === 'athlete' && stageIdx >= 3) && meetsReq(p, j, relax))
+  return JOBS.filter((j) => j.id !== 'ceo' && j.id !== 'coach' && !(j.id === 'athlete' && stageIdx >= 3) && meetsReq(p, j, relax))
 }
 
 // ───────── 게임 만들기 ─────────
@@ -130,7 +132,7 @@ function newPlayer(id: number, name: string, human: boolean, personality: Person
     pos: 0, rollsLeft: 0, finished: false, finishOrder: 0, turnsPlayed: 0,
     insurance: { health: false, property: false, car: false },
     insuranceCooldown: { health: 0, property: 0, car: 0 },
-    car: 0, carCharges: 0, carValue: 0, celebrated: [], record: { shopBuys: 0, spent: 0, lotteryWon: 0, deeds: 0, duelWins: 0 }, house: 0, loans: [], creditBad: 0,
+    car: 0, carCharges: 0, carValue: 0, jobTenure: 0, biz: null, bizKeep: null, medals: [], exAthlete: null, celebrated: [], record: { shopBuys: 0, spent: 0, lotteryWon: 0, deeds: 0, duelWins: 0 }, house: 0, loans: [], creditBad: 0,
     lottery: { ticket: false, chance: 10, addicted: false },
     stocks: { 생명: 0, IT: 0, 화학: 0, 의료: 0, 엔터: 0 },
     suitors: [], spouse: null, divorced: false, children: 0, adopted: 0, kids: [], diceItems: [], pet: null, retire: null,
@@ -256,6 +258,24 @@ function beginTurn(s: GameState) {
         { id: 'work', label: '바로 취업', desc: '모아 둔 돈 +400만, 청년 첫 차례부터 직업·월급' },
       ],
     }
+  } else if (sid === 'middle' && p.exAthlete !== null) {
+    const ch = Math.round(coachChance(p, p.exAthlete) * 100)
+    s.pending = {
+      type: 'athleteNext', playerId: p.id, title: '선수 은퇴! 다음 인생은?', text: `선수 때 ${JOBS.find((j) => j.id === 'athlete')!.ranks[p.exAthlete]}${p.medals.length ? ` · 메달 ${p.medals.length}개` : ''} · 체력 ${p.stats.str}`,
+      options: [
+        { id: 'coach', label: '감독 도전', desc: `룰렛 성공 확률 ${ch}% (체력·선수 성적·메달) · 실패하면 백수` },
+        { id: 'biz', label: `창업: ${BUSINESSES.athlete.name}`, desc: `자금 ${won(bizCost(p))} · 체력 바탕 · 소기업부터` },
+        { id: 'rest', label: '좀 쉬기', desc: '백수 (중년 초반 창업 갈림길에서 창업 가능)' },
+      ],
+    }
+  } else if (sid === 'old' && p.jobId === 'ceo' && p.bizKeep === null) {
+    s.pending = {
+      type: 'bizRetire', playerId: p.id, title: '사업가의 노년', text: `${p.biz?.name} · ${bizRank(p.jobRank)}`,
+      options: [
+        { id: 'sell', label: '회사 팔고 은퇴', desc: `+${won(BIZ.sale[p.jobRank])}` },
+        { id: 'keep', label: '계속 경영', desc: `수익 ${BIZ.oldMult}배, 매 턴 행복 -1, 골인할 때 팖` },
+      ],
+    }
   } else if (sid === 'middle' && p.kids.some((k) => isMinor(k) && k.edu === null)) eduPending(s, p)
   else if (p.agency && !p.spouse && (sid === 'young' || sid === 'middle')) agencyTurn(s, p)
   resume(s)
@@ -265,7 +285,10 @@ function economyTick(s: GameState, p: Player) {
   const st = stageOf(s)
   const rng = rngOf(s)
   const job = jobOf(p)
-  if (st.id !== 'old' && job) {
+  p.money += medalPension(p)
+  if (job?.id === 'ceo' && (st.id !== 'old' || p.bizKeep)) bizTick(s, p, st.id === 'old' ? BIZ.oldMult : 1)
+  if (st.id !== 'old' && job) p.jobTenure++
+  if (st.id !== 'old' && job && job.id !== 'ceo') {
     const sal = salaryOf(p)
     const tax = Math.round(sal * TAX_RATE(sal))
     p.money += sal - tax
@@ -284,7 +307,7 @@ function economyTick(s: GameState, p: Player) {
   }
   if (st.id !== 'old' && !job) p.happy += 1 // 백수: 월급은 없지만 여유
   if (st.id === 'old') {
-    if (job?.pension) p.money += 120
+    if (job?.pension) p.money += PENSION
     if (p.retire === 'city') {
       if (rng.chance(0.5)) p.money += 80
       else p.money -= 50
@@ -305,6 +328,70 @@ function economyTick(s: GameState, p: Player) {
   const overdue = p.loans.filter((l) => p.turnsPlayed > l.dueTurn)
   if (overdue.length) forceLiquidate(s, p, overdue)
 }
+
+// ───────── 창업·퇴직금·메달 ─────────
+
+const bizStatMult = (p: Player) => 0.5 + (p.biz ? p.stats[p.biz.stat] : p.stats.int) / 10
+export const medalPension = (p: Player) => p.medals.reduce((a, m) => a + MEDALS[m].pension, 0)
+export const bizCost = (p: Player) => (p.jobId === 'chef' ? BIZ.chefCost : BIZ.cost)
+const bizRank = (r: number) => JOBS.find((j) => j.id === 'ceo')!.ranks[r]
+
+// 매 턴 사업 수익 = 회사 크기 기본 × 능력치 배율 × 운세 배율. 그다음 회사가 크거나 작아질 수 있음
+function bizTick(s: GameState, p: Player, mult: number) {
+  const rng = rngOf(s)
+  const biz = p.biz!
+  const raw = BIZ.base[p.jobRank] * bizStatMult(p) * BIZ.fortune[p.fortune] * mult
+  const income = Math.round(raw > 0 ? raw * (1 - TAX_RATE(raw)) : raw)
+  p.money += income
+  if (income < 0) log(s, p.id, `[운세 ${fortuneName(p.fortune)}] ${biz.name} 적자 ${won(income)}`, 'bad')
+  if (mult < 1) p.happy -= 1 // 노년까지 일하느라 지침
+  const stat = p.stats[biz.stat]
+  if (p.fortune >= 2 && p.jobRank < 2 && rng.chance(stat * BIZ.growPerStat)) {
+    p.jobRank++
+    log(s, p.id, `${biz.name}가 커졌다! ${bizRank(p.jobRank)} (${STAT_NAMES[biz.stat]} ${stat} 덕분)`, 'good')
+    s.banner = { title: '회사 성장!', text: `${p.name}: ${biz.name}`, tone: 'good' }
+    say(s, p, 'promoted')
+    if (biz.sector) { s.stockPrice[biz.sector] = Math.round(s.stockPrice[biz.sector] * 1.1); log(s, null, `${p.name}의 회사가 커졌다! ${biz.sector}주 +10%`, 'good') }
+  } else if (p.fortune <= 1 && p.jobRank > 0 && rng.chance(Math.max(0.05, BIZ.fallBase - stat * BIZ.fallPerStat))) {
+    p.jobRank--
+    log(s, p.id, `${biz.name}가 휘청… ${bizRank(p.jobRank)}로 줄었다`, 'bad')
+    if (biz.sector) { s.stockPrice[biz.sector] = Math.max(10, Math.round(s.stockPrice[biz.sector] * 0.85)); log(s, null, `${p.name}의 회사가 휘청! ${biz.sector}주 -15%`, 'bad') }
+  }
+}
+
+// 퇴직금: 꾸준형 직업만. 그만둘 때 월급 × 일한 턴 × 0.3
+function paySeverance(s: GameState, p: Player) {
+  const job = jobOf(p)
+  if (!job || job.boom || p.jobTenure <= 0) return
+  const amt = Math.round(salaryOf(p) * p.jobTenure * SEVERANCE_RATE)
+  p.money += amt
+  log(s, p.id, `${job.name} 퇴직금 +${won(amt)} (${p.jobTenure}턴 근무)`, 'good')
+  p.jobTenure = 0
+}
+
+function startCompany(s: GameState, p: Player, biz: { name: string; stat: StatKey; sector: Sector | null }) {
+  const cost = bizCost(p)
+  if (p.money < cost) { p.loans.push({ amount: cost - p.money, dueTurn: p.turnsPlayed + 20 }); p.money = cost; log(s, p.id, '빚을 내서 창업 자금을 마련했다', 'info') }
+  p.money -= cost
+  setJob(s, p, 'ceo') // 다니던 직장 퇴직금은 여기서 받음
+  p.jobRank = 0 // 모두 소기업부터
+  p.biz = { ...biz }
+  p.sector = biz.sector
+  p.bizKeep = null
+  log(s, p.id, `${biz.name} 창업! (${STAT_NAMES[biz.stat]}이 높을수록 잘 벌고 잘 큼)`, 'good')
+  say(s, p, 'startup')
+}
+
+function sellCompany(s: GameState, p: Player) {
+  const amt = BIZ.sale[p.jobRank]
+  p.money += amt
+  log(s, p.id, `${p.biz?.name ?? '회사'}(${bizRank(p.jobRank)})를 팔고 은퇴 +${won(amt)}`, 'good')
+  s.banner = { title: '회사 매각', text: `${p.name}: +${won(amt)}`, tone: 'good' }
+  p.bizKeep = false
+  p.jobId = null
+}
+
+const coachChance = (p: Player, rank: number) => Math.min(0.95, 0.2 + p.stats.str * 0.04 + rank * 0.15 + p.medals.length * 0.1)
 
 // 차 사고: 스쿠터는 자주(몸을 다침), 일반차는 적당히, 고급차는 드물지만 수리비가 큼
 function carCrashTick(s: GameState, p: Player) {
@@ -749,9 +836,9 @@ function askFork(s: GameState, p: Player, t: Tile) {
     let disabled = false
     let desc = o.desc
     if (o.road === 'startup') {
-      const cost = p.jobId === 'chef' ? 1200 : 2000
-      desc = `${desc} · 창업 자금 ${won(cost)}${p.jobId === 'chef' ? ' (요리사 할인)' : ''}${p.money < cost ? ' (모자라면 빚)' : ''}`
-      disabled = p.money < cost && p.creditBad > 0
+      const cost = bizCost(p)
+      desc = p.jobId ? '직장인은 중년 중반 취업 박람회에서 창업해요' : `${desc} · 창업 자금 ${won(cost)}${p.money < cost ? ' (모자라면 빚)' : ''}`
+      disabled = !!p.jobId || (p.money < cost && p.creditBad > 0)
     }
     return { id: String(o.to), label: o.label, desc, disabled }
   })
@@ -788,14 +875,11 @@ function applyRoadStart(s: GameState, p: Player, road: string) {
     }
     case 'work': p.collegeDecided = true; p.money += 400; log(s, p.id, '바로 취업 준비. 모아 둔 돈 +400만', 'good'); break
     case 'startup': {
-      const cost = p.jobId === 'chef' ? 1200 : 2000
-      if (p.money < cost) { p.loans.push({ amount: cost - p.money, dueTurn: p.turnsPlayed + 20 }); p.money = cost; log(s, p.id, '빚을 내서 창업 자금을 마련했다', 'info') }
-      p.money -= cost
-      const wasChef = p.jobId === 'chef'
-      setJob(s, p, 'ceo')
-      p.jobRank = rng.chance(wasChef ? 0.7 : p.stats.int >= 6 ? 0.6 : 0.4) ? 1 : 0
-      say(s, p, 'startup')
-      s.pending = sectorPending(p, '어떤 분야로 창업할까요?', SECTORS)
+      // 백수만 이 길로 옴: 능력치에 맞춰 업종을 고름
+      s.pending = {
+        type: 'bizPick', playerId: p.id, title: '어떤 가게를 열까요?', text: `지력 ${p.stats.int} · 체력 ${p.stats.str} · 매력 ${p.stats.cha} — 고른 능력치가 높을수록 잘 벌어요`,
+        options: JOBLESS_BUSINESSES.map((b, i) => ({ id: String(i), label: b.name, desc: `${STAT_NAMES[b.stat]} ${p.stats[b.stat]} · 자금 ${won(bizCost(p))}` })),
+      }
       break
     }
     case 'city': p.retire = 'city'; break
@@ -1317,7 +1401,7 @@ function triggerPoint(s: GameState, p: Player, kind: 'shop' | 'marriage') {
     if (stageOf(s).id !== 'old') CARS.forEach((c, i) => {
       if (i <= p.car) return
       const cost = carCost(p, i)
-      const trade = p.car ? ` · 지금 차 넘기고 ${won(cost)}만 더` : ''
+      const trade = p.car ? ` · 지금 차 ${won(carResale(p))}에 팔고 ${won(cost)}만 더` : ''
       opts.push({ id: `car${i}`, label: `${c.name} 사기`, desc: `${won(c.price * coupon)}${trade} · 주사위 ±1을 단계마다 ${c.charges[Math.max(0, s.stageIdx - 2)]}번 · 노년엔 못 삼`, disabled: p.money < cost })
     })
     if (!p.agency && canDate(s, p)) {
@@ -1355,9 +1439,13 @@ function findSuitor(p: Player, key: string) {
 // ───────── 정지 칸 ─────────
 
 function jobOptions(s: GameState, p: Player, includeStay: boolean): ChoiceOption[] {
-  const opts = eligibleJobs(p, s.stageIdx).map((j) => ({
+  const opts: ChoiceOption[] = eligibleJobs(p, s.stageIdx).map((j) => ({
     id: `job:${j.id}`, label: j.name, desc: `${j.boom ? '대박형' : '꾸준형'} · 월급 ${won(j.salary)} · ${j.note}`,
   }))
+  const biz = p.jobId ? BUSINESSES[p.jobId] : null
+  if (includeStay && biz && stageOf(s).id === 'middle') {
+    opts.push({ id: 'biz', label: `창업: ${biz.name}`, desc: `자금 ${won(bizCost(p))}${p.jobId === 'chef' ? ' (요리사 할인)' : ''} · ${STAT_NAMES[biz.stat]} ${p.stats[biz.stat]} 바탕 · 소기업부터 · 지금 직장 퇴직금 받음`, disabled: p.money < bizCost(p) && p.creditBad > 0 })
+  }
   opts.push({ id: includeStay ? 'stay' : 'jobless', label: includeStay ? '지금 그대로' : '백수로 지내기', desc: includeStay ? '' : '월급 없음, 성장 칸 효과 +1' })
   return opts
 }
@@ -1411,6 +1499,15 @@ function jobPerkTick(s: GameState, p: Player) {
       break
     default: break
   }
+  // 운동선수 국가대표: 메달 도전 (체력 × 2%), 최대 3개
+  if (p.jobId === 'athlete' && p.jobRank === 2 && p.medals.length < 3 && rng.chance(p.stats.str * 0.02)) {
+    const v = rng.int(1, 6) + (p.fortune >= 4 ? 1 : p.fortune <= 1 ? -1 : 0)
+    const m = v >= 6 ? 0 : v >= 4 ? 1 : 2
+    p.medals.push(m)
+    p.happy += 5
+    log(s, p.id, `국제 대회 ${MEDALS[m].name}메달! 매 턴 연금 +${won(MEDALS[m].pension)} (행복 +5)`, 'good')
+    s.banner = { title: `${MEDALS[m].name}메달!`, text: p.name, tone: 'good' }
+  }
 }
 
 function adoptPet(s: GameState, p: Player, text: string) {
@@ -1420,7 +1517,9 @@ function adoptPet(s: GameState, p: Player, text: string) {
 }
 
 function setJob(s: GameState, p: Player, id: string | null) {
+  if (p.jobId && p.jobId !== id) paySeverance(s, p) // 직장을 옮기면 퇴직금
   p.jobId = id
+  p.jobTenure = 0
   p.jobRank = id === 'ceo' || JOBS.find((j) => j.id === id)?.boom ? 1 : 0
   p.jobTurns = 0
   const j = jobOf(p)
@@ -1486,8 +1585,29 @@ export function choose(s: GameState, optionId: string) {
     }
     case 'job':
       if (optionId === 'jobless') setJob(s, p, null)
+      else if (optionId === 'biz' && p.jobId) startCompany(s, p, BUSINESSES[p.jobId])
       else if (optionId !== 'stay') setJob(s, p, optionId.slice(4))
       break
+    case 'bizPick': startCompany(s, p, JOBLESS_BUSINESSES[+optionId]); break
+    case 'bizRetire':
+      if (optionId === 'sell') sellCompany(s, p)
+      else { p.bizKeep = true; log(s, p.id, `노년에도 ${p.biz?.name}를 계속 경영한다`, 'info') }
+      break
+    case 'athleteNext': {
+      const rank = p.exAthlete ?? 0
+      p.exAthlete = null
+      if (optionId === 'biz') startCompany(s, p, BUSINESSES.athlete)
+      else if (optionId === 'coach') {
+        const ch = coachChance(p, rank)
+        if (rng.next() < ch) {
+          setJob(s, p, 'coach')
+          p.jobRank = rank >= 2 || p.medals.length ? 1 : 0
+          log(s, p.id, `감독 룰렛 성공! (확률 ${Math.round(ch * 100)}%) ${JOBS.find((j) => j.id === 'coach')!.ranks[p.jobRank]}가 됐다`, 'good')
+          s.banner = { title: '감독 도전 성공!', text: p.name, tone: 'good' }
+        } else log(s, p.id, `감독 룰렛 실패… (확률 ${Math.round(ch * 100)}%) 당분간 백수`, 'bad')
+      } else log(s, p.id, '선수 생활을 마치고 좀 쉬기로 했다', 'info')
+      break
+    }
     case 'middleBranch':
       if (optionId === 'adopt') {
         const age = addKid(s, p, true)
@@ -1510,7 +1630,7 @@ export function choose(s: GameState, optionId: string) {
       } else if (optionId.startsWith('car')) {
         const i = +optionId.slice(3) as 0 | 1 | 2 | 3
         const cost = carCost(p, i)
-        const old = p.car ? `${CARS[p.car].name}를 ${won(p.carValue)}에 넘기고 ` : ''
+        const old = p.car ? `${CARS[p.car].name}를 ${won(carResale(p))}에 팔고 ` : ''
         if (p.chance === 'coupon') p.chance = null
         spend(p, cost)
         p.carValue = CARS[i].price
@@ -1957,6 +2077,7 @@ function endTurn(s: GameState) {
     p.finishOrder = s.finishCount
     const bonus = [0, 500, 300, 100, 0][s.finishCount] ?? 0
     p.money += bonus
+    if (p.jobId === 'ceo' && p.bizKeep) sellCompany(s, p)
     log(s, p.id, `${s.finishCount}번째로 골인!${bonus ? ` +${won(bonus)}` : ''}`, 'good')
   }
   s.pending = null
@@ -2017,7 +2138,7 @@ export function stockHint(s: GameState, p: Player): string | null {
 
 function careerRoll(s: GameState, p: Player) {
   const job = jobOf(p)
-  if (!job?.boom) return
+  if (!job?.boom || job.id === 'ceo') return // 사업가는 매 턴 회사 크기가 바뀜
   const rng = rngOf(s)
   const below = p.stats[job.key] < (job.req[job.key] ?? 0) ? -1 : 0 // 능력치가 조건 밑이면 추락 확률↑
   const v = rng.int(1, 6) + (p.fortune >= 4 ? 1 : p.fortune <= 1 ? -1 : 0) + below
@@ -2045,10 +2166,10 @@ function nextStage(s: GameState) {
     p.forkChoice = null
     p.rollsLeft = st.rolls ?? 0
     p.carCharges = CARS[p.car].charges[Math.max(0, s.stageIdx - 2)]
-    if (st.id === 'middle' && p.jobId === 'athlete') { log(s, p.id, '운동선수 은퇴! 창업 길이나 취업 박람회에서 새 출발', 'info'); p.jobId = null }
+    if (st.id === 'middle' && p.jobId === 'athlete') { p.exAthlete = p.jobRank; log(s, p.id, `운동선수 은퇴!${p.medals.length ? ` (메달 ${p.medals.length}개)` : ''}`, 'info'); p.jobId = null; p.jobTenure = 0 }
     if (st.id !== 'young') careerRoll(s, p)
     if (st.id === 'old') {
-      if (p.jobId) log(s, p.id, `${jobOf(p)?.name} 은퇴${jobOf(p)?.pension ? ' (연금 받음)' : ''}`, 'info')
+      if (p.jobId && p.jobId !== 'ceo') { paySeverance(s, p); log(s, p.id, `${jobOf(p)?.name} 은퇴${jobOf(p)?.pension ? ` (연금 매 턴 ${won(PENSION)})` : ''}`, 'info') }
       p.agency = null
     }
   }

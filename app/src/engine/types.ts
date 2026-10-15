@@ -139,6 +139,11 @@ export interface Player {
   carCharges: number
   record: { shopBuys: number; spent: number; lotteryWon: number; deeds: number; duelWins: number } // 결산 상 계산용
   celebrated: number[] // 이미 치른 육순(60)·칠순(70)
+  jobTenure: number // 지금 직업에서 일한 턴 (퇴직금 계산)
+  biz: { name: string; stat: StatKey; sector: Sector | null } | null // 창업한 회사 (회사 크기는 jobRank)
+  bizKeep: boolean | null // 노년에 회사를 계속 경영하는지 (null = 아직 안 정함)
+  medals: number[] // 운동선수 메달 (0 금, 1 은, 2 동). 메달마다 매 턴 연금
+  exAthlete: number | null // 중년에 은퇴한 운동선수의 마지막 등급 (창업/감독 고르기 전까지)
   carValue: number // 차의 지금 가치 (산 값에서 사고마다 깎임, 최종 자산에 들어감)
   house: HouseTier
   loans: Loan[]

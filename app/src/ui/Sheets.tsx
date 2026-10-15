@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Character } from '../art/Character'
-import { CARS, CHANCE_NAMES, DICE_ITEMS, HOUSE_RULES, HOUSES, INSURANCE, JOBS, KIDS, LOTTERY_PRICE, PERSONALITIES, SABOTAGE_NAMES, SECTORS } from '../engine/data'
+import { Trophy } from '../art/More'
+import { CARS, CHANCE_NAMES, DICE_ITEMS, HOUSE_RULES, HOUSES, INSURANCE, JOBS, KIDS, LOTTERY_PRICE, MEDALS, PERSONALITIES, SABOTAGE_NAMES, SECTORS } from '../engine/data'
 import {
   ageOf, AWARD_POINTS, awardsOf, canBorrowFrom, fortuneName, friendDebt, houseValue, isAdultStage, jobOf, kidAllowance, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
   stars, stockHint, stocksValue,
@@ -185,7 +186,7 @@ export function CardsSheet({ p, canUse, onUseChance, onSabotage, onClose }: {
 
 export function playerLine(s: GameState, p: Player) {
   const job = jobOf(p)
-  const jobText = job ? `${job.name}${job.boom ? ` · ${job.ranks[p.jobRank]}` : ` ${job.ranks[p.jobRank]}`}` : isAdultStage(s) ? '백수' : '학생'
+  const jobText = job?.id === 'ceo' && p.biz ? `${p.biz.name} 사장 · ${job.ranks[p.jobRank]}` : job ? `${job.name}${job.boom ? ` · ${job.ranks[p.jobRank]}` : ` ${job.ranks[p.jobRank]}`}` : isAdultStage(s) ? (p.biz ? `${p.biz.name} 팔고 은퇴` : '백수') : '학생'
   return jobText
 }
 
@@ -200,6 +201,7 @@ export function PeopleSheet({ s, onClose }: { s: GameState; onClose: () => void 
           for (const k of p.kids) tags.push(`${k.adopted ? '입양 자녀' : '자녀'} ${k.result === null ? `(교육 ${KIDS.eduNames[k.edu ?? 0]})` : `· ${KIDS.resultNames[k.result]}`}`)
           if (kidAllowance(p)) tags.push(`자녀 용돈 ${won(kidAllowance(p))}`)
           for (const k of p.diceItems) tags.push(DICE_ITEMS[k].name)
+          if (p.medals.length) tags.push(`메달 ${p.medals.map((m) => MEDALS[m].name).join('·')}`)
           if (p.pet?.alive) tags.push('반려동물')
           if (p.house) tags.push(`${HOUSES[p.house].name} (시세 ${won(houseValue(s, p))})`)
           if (p.car) tags.push(`${CARS[p.car].name} (${won(p.carValue)})`)
@@ -243,13 +245,14 @@ export function GameOver({ s, onRestart }: { s: GameState; onRestart: () => void
   return (
     <div className="sheet-backdrop">
       <div className="sheet">
+        <div className="center"><Trophy size={64} /></div>
         <h2 className="jua center">인생 결산</h2>
         <p className="center muted">점수 = 자산 50만당 1점 + 행복 + 상 {AWARD_POINTS}점씩(공동이면 나눔) (집은 지금 시세, 차는 지금 가치로)</p>
         <div className="people">
           {ranked.map(({ p, sc }, i) => (
             <div key={p.id} className="person" style={{ borderColor: p.color }}>
               <div className="person-head">
-                <b className="jua rank">{i + 1}위</b>
+                <b className="jua rank">{['🥇', '🥈', '🥉'][i] ?? ''}{i + 1}위</b>
                 <span className="person-face" style={{ borderColor: p.color }}><Character outfit={p.outfit} size={24} /></span>
                 <b className="jua">{p.name}</b>
                 <span className="muted">{p.human ? '사람' : PERSONALITIES[p.personality]}</span>
@@ -260,7 +263,7 @@ export function GameOver({ s, onRestart }: { s: GameState; onRestart: () => void
                 {p.spouse ? ` · ${p.spouse.name}와 결혼` : p.divorced ? ' · 이혼' : ' · 비혼'}
                 {p.children + p.adopted ? ` · 자녀 ${p.children + p.adopted}` : ''}
               </div>
-              {awardsOf(s, p).length > 0 && <div className="tags">{awardsOf(s, p).map((a) => <span key={a.id} title={a.desc}>{a.name} +{a.points}{a.ties > 1 ? ` (${a.ties}명 공동)` : ''}</span>)}</div>}
+              {awardsOf(s, p).length > 0 && <div className="tags">{awardsOf(s, p).map((a) => <span key={a.id} className="award" title={a.desc}>🏆 {a.name} +{a.points}{a.ties > 1 ? ` (${a.ties}명 공동)` : ''}</span>)}</div>}
             </div>
           ))}
         </div>

@@ -36,6 +36,7 @@ export const JOBS: JobDef[] = [
   { id: 'idol', name: '아이돌·배우', boom: true, req: { cha: 6 }, college: false, salary: 280, ranks: ['연습생', '신인', '톱스타'], key: 'cha', sector: '엔터', note: '대박 아니면 쪽박' },
   { id: 'youtuber', name: '유튜버', boom: true, req: { cha: 3 }, college: false, salary: 180, ranks: ['구독자 1만', '10만', '100만'], key: 'cha', sector: '엔터', note: '떡상·떡락' },
   { id: 'ceo', name: '사업가', boom: true, req: {}, college: false, salary: 300, ranks: ['소기업', '중소기업', '중견기업'], key: 'int', note: '중년 창업으로만' },
+  { id: 'coach', name: '감독', boom: false, req: {}, college: false, salary: 200, ranks: ['코치', '감독', '국가대표 감독'], key: 'str', note: '운동선수 출신만 (은퇴 때 도전)' },
 ]
 
 export const PRESTIGE_JOBS = ['lawyer', 'doctor', 'athlete']
@@ -53,8 +54,8 @@ export const CARS = [
   // crash: 매 턴 사고 확률 (노년엔 1.5배). 스쿠터는 잘 나고 몸을 다침, 고급차는 드물지만 수리비가 큼
   { name: '없음', price: 0, upkeep: 0, charges: [0, 0, 0], crash: 0 },
   { name: '스쿠터', price: 300, upkeep: 3, charges: [1, 2, 3], crash: 0.07 },
-  { name: '일반차', price: 1800, upkeep: 12, charges: [2, 3, 4], crash: 0.03 },
-  { name: '고급차', price: 6000, upkeep: 30, charges: [3, 4, 5], crash: 0.01 },
+  { name: '일반차', price: 1500, upkeep: 12, charges: [2, 3, 4], crash: 0.03 },
+  { name: '고급차', price: 3000, upkeep: 30, charges: [3, 4, 5], crash: 0.01 },
 ]
 
 export const INSURANCE = {
@@ -101,7 +102,45 @@ export const HOUSE_RULES = {
   rent: 15, // 집이 없으면 성인부터 매 턴 월세
   forcedRate: 0.8, // 강제 청산 때 시세의 80%에 팔림
 }
+// 창업 (2026-10-15 사용자 결정). 숫자는 초안
+export const BIZ = {
+  cost: 2000, chefCost: 1200,
+  base: [300, 700, 1500], // 회사 크기별 매 턴 기본 수익 (소 / 중소 / 중견)
+  fortune: [-0.6, -0.2, 0.5, 1, 1.5, 2.2], // 운세별 배율 (최악 ~ 대대길)
+  growPerStat: 0.05, // 운세 평타 이상일 때 커질 확률 = 능력치 × 5%
+  fallBase: 0.3, fallPerStat: 0.02, // 악 이하일 때 작아질 확률 = 30% - 능력치 × 2%
+  sale: [1000, 4000, 10000], // 노년에 팔 때
+  oldMult: 0.7, // 노년에 계속 경영하면 수익 배율
+}
+// 직업별 창업 업종 (자기 직업에 맞춰서). 백수는 능력치로 고름
+export const BUSINESSES: Record<string, { name: string; stat: 'int' | 'str' | 'cha'; sector: Sector | null }> = {
+  office: { name: '유통 회사', stat: 'int', sector: null },
+  civil: { name: '유통 회사', stat: 'int', sector: null },
+  teacher: { name: '학원', stat: 'cha', sector: null },
+  dev: { name: 'IT 스타트업', stat: 'int', sector: 'IT' },
+  police: { name: '경호·안전 회사', stat: 'str', sector: null },
+  fire: { name: '경호·안전 회사', stat: 'str', sector: null },
+  chef: { name: '식당', stat: 'cha', sector: null },
+  scientist: { name: '바이오 연구소', stat: 'int', sector: '생명' },
+  lawyer: { name: '법률 사무소', stat: 'int', sector: null },
+  doctor: { name: '개인 병원', stat: 'int', sector: '의료' },
+  idol: { name: '엔터 기획사', stat: 'cha', sector: '엔터' },
+  youtuber: { name: '엔터 기획사', stat: 'cha', sector: '엔터' },
+  coach: { name: '스포츠 센터', stat: 'str', sector: null },
+  athlete: { name: '스포츠 센터', stat: 'str', sector: null },
+}
+export const JOBLESS_BUSINESSES = [
+  { name: 'IT 스타트업', stat: 'int', sector: 'IT' },
+  { name: '헬스장', stat: 'str', sector: null },
+  { name: '카페', stat: 'cha', sector: null },
+] as const
+// 퇴직금 = 그만둘 때 월급 × 그 직업에서 일한 턴 × 0.3. 꾸준형만 (아이돌·유튜버·운동선수·사업가 없음)
+export const SEVERANCE_RATE = 0.3
+export const PENSION = 120 // 공무원·교사·경찰·소방관: 노년 매 턴
+// 운동선수 메달: 국가대표일 때 매 턴 체력 × 2% 확률, 최대 3개. 그때부터 매 턴 메달 연금
+export const MEDALS = [{ name: '금', pension: 40 }, { name: '은', pension: 25 }, { name: '동', pension: 15 }]
 export const CAR_CRASH_LOSS = 0.15 // 사고 날 때마다 차 가치 -15%
+export const CAR_RESALE = 0.8 // 차를 바꿀 때 지금 차는 지금 가치(원가 - 사고 감가)의 80%에 팔림
 
 // 자녀 (숫자는 초안 — 밸런스 단계에서 조정)
 export const KIDS = {

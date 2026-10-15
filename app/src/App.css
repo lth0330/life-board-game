@@ -445,3 +445,8 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
 }
 .person-face { width: 32px; height: 32px; border-radius: 50%; border: 3px solid; overflow: hidden; background: var(--sky); display: flex; justify-content: center; flex: none; }
 .person-face svg { margin-top: 2px; }
+
+/* 결정 창 그림 */
+.event-art { display: block; margin: 0 auto 4px; }
+.banner-art { display: block; margin: 0 auto 2px; }
+.tags .award { background: #FFF4CC; border-color: #E2B85C; }

@@ -20,13 +20,13 @@ export function TileIcon({ kind, size = 44 }: { kind: string; size?: number }) {
 }
 
 // ───── 건물 (viewBox 0 0 220 270) ─────
-export type BuildingKind = 'house' | 'school' | 'shop' | 'chapel' | 'office' | 'hospital' | 'cafe' | 'park' | 'apartment'
+export type BuildingKind = 'house' | 'school' | 'shop' | 'chapel' | 'office' | 'hospital' | 'cafe' | 'park' | 'apartment' | 'gym' | 'library' | 'flower'
 
 const BUILDING_FOR: Record<string, BuildingKind> = {
   '우리 집': 'house', 유치원: 'school', 놀이터: 'park', 문방구: 'shop',
-  학교: 'school', 학원: 'office', 도서관: 'school', 분식집: 'cafe',
-  회사: 'office', 카페: 'cafe', 원룸촌: 'apartment', 헬스장: 'office',
-  병원: 'hospital', 공원: 'park', 마트: 'shop', 경로당: 'house', 꽃집: 'cafe',
+  학교: 'school', 학원: 'office', 도서관: 'library', 분식집: 'cafe',
+  회사: 'office', 카페: 'cafe', 원룸촌: 'apartment', 헬스장: 'gym',
+  병원: 'hospital', 공원: 'park', 마트: 'shop', 경로당: 'house', 꽃집: 'flower',
   상점: 'shop', 결혼식장: 'chapel',
 }
 
@@ -109,6 +109,36 @@ export function Building({ name, color = '#B5452F' }: { name: string; color?: st
           <circle cx="160" cy="140" r="52" fill="#4F9A5E" /><rect x="154" y="176" width="12" height="94" fill="#7A5232" />
           <rect x="70" y="230" width="80" height="10" rx="4" fill="#7A5232" /><rect x="76" y="240" width="6" height="20" fill="#5A3A21" /><rect x="138" y="240" width="6" height="20" fill="#5A3A21" />
           <g transform="translate(0 -60)">{sign('#2F8F5B')}</g>
+        </svg>
+      )
+    case 'gym':
+      return (
+        <svg viewBox="0 0 220 270" width="100%" height="100%" aria-hidden="true">
+          <rect x="20" y="90" width="180" height="180" fill="#E5ECF2" />
+          <rect x="20" y="80" width="180" height="20" fill="#2E6FD8" />
+          <rect x="40" y="186" width="140" height="70" fill="#9CC3E0" stroke="#fff" strokeWidth="4" />
+          <g fill="#3a2a1f"><rect x="62" y="52" width="96" height="10" rx="4" /><rect x="50" y="38" width="16" height="38" rx="4" /><rect x="154" y="38" width="16" height="38" rx="4" /></g>
+          {sign('#2E6FD8')}
+        </svg>
+      )
+    case 'library':
+      return (
+        <svg viewBox="0 0 220 270" width="100%" height="100%" aria-hidden="true">
+          <rect x="24" y="100" width="172" height="170" fill="#F4ECDD" />
+          <path d="M14 104L110 50l96 54z" fill="#8A6A4A" />
+          {[40, 80, 124, 164].map((x) => <rect key={x} x={x} y="176" width="16" height="94" fill="#fff" />)}
+          <g transform="translate(86 62)"><path d="M0 8q12-6 24 2v20q-12-8-24-2z" fill="#6F45BD" /><path d="M48 8q-12-6-24 2v20q12-8 24-2z" fill="#8A6BD0" /></g>
+          {sign('#8A6A4A')}
+        </svg>
+      )
+    case 'flower':
+      return (
+        <svg viewBox="0 0 220 270" width="100%" height="100%" aria-hidden="true">
+          <rect x="30" y="100" width="160" height="170" fill="#FFF5F8" />
+          <path d="M22 100h176l-12 34H34z" fill="#F3A3C0" />
+          <rect x="44" y="186" width="132" height="70" fill="#CFE7F5" stroke="#fff" strokeWidth="4" />
+          {[0, 1, 2, 3, 4].map((i) => <circle key={i} cx={56 + i * 27} cy="240" r="11" fill={['#E34B4B', '#F2C230', '#F3A3C0', '#6F45BD', '#E34B4B'][i]} />)}
+          <g transform="translate(0 -40)">{sign('#B0476F')}</g>
         </svg>
       )
     default:

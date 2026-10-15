@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactElement } from 'react'
 import { Building, TileIcon, Tree } from '../art/Art'
+import { Landmark } from '../art/More'
 import { Character } from '../art/Character'
 import { distancesFrom, EVENT_ROAD_NAME } from '../engine/board'
 import { MINI_NAMES } from '../engine/game'
@@ -72,6 +73,15 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos }: Props) {
         {step && <span className="tile-step">{step}</span>}
       </div>,
     )
+    // 이벤트 길 입구 랜드마크 (표지판 반대쪽)
+    const ev = t.fork?.options.find((o) => o.road === 'event')
+    if (ev) {
+      items.push(
+        <div key={`lm${i}`} className="bld" style={{ ...stand, left: xAt(t) + (st.tiles[ev.to].lane >= 0 ? LANE + 150 : -LANE - 430), top: yAt(t) - 250, width: 280, height: 290 }}>
+          <Landmark name={ev.label} />
+        </div>,
+      )
+    }
     // 갈림길 표지판
     if (t.fork) {
       items.push(

@@ -1,0 +1,128 @@
+import type { ReactElement } from 'react'
+
+// 추가 그림 (기본 버전 — 아트 단계에서 다시 그림, docs/12-art.md)
+// 이벤트 길 입구 랜드마크, 결정 창 그림
+
+const S = { width: '100%', height: '100%', 'aria-hidden': true } as const
+const sign = (name: string, bg: string, y = 228) => (
+  <g>
+    <rect x="30" y={y} width="200" height="38" rx="10" fill={bg} />
+    <text x="130" y={y + 27} textAnchor="middle" fontSize="24" fontFamily="Jua, sans-serif" fill="#fff">{name}</text>
+  </g>
+)
+
+// 이벤트 길 이름 → 입구 랜드마크
+const LANDMARKS = ['운동회', '두뇌 올림피아드', '축제 거리', '카지노', '세계일주']
+export function Landmark({ name }: { name: string }) {
+  switch (LANDMARKS.find((k) => name.includes(k))) {
+    case '운동회':
+      return (
+        <svg viewBox="0 0 260 270" {...S}>
+          <ellipse cx="130" cy="200" rx="120" ry="44" fill="#C9553B" />
+          <ellipse cx="130" cy="200" rx="92" ry="28" fill="#6DBB5A" />
+          <path d="M60 200h140" stroke="#fff" strokeWidth="4" strokeDasharray="10 8" />
+          <path d="M40 60v110M220 60v110" stroke="#7a5232" strokeWidth="6" />
+          <path d="M40 60h180" stroke="#7a5232" strokeWidth="4" />
+          <g>{['#E34B4B', '#F2C230', '#2E6FD8', '#2F8F5B', '#F3A3C0', '#6F45BD', '#E34B4B'].map((c, i) => <path key={i} d={`M${50 + i * 25} 62l12 0-6 16z`} fill={c} />)}</g>
+          {sign('운동회', '#C9553B')}
+        </svg>
+      )
+    case '두뇌 올림피아드':
+      return (
+        <svg viewBox="0 0 260 270" {...S}>
+          <rect x="40" y="100" width="180" height="128" fill="#EDE6FA" />
+          <path d="M28 104L130 40l102 64z" fill="#6F45BD" />
+          {[60, 100, 140, 180].map((x) => <rect key={x} x={x} y="112" width="16" height="116" fill="#fff" />)}
+          <circle cx="130" cy="78" r="18" fill="#F3A3C0" />
+          <path d="M120 72q10-12 20 0M118 82q12 8 24 0" stroke="#B0476F" strokeWidth="3" fill="none" />
+          {sign('두뇌 올림피아드', '#6F45BD')}
+        </svg>
+      )
+    case '축제 거리':
+      return (
+        <svg viewBox="0 0 260 270" {...S}>
+          <path d="M20 40q110 50 220 0" stroke="#7a5232" strokeWidth="3" fill="none" />
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => <circle key={i} cx={40 + i * 30} cy={52 + Math.sin(i / 2) * 12} r="10" fill={['#E34B4B', '#F2C230', '#F3A3C0', '#2E6FD8'][i % 4]} />)}
+          <rect x="50" y="130" width="160" height="98" fill="#F7D774" />
+          <path d="M40 130h180l-14-34H54z" fill="#E34B4B" />
+          <path d="M90 228v-50h80v50" fill="#B5452F" />
+          <path d="M115 150l8 16 18 2-13 12 3 18-16-9-16 9 3-18-13-12 18-2z" fill="#fff" />
+          {sign('축제 거리', '#E34B4B')}
+        </svg>
+      )
+    case '카지노':
+      return (
+        <svg viewBox="0 0 260 270" {...S}>
+          <rect x="30" y="80" width="200" height="148" fill="#1E2A44" />
+          <rect x="30" y="66" width="200" height="22" fill="#E2B85C" />
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => <circle key={i} cx={42 + i * 25} cy="77" r="5" fill={i % 2 ? '#fff' : '#E34B4B'} />)}
+          <rect x="70" y="110" width="120" height="60" rx="8" fill="#2F8F5B" stroke="#E2B85C" strokeWidth="4" />
+          <text x="130" y="152" textAnchor="middle" fontSize="34" fontFamily="Jua, sans-serif" fill="#F2C230">777</text>
+          <path d="M110 228v-40h40v40" fill="#E2B85C" />
+          {sign('카지노', '#B5452F')}
+        </svg>
+      )
+    case '세계일주':
+      return (
+        <svg viewBox="0 0 260 270" {...S}>
+          <rect x="20" y="140" width="220" height="88" fill="#DDEBF5" />
+          <path d="M20 140q110-46 220 0" fill="#9CC3E0" />
+          <rect x="190" y="70" width="24" height="70" fill="#C9D8E4" /><rect x="180" y="58" width="44" height="18" rx="4" fill="#4E7FA8" />
+          <path d="M40 90l60-6 20-22 10 2-10 22 40 0 10-10h8l-4 14 4 14h-8l-10-10-40 0 10 22-10 2-20-22-60-6z" fill="#fff" stroke="#4E7FA8" strokeWidth="3" />
+          {[40, 80, 120, 160, 200].map((x) => <rect key={x} x={x} y="170" width="24" height="30" fill="#fff" />)}
+          {sign('세계일주 공항', '#2E6FD8')}
+        </svg>
+      )
+    default:
+      return null
+  }
+}
+
+// 결정 창 위 작은 그림. 결정 종류(pending.type)로 고름
+const ART: Record<string, (c: string) => ReactElement> = {
+  marriage: () => (<g><circle cx="44" cy="52" r="20" fill="none" stroke="#E2B85C" strokeWidth="7" /><circle cx="76" cy="52" r="20" fill="none" stroke="#E2B85C" strokeWidth="7" /><path d="M70 22l6-10 6 10-6 6z" fill="#9CC3E0" /></g>),
+  baby: () => (<g><rect x="46" y="30" width="28" height="56" rx="10" fill="#fff" stroke="#9CC3E0" strokeWidth="4" /><rect x="50" y="18" width="20" height="14" rx="4" fill="#F3A3C0" /><path d="M54 52h12M54 64h12" stroke="#9CC3E0" strokeWidth="3" /></g>),
+  shop: () => (<g><path d="M30 40h60l-6 50H36z" fill="#2C5E8A" /><path d="M46 40v-8a14 14 0 0 1 28 0v8" stroke="#2C5E8A" strokeWidth="5" fill="none" /><circle cx="60" cy="64" r="8" fill="#F2C230" /></g>),
+  job: () => (<g><rect x="26" y="40" width="68" height="44" rx="8" fill="#7a5232" /><rect x="46" y="28" width="28" height="14" rx="4" fill="none" stroke="#7a5232" strokeWidth="5" /><rect x="26" y="56" width="68" height="6" fill="#5a3a21" /></g>),
+  biz: () => (<g><rect x="28" y="44" width="64" height="44" fill="#fff" stroke="#B5452F" strokeWidth="4" /><path d="M22 44h76l-8-18H30z" fill="#B5452F" /><path d="M52 88V66h16v22" fill="#F2C230" /><path d="M40 24v-12h40v12" stroke="#2F8F5B" strokeWidth="4" fill="none" /></g>),
+  medal: () => (<g><path d="M44 14l16 30 16-30" stroke="#2E6FD8" strokeWidth="8" fill="none" /><circle cx="60" cy="64" r="24" fill="#F2C230" stroke="#E2B85C" strokeWidth="4" /><path d="M60 50l4 9 10 1-8 7 3 10-9-5-9 5 3-10-8-7 10-1z" fill="#fff" /></g>),
+  book: () => (<g><path d="M20 30q20-8 40 4v52q-20-12-40-4z" fill="#6F45BD" /><path d="M100 30q-20-8-40 4v52q20-12 40-4z" fill="#8A6BD0" /><path d="M60 34v52" stroke="#fff" strokeWidth="3" /></g>),
+  family: () => (<g><path d="M20 54L60 22l40 32v36H20z" fill="#F7D774" /><path d="M14 56L60 18l46 38" stroke="#B5452F" strokeWidth="7" fill="none" /><path d="M52 64a8 8 0 0 1 16 0c0 8-8 12-8 12s-8-4-8-12z" fill="#E34B4B" /></g>),
+  sign: () => (<g><path d="M60 20v76" stroke="#7a5232" strokeWidth="6" /><path d="M30 30h50l12 10-12 10H30z" fill="#7a5232" /><path d="M90 56H40l-12 10 12 10h50z" fill="#9b6b43" /></g>),
+  dice: () => (<g><rect x="30" y="30" width="60" height="60" rx="12" fill="#fff" stroke="#3a2a1f" strokeWidth="4" /><circle cx="46" cy="46" r="6" fill="#3a2a1f" /><circle cx="60" cy="60" r="6" fill="#E34B4B" /><circle cx="74" cy="74" r="6" fill="#3a2a1f" /></g>),
+  heart: () => (<path d="M60 92S22 68 22 44a18 18 0 0 1 38-6 18 18 0 0 1 38 6c0 24-38 48-38 48z" fill="#F3A3C0" stroke="#B0476F" strokeWidth="4" />),
+  trophy: () => (<g><path d="M38 20h44v22a22 22 0 0 1-44 0z" fill="#F2C230" stroke="#E2B85C" strokeWidth="4" /><path d="M38 28H24q0 18 16 20M82 28h14q0 18-16 20" stroke="#E2B85C" strokeWidth="5" fill="none" /><rect x="54" y="62" width="12" height="14" fill="#E2B85C" /><rect x="40" y="76" width="40" height="12" rx="3" fill="#7a5232" /></g>),
+  cake: () => (<g><rect x="24" y="52" width="72" height="36" rx="6" fill="#F3A3C0" /><rect x="24" y="52" width="72" height="10" fill="#fff" /><path d="M42 52V34M60 52V30M78 52V34" stroke="#9CC3E0" strokeWidth="5" /><path d="M42 30q-4-6 0-10 4 4 0 10M60 26q-4-6 0-10 4 4 0 10M78 30q-4-6 0-10 4 4 0 10" fill="#F2C230" /></g>),
+  broken: () => (<g><path d="M58 90S22 66 22 42a18 18 0 0 1 36-6l-8 16 10 10-8 16z" fill="#C9553B" /><path d="M64 90s34-24 34-48a18 18 0 0 0-34-6l-6 16 10 10-8 16z" fill="#E07A5F" /></g>),
+  warn: () => (<g><path d="M60 14l46 78H14z" fill="#F2C230" stroke="#B5452F" strokeWidth="5" strokeLinejoin="round" /><path d="M60 40v26" stroke="#3a2a1f" strokeWidth="8" strokeLinecap="round" /><circle cx="60" cy="78" r="5" fill="#3a2a1f" /></g>),
+  grad: () => (<g><path d="M60 22l46 18-46 18-46-18z" fill="#3a2a1f" /><path d="M34 50v18q26 14 52 0V50" fill="#3a2a1f" /><path d="M100 40v28" stroke="#F2C230" strokeWidth="4" /><circle cx="100" cy="70" r="4" fill="#F2C230" /></g>),
+  money: () => (<g><rect x="18" y="38" width="84" height="46" rx="6" fill="#6DBB5A" stroke="#2F8F5B" strokeWidth="4" /><circle cx="60" cy="61" r="13" fill="#2F8F5B" /><text x="60" y="68" textAnchor="middle" fontSize="20" fontFamily="Jua, sans-serif" fill="#fff">₩</text></g>),
+}
+const TYPE_ART: Record<string, string> = {
+  marriage: 'marriage', wedding: 'marriage', baby: 'baby', shop: 'shop', job: 'job', career: 'book', adultStart: 'book', campus: 'book', collegeStat: 'book',
+  club: 'book', academy: 'book', kidEdu: 'book', bizPick: 'biz', bizRetire: 'biz', athleteNext: 'medal', middleBranch: 'family', stray: 'family',
+  fork: 'sign', retire: 'sign', afterRoll: 'dice', date: 'heart', agency: 'heart', agencyAttr: 'heart', agencyMatch: 'heart',
+  invest: 'money', overtime: 'money', taxEvade: 'money', loanRequest: 'money', sector: 'money',
+}
+
+// 배너 제목으로 그림 고르기
+const BANNER_ART: [RegExp, string][] = [
+  [/결혼/, 'marriage'], [/아기/, 'baby'], [/복권/, 'money'], [/메달|감독/, 'medal'], [/회사|창업|매각/, 'biz'], [/잔치/, 'cake'],
+  [/자녀/, 'grad'], [/수능|대학/, 'grad'], [/이혼/, 'broken'], [/게임 끝/, 'trophy'],
+]
+export function BannerArt({ title, tone }: { title: string; tone: string }) {
+  const key = BANNER_ART.find(([re]) => re.test(title))?.[1] ?? (tone === 'bad' ? 'warn' : null)
+  const draw = key ? ART[key] : null
+  if (!draw) return null
+  return <svg className="banner-art" viewBox="0 0 120 100" width="72" height="60" aria-hidden="true">{draw('')}</svg>
+}
+
+export function Trophy({ size = 40 }: { size?: number }) {
+  return <svg viewBox="0 0 120 100" width={size} height={size * 0.83} aria-hidden="true">{ART.trophy('')}</svg>
+}
+
+export function EventArt({ type }: { type: string }) {
+  const draw = ART[TYPE_ART[type] ?? '']
+  if (!draw) return null
+  return <svg className="event-art" viewBox="0 0 120 100" width="96" height="80" aria-hidden="true">{draw('')}</svg>
+}
