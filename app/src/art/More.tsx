@@ -91,6 +91,19 @@ const ART: Record<string, (c: string) => ReactElement> = {
   sign: () => (<g><path d="M60 20v76" stroke="#7a5232" strokeWidth="6" /><path d="M30 30h50l12 10-12 10H30z" fill="#7a5232" /><path d="M90 56H40l-12 10 12 10h50z" fill="#9b6b43" /></g>),
   dice: () => (<g><rect x="30" y="30" width="60" height="60" rx="12" fill="#fff" stroke="#3a2a1f" strokeWidth="4" /><circle cx="46" cy="46" r="6" fill="#3a2a1f" /><circle cx="60" cy="60" r="6" fill="#E34B4B" /><circle cx="74" cy="74" r="6" fill="#3a2a1f" /></g>),
   heart: () => (<path d="M60 92S22 68 22 44a18 18 0 0 1 38-6 18 18 0 0 1 38 6c0 24-38 48-38 48z" fill="#F3A3C0" stroke="#B0476F" strokeWidth="4" />),
+  ticket: () => (<g><rect x="10" y="26" width="100" height="56" rx="8" fill="#F2C230" stroke="#B5452F" strokeWidth="4" /><path d="M82 26v56" stroke="#B5452F" strokeWidth="3" strokeDasharray="5 4" /><text x="46" y="62" textAnchor="middle" fontSize="22" fontFamily="Jua, sans-serif" fill="#B5452F">LOTTO</text><circle cx="96" cy="54" r="7" fill="#E34B4B" /></g>),
+  card: () => (<g><rect x="30" y="18" width="46" height="66" rx="6" fill="#6F45BD" transform="rotate(-10 53 51)" /><rect x="46" y="16" width="46" height="66" rx="6" fill="#fff" stroke="#6F45BD" strokeWidth="4" transform="rotate(8 69 49)" /><text x="70" y="58" textAnchor="middle" fontSize="26" fontFamily="Jua, sans-serif" fill="#6F45BD" transform="rotate(8 69 49)">?</text></g>),
+  grow: () => (<g><path d="M20 84h80" stroke="#7a5232" strokeWidth="5" /><rect x="28" y="60" width="16" height="24" fill="#6DBB5A" /><rect x="52" y="44" width="16" height="40" fill="#2E6FD8" /><rect x="76" y="24" width="16" height="60" fill="#E34B4B" /><path d="M84 12l10 10M84 12l-10 10" stroke="#E34B4B" strokeWidth="4" /></g>),
+  travel: () => (<g><rect x="30" y="38" width="60" height="48" rx="8" fill="#E34B4B" /><path d="M48 38v-10h24v10" stroke="#7a5232" strokeWidth="5" fill="none" /><path d="M30 56h60" stroke="#fff" strokeWidth="4" /><path d="M8 26l26-4 10-10 5 1-5 10 18 0 4-4h4l-2 6 2 6h-4l-4-4-18 0 5 10-5 1-10-10z" fill="#9CC3E0" /></g>),
+  amusement: () => (<g><circle cx="60" cy="48" r="34" fill="none" stroke="#E34B4B" strokeWidth="5" /><path d="M60 14v68M26 48h68M36 24l48 48M84 24l-48 48" stroke="#F3A3C0" strokeWidth="3" />{[0, 1, 2, 3, 4, 5, 6, 7].map((i) => <circle key={i} cx={60 + Math.cos(i * 0.785) * 34} cy={48 + Math.sin(i * 0.785) * 34} r="6" fill={['#F2C230', '#2E6FD8', '#2F8F5B', '#6F45BD'][i % 4]} />)}<path d="M50 96l10-14 10 14" stroke="#7a5232" strokeWidth="5" fill="none" /></g>),
+  walk: () => (<g><ellipse cx="62" cy="62" rx="30" ry="16" fill="#C98B4E" /><circle cx="92" cy="48" r="13" fill="#C98B4E" /><path d="M96 36l8-6 0 12z" fill="#8A5A2E" /><circle cx="96" cy="46" r="2.5" fill="#3a2a1f" /><path d="M40 74v14M54 76v14M72 76v14M84 74v14" stroke="#8A5A2E" strokeWidth="5" /><path d="M32 58q-14-10-10-22" stroke="#C98B4E" strokeWidth="5" fill="none" /></g>),
+  rest: () => (<g><rect x="16" y="54" width="88" height="26" rx="10" fill="#9CC3E0" /><rect x="22" y="38" width="76" height="24" rx="10" fill="#B9D6EA" /><path d="M24 80v8M96 80v8" stroke="#7a5232" strokeWidth="5" /><path d="M88 14a14 14 0 1 0 12 20 12 12 0 0 1-12-20z" fill="#F2C230" /><text x="62" y="30" fontSize="16" fontFamily="Jua, sans-serif" fill="#6F45BD">zZ</text></g>),
+  game: () => (<g><path d="M22 44q0-12 14-12h48q14 0 14 12l6 28q2 12-10 12-6 0-12-10H38q-6 10-12 10-12 0-10-12z" fill="#3a2a1f" /><path d="M38 46v16M30 54h16" stroke="#fff" strokeWidth="5" /><circle cx="80" cy="50" r="5" fill="#E34B4B" /><circle cx="90" cy="60" r="5" fill="#2E6FD8" /></g>),
+  friends: () => (<g><path d="M18 50h84q-4 34-42 34T18 50z" fill="#fff" stroke="#E34B4B" strokeWidth="4" /><path d="M30 50q10-14 20 0M52 50q10-16 20 0M72 50q8-12 18 0" fill="#E34B4B" /><path d="M86 14L66 50M96 20L72 50" stroke="#7a5232" strokeWidth="4" /></g>),
+  playground: () => (<g><path d="M20 90V30h18v60" stroke="#2E6FD8" strokeWidth="5" fill="none" /><path d="M20 44h18M20 58h18M20 72h18" stroke="#2E6FD8" strokeWidth="3" /><path d="M38 30q40 0 62 60" stroke="#E34B4B" strokeWidth="8" fill="none" /></g>),
+  karaoke: () => (<g><circle cx="74" cy="32" r="16" fill="#9CC3E0" stroke="#3a2a1f" strokeWidth="4" /><path d="M64 44L30 86" stroke="#3a2a1f" strokeWidth="10" strokeLinecap="round" /><path d="M20 30q6-10 12 0M14 50q6-10 12 0" stroke="#F3A3C0" strokeWidth="4" fill="none" /><text x="96" y="70" fontSize="22" fill="#6F45BD">♪</text></g>),
+  hike: () => (<g><path d="M8 88L46 26l20 30 12-14 34 46z" fill="#6DBB5A" /><path d="M46 26l8 13-8 4-8-4z" fill="#fff" /><path d="M78 42l6 8" stroke="#fff" strokeWidth="3" /><path d="M58 14v14l10-5z" fill="#E34B4B" /><path d="M58 14v30" stroke="#7a5232" strokeWidth="2" /></g>),
+  garden: () => (<g><rect x="12" y="66" width="96" height="22" rx="4" fill="#8A5A2E" />{[28, 52, 76, 98].map((x) => <g key={x}><path d={`M${x} 66q-10-18 0-26q10 8 0 26z`} fill="#6DBB5A" /><path d={`M${x} 66q-14-6-12-18q12 2 12 18z`} fill="#4F9A5E" /></g>)}<path d="M100 22q-12 4-8 16" stroke="#9CC3E0" strokeWidth="3" fill="none" /></g>),
   trophy: () => (<g><path d="M38 20h44v22a22 22 0 0 1-44 0z" fill="#F2C230" stroke="#E2B85C" strokeWidth="4" /><path d="M38 28H24q0 18 16 20M82 28h14q0 18-16 20" stroke="#E2B85C" strokeWidth="5" fill="none" /><rect x="54" y="62" width="12" height="14" fill="#E2B85C" /><rect x="40" y="76" width="40" height="12" rx="3" fill="#7a5232" /></g>),
   cake: () => (<g><rect x="24" y="52" width="72" height="36" rx="6" fill="#F3A3C0" /><rect x="24" y="52" width="72" height="10" fill="#fff" /><path d="M42 52V34M60 52V30M78 52V34" stroke="#9CC3E0" strokeWidth="5" /><path d="M42 30q-4-6 0-10 4 4 0 10M60 26q-4-6 0-10 4 4 0 10M78 30q-4-6 0-10 4 4 0 10" fill="#F2C230" /></g>),
   broken: () => (<g><path d="M58 90S22 66 22 42a18 18 0 0 1 36-6l-8 16 10 10-8 16z" fill="#C9553B" /><path d="M64 90s34-24 34-48a18 18 0 0 0-34-6l-6 16 10 10-8 16z" fill="#E07A5F" /></g>),
@@ -102,12 +115,12 @@ const TYPE_ART: Record<string, string> = {
   marriage: 'marriage', wedding: 'marriage', baby: 'baby', shop: 'shop', job: 'job', career: 'book', adultStart: 'book', campus: 'book', collegeStat: 'book',
   club: 'book', academy: 'book', kidEdu: 'book', bizPick: 'biz', bizRetire: 'biz', athleteNext: 'medal', middleBranch: 'family', stray: 'family',
   fork: 'sign', retire: 'sign', afterRoll: 'dice', date: 'heart', agency: 'heart', agencyAttr: 'heart', agencyMatch: 'heart',
-  invest: 'money', overtime: 'money', taxEvade: 'money', loanRequest: 'money', sector: 'money',
+  growPick: 'grow', invest: 'money', overtime: 'money', taxEvade: 'money', loanRequest: 'money', sector: 'money',
 }
 
 // 배너 제목으로 그림 고르기
 const BANNER_ART: [RegExp, string][] = [
-  [/결혼/, 'marriage'], [/아기/, 'baby'], [/복권/, 'money'], [/메달|감독/, 'medal'], [/회사|창업|매각/, 'biz'], [/잔치/, 'cake'],
+  [/결혼/, 'marriage'], [/아기/, 'baby'], [/복권/, 'ticket'], [/메달|감독/, 'medal'], [/회사|창업|매각/, 'biz'], [/잔치/, 'cake'],
   [/자녀/, 'grad'], [/수능|대학/, 'grad'], [/이혼/, 'broken'], [/게임 끝/, 'trophy'],
 ]
 export function BannerArt({ title, tone }: { title: string; tone: string }) {
@@ -119,6 +132,19 @@ export function BannerArt({ title, tone }: { title: string; tone: string }) {
 
 export function Trophy({ size = 40 }: { size?: number }) {
   return <svg viewBox="0 0 120 100" width={size} height={size * 0.83} aria-hidden="true">{ART.trophy('')}</svg>
+}
+
+// 칸 사건 팝업: 그림 + 제목 + 이번 칸 기록. 눌러서 닫거나 저절로 꺼짐
+export function EventPopup({ art, title, text, tone, who, onClose }: { art: string; title: string; text: string; tone: string; who: string; onClose: () => void }) {
+  const draw = ART[art]
+  return (
+    <button className={`event-pop t-${tone}`} onClick={onClose} aria-label={`${title}: ${text} (눌러서 닫기)`}>
+      {draw && <svg viewBox="0 0 120 100" width="150" height="125" aria-hidden="true">{draw('')}</svg>}
+      <b className="jua">{title}</b>
+      <span className="muted">{who}</span>
+      {text.split('\n').map((l, i) => <span key={i}>{l}</span>)}
+    </button>
+  )
 }
 
 export function EventArt({ type }: { type: string }) {

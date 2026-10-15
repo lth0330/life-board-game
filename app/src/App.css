@@ -450,3 +450,37 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
 .event-art { display: block; margin: 0 auto 4px; }
 .banner-art { display: block; margin: 0 auto 2px; }
 .tags .award { background: #FFF4CC; border-color: #E2B85C; }
+/* 복권 당첨: 크게, 금색, 통통 튀게 */
+.banner.b-lottery { padding: 18px 26px; background: #FFF4CC; border-color: #E2B85C; animation: lotto-pop 0.6s cubic-bezier(.3,1.6,.5,1) both; }
+.banner.b-lottery b { font-size: 40px; color: #B5452F; }
+.banner.b-lottery span { font-size: 22px; font-family: 'Jua', sans-serif; }
+.banner.b-lottery .banner-art { width: 140px; height: 116px; animation: lotto-shake 0.5s 0.3s ease-in-out 2; }
+@keyframes lotto-pop { from { transform: translate(-50%, -50%) scale(0.3); } to { transform: translate(-50%, -50%) scale(1); } }
+@keyframes lotto-shake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } }
+@media (prefers-reduced-motion: reduce) { .banner.b-lottery, .banner.b-lottery .banner-art { animation: none; } }
+
+/* 칸 사건 팝업 */
+.event-pop {
+  position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 6;
+  width: min(320px, calc(100% - 32px)); padding: 16px 18px; border-radius: 22px;
+  background: var(--paper); border: 4px solid var(--ink); box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+  display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; font: inherit; color: var(--ink);
+  animation: pop 0.3s cubic-bezier(.3,1.5,.5,1) both;
+}
+.event-pop b { font-size: 26px; }
+.event-pop.t-good b { color: var(--good); }
+.event-pop.t-bad b { color: var(--bad); }
+.event-pop svg { animation: pop-bob 1.2s ease-in-out infinite; }
+@keyframes pop-bob { 50% { transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .event-pop, .event-pop svg { animation: none; } }
+/* 상점 카테고리 */
+.shop-cats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.shop-cats button { min-height: 72px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: 'Jua', sans-serif; font-size: 17px; }
+.shop-cats button b { font-size: 26px; font-weight: normal; }
+.hud-stats { color: var(--ink); font-weight: normal; }
+.stock-up { color: var(--bad); } .stock-down { color: #2E6FD8; }
+
+/* 부드러운 이동: 보드 전체가 미끄러지고, 캐릭터도 칸 사이를 미끄러짐 */
+.track { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 0.23s linear; will-change: transform; }
+.char, .shadow { transition: left 0.23s linear, top 0.23s linear, opacity 0.3s; }
+@media (prefers-reduced-motion: reduce) { .track, .char, .shadow { transition: none; } }

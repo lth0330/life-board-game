@@ -3,7 +3,7 @@
 import type { GameState } from './engine/types'
 import type { Outfit } from './engine/outfit'
 
-export const SAVE_VERSION = 8 // 저장 형식이 바뀌면 올림 → 예전 저장은 무시
+export const SAVE_VERSION = 9 // 저장 형식이 바뀌면 올림 → 예전 저장은 무시
 
 export interface Profile { name: string; pinHash: string; outfit?: Outfit; createdAt: number }
 export interface SaveSlot { version: number; savedAt: number; state: GameState }

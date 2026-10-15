@@ -1,5 +1,5 @@
 import type { Rng } from './rng'
-import type { ForkId, MiniId, PointKind, RoadId, Stage, StageId, StopEvent, Tile, TileKind } from './types'
+import type { ForkId, UniEvent, MiniId, PointKind, RoadId, Stage, StageId, StopEvent, Tile, TileKind } from './types'
 
 // 단계별 길 설계. 숫자는 '깊이'(본 길 기준 몇 번째 칸). docs/01-structure.md, 11-event-maps.md
 
@@ -145,10 +145,18 @@ export function buildStage(d: StageDef, rng: Rng): Stage {
     }
   }
 
-  // 대학교: 대학 간 사람의 출발 칸. 정해진 차례 동안 머물다 졸업하면 직업 칸으로
+  // 대학교: 대학 간 사람의 출발 칸 → 대학 길 9칸을 주사위로 걷고 → 졸업하면 본 길 직업 칸으로
   if (d.campus) {
     const jobDep = Number(Object.keys(d.stops).find((k) => d.stops[+k] === 'job'))
-    tiles.push({ kind: 'campus', next: [mainIdx[jobDep]], d: 0, lane: -1, road: 'campus' })
+    const UNI: [UniEvent, number][] = [['study', 25], ['club', 15], ['love', 15], ['parttime', 15], ['exam', 15], ['party', 10], ['scholar', 5]]
+    const gate = tiles.push({ kind: 'campus', next: [], d: -9, lane: -1, road: 'campus' }) - 1
+    let prev = gate
+    for (let k = 0; k < 9; k++) {
+      const idx = tiles.push({ kind: 'uni', uni: rng.weighted(UNI), next: [], d: -8 + k, lane: -1, road: 'campus' }) - 1
+      tiles[prev].next = [idx]
+      prev = idx
+    }
+    tiles[prev].next = [mainIdx[jobDep]]
   }
 
   // 이벤트 길: 본 길 옆으로 빠졌다가 조금 앞에서 합류. 칸마다 미니게임

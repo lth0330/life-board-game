@@ -2,7 +2,8 @@ import type { Outfit } from './outfit'
 
 export type StageId = 'child' | 'student' | 'young' | 'middle' | 'old'
 export type StatKey = 'int' | 'str' | 'cha'
-export type TileKind = 'money' | 'grow' | 'happy' | 'risk' | 'card' | 'stop' | 'date' | 'mini' | 'rest' | 'goal' | 'campus'
+export type TileKind = 'money' | 'grow' | 'happy' | 'risk' | 'card' | 'stop' | 'date' | 'mini' | 'rest' | 'goal' | 'campus' | 'uni'
+export type UniEvent = 'study' | 'club' | 'love' | 'parttime' | 'exam' | 'party' | 'scholar'
 export type StopEvent = 'club' | 'job' | 'jobfair' | 'middleBranch'
 // 갈라지는 길의 테마 (칸 효과가 그 길답게 바뀜)
 export type RoadId = 'main' | 'academy' | 'play' | 'college' | 'work' | 'startup' | 'company' | 'city' | 'country' | 'event' | 'campus'
@@ -50,6 +51,7 @@ export interface Tile {
   road: RoadId
   fork?: { id: ForkId; title: string; text: string; options: ForkOption[] }
   mini?: MiniId
+  uni?: UniEvent // 대학 길 칸의 사건
 }
 
 export interface Stage {
@@ -144,6 +146,7 @@ export interface Player {
   bizKeep: boolean | null // 노년에 회사를 계속 경영하는지 (null = 아직 안 정함)
   medals: number[] // 운동선수 메달 (0 금, 1 은, 2 동). 메달마다 매 턴 연금
   exAthlete: number | null // 중년에 은퇴한 운동선수의 마지막 등급 (창업/감독 고르기 전까지)
+  stockCost: Record<Sector, number> // 종목별 산 돈 합계 (평균 산 가격 = 이것 ÷ 가진 수)
   carValue: number // 차의 지금 가치 (산 값에서 사고마다 깎임, 최종 자산에 들어감)
   house: HouseTier
   loans: Loan[]
@@ -217,6 +220,9 @@ export interface GameState {
   dice: { value: number; id: number; second?: number } | null // 마지막으로 굴린 주사위 (연출용)
   lastRoll: number | null
   log: LogEntry[]
+  logCount: number // 지금까지 남긴 기록 수 (팝업에 이번 칸 기록만 모으려고)
+  popup: { id: number; art: string; title: string; text: string; tone: 'good' | 'bad' | 'info'; playerId: number } | null // 칸 사건 팝업
+  stockPrev: Record<Sector, number> // 지난 바퀴 주가 (오르내림 표시)
   stockPrice: Record<Sector, number>
   housePrice: number // 집 시세 (처음 100 = 상점 기본값 그대로)
   nextNews: { sector: Sector; up: boolean; size: number } | null

@@ -39,6 +39,16 @@ interface FinanceProps {
   onClose: () => void
 }
 
+function StockChange({ now, prev }: { now: number; prev: number }) {
+  const d = now - prev
+  if (!d) return <span className="muted">(지난 바퀴 그대로)</span>
+  return <span className={d > 0 ? 'stock-up' : 'stock-down'}>{d > 0 ? '▲' : '▼'} {Math.abs(Math.round((d / prev) * 100))}% ({d > 0 ? '+' : ''}{won(d)})</span>
+}
+function ProfitText({ v }: { v: number }) {
+  const r = Math.round(v)
+  return <b className={r >= 0 ? 'stock-up' : 'stock-down'}>{r >= 0 ? `+${won(r)} 이익` : `${won(r)} 손해`}</b>
+}
+
 export function FinanceSheet(f: FinanceProps) {
   const [tab, setTab] = useState<'lottery' | 'stock' | 'ins' | 'loan' | 'friend'>('stock')
   const [amount, setAmount] = useState(1000)
@@ -63,12 +73,14 @@ export function FinanceSheet(f: FinanceProps) {
           {SECTORS.map((k) => (
             <div key={k} className="row">
               <div className="grow">
-                <b>{k}</b> <span className="muted">{won(s.stockPrice[k])}/주</span>
-                <div className="muted">보유 {p.stocks[k]}주 · {won(p.stocks[k] * s.stockPrice[k])}</div>
+                <b>{k}</b> <span className="muted">{won(s.stockPrice[k])}/주</span> <StockChange now={s.stockPrice[k]} prev={s.stockPrev?.[k] ?? s.stockPrice[k]} />
+                <div className="muted">보유 {p.stocks[k]}주 · {won(p.stocks[k] * s.stockPrice[k])}{p.stocks[k] > 0 && <> · 평균 {won(p.stockCost[k] / p.stocks[k])}에 삼 · 지금 팔면 <ProfitText v={p.stocks[k] * s.stockPrice[k] - p.stockCost[k]} /></>}</div>
               </div>
               <button disabled={locked || p.money < s.stockPrice[k]} onClick={() => f.onTrade(k, 1)}>+1</button>
               <button disabled={locked || p.money < s.stockPrice[k] * 10} onClick={() => f.onTrade(k, 10)}>+10</button>
-              <button disabled={locked || p.stocks[k] < 1} onClick={() => f.onTrade(k, -p.stocks[k])}>전부 팔기</button>
+              <button disabled={locked || p.stocks[k] < 1} onClick={() => f.onTrade(k, -1)}>-1</button>
+              <button disabled={locked || p.stocks[k] < 10} onClick={() => f.onTrade(k, -10)}>-10</button>
+              <button disabled={locked || p.stocks[k] < 1} onClick={() => f.onTrade(k, -p.stocks[k])}>전부</button>
             </div>
           ))}
           <p className="muted">주식 평가액 {won(stocksValue(s, p))}</p>

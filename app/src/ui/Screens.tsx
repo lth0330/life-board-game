@@ -8,7 +8,7 @@ import { Dresser } from './Dresser'
 import { Manual } from './Manual'
 
 export type Speed = 'fast' | 'normal' | 'slow'
-export interface SetupResult { name: string; humans: number; ai: number; adult: boolean; difficulty: Difficulty; speed: Speed; outfit: Outfit }
+export interface SetupResult { name: string; names: string[]; humans: number; ai: number; adult: boolean; difficulty: Difficulty; speed: Speed; outfit: Outfit }
 
 function Frame({ children }: { children: ReactNode }) {
   return (
@@ -122,6 +122,7 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
 }) {
   const [name, setName] = useState(defaultName)
   const [humans, setHumans] = useState(1)
+  const [names, setNames] = useState(['', '', ''])
   const [ai, setAi] = useState(3)
   const [adult, setAdult] = useState(false)
   const [difficulty, setDifficulty] = useState<Difficulty>('normal')
@@ -147,6 +148,13 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
       <div className="field"><span>이 폰으로 같이 할 사람 (나 포함)</span>
         <Choice value={humans} options={[[1, '혼자'], [2, '2명'], [3, '3명'], [4, '4명']]} onChange={(v) => { setHumans(v); setAi(Math.min(ai, 4 - v)) }} />
       </div>
+      {humans > 1 && (
+        <div className="field"><span>같이 할 사람 이름</span>
+          {Array.from({ length: humans - 1 }, (_, i) => (
+            <input key={i} value={names[i]} maxLength={8} placeholder={`${i + 2}번 이름 (비우면 친구${i + 1})`} onChange={(e) => setNames(names.map((n, j) => (j === i ? e.target.value : n)))} />
+          ))}
+        </div>
+      )}
       <div className="field"><span>AI 수</span>
         <Choice value={aiCount} options={([0, 1, 2, 3] as number[]).filter((n) => n <= maxAi && n + humans >= 2).map((n) => [n, `${n}명`] as [number, string])} onChange={setAi} />
       </div>
@@ -159,7 +167,7 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
       <div className="field"><span>AI 차례 속도</span>
         <Choice value={speed} options={[['fast', '빠르게'], ['normal', '보통'], ['slow', '천천히']]} onChange={setSpeed} />
       </div>
-      <button className="wide big" disabled={humans + aiCount < 2} onClick={() => onStart({ name, humans, ai: aiCount, adult, difficulty, speed, outfit })}>게임 시작</button>
+      <button className="wide big" disabled={humans + aiCount < 2} onClick={() => onStart({ name, names: names.slice(0, humans - 1), humans, ai: aiCount, adult, difficulty, speed, outfit })}>게임 시작</button>
       <button className="wide ghost" onClick={onBack}>뒤로</button>
       {dress && <Dresser value={outfit} onChange={(o) => { setOutfit(o); onOutfit(o) }} onDone={() => setDress(false)} />}
       {manual && <Manual onClose={() => setManual(false)} />}

@@ -1,7 +1,7 @@
 // 캐릭터 그림 (SVG). 기본 버전 — 아트 단계에서 다시 그린다 (docs/12-art.md)
 import type { Outfit } from '../engine/outfit'
 
-interface Props { outfit: Outfit; view?: 'front' | 'back'; size?: number; title?: string }
+interface Props { outfit: Outfit; view?: 'front' | 'back'; size?: number; title?: string; age?: number }
 
 const darken = (hex: string, amt = 0.18) => {
   const n = parseInt(hex.slice(1), 16)
@@ -9,7 +9,21 @@ const darken = (hex: string, amt = 0.18) => {
   return `rgb(${f(n >> 16)}, ${f((n >> 8) & 255)}, ${f(n & 255)})`
 }
 
-export function Character({ outfit: o, view = 'front', size = 100, title }: Props) {
+// 나이에 따라: 어린이는 작게, 학생은 조금 작게, 중년은 흰머리 섞임, 노년은 흰머리 + 지팡이
+function aged(o: Outfit, age?: number): { o: Outfit; scale: number; cane: boolean } {
+  if (age === undefined) return { o, scale: 1, cane: false }
+  const scale = age < 4 ? 0.55 : age < 8 ? 0.68 : age < 14 ? 0.8 : age < 20 ? 0.9 : 1
+  const hairColor = age >= 60 ? '#DCDCDC' : age >= 45 ? mix(o.hairColor, '#C8C8C8', 0.4) : o.hairColor
+  return { o: { ...o, hairColor }, scale, cane: age >= 65 }
+}
+const mix = (a: string, b: string, t: number) => {
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16)
+  const c = (sh: number) => Math.round(((pa >> sh) & 255) * (1 - t) + ((pb >> sh) & 255) * t)
+  return `#${((c(16) << 16) | (c(8) << 8) | c(0)).toString(16).padStart(6, '0')}`
+}
+
+export function Character({ outfit, view = 'front', size = 100, title, age }: Props) {
+  const { o, scale, cane } = aged(outfit, age)
   const back = view === 'back'
   const dress = o.top === 'dress'
   const longSleeve = o.top === 'hoodie' || o.top === 'shirt'
@@ -17,6 +31,7 @@ export function Character({ outfit: o, view = 'front', size = 100, title }: Prop
   const ink = '#2A2118'
   return (
     <svg viewBox="0 0 100 200" width={size} height={size * 2} role={title ? 'img' : undefined} aria-label={title} aria-hidden={title ? undefined : true}>
+      <g transform={`translate(${50 - 50 * scale} ${200 - 200 * scale}) scale(${scale})`}>
       {/* 다리와 하의 */}
       {(skirtLike || o.bottom === 'shorts') && (
         <g fill={o.skin}>
@@ -112,6 +127,8 @@ export function Character({ outfit: o, view = 'front', size = 100, title }: Prop
 
       {/* 모자 */}
       <Hat o={o} back={back} />
+      {cane && <path d="M86 112v80M86 112q0-8 8-8" stroke="#7A5232" strokeWidth="5" fill="none" strokeLinecap="round" />}
+      </g>
     </svg>
   )
 }

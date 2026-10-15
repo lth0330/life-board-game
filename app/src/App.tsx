@@ -10,7 +10,7 @@ import {
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
 import type { DiceItem, GameState } from './engine/types'
 import { currentProfile, deleteGame, loadGame, logout, saveGame, updateOutfit, type Profile } from './storage'
-import { BannerArt, EventArt } from './art/More'
+import { BannerArt, EventArt, EventPopup } from './art/More'
 import { Board, FullMap } from './ui/Board'
 import { Dresser } from './ui/Dresser'
 import { Confetti, DiceThrow, StageCard } from './ui/Effects'
@@ -23,7 +23,14 @@ const SPEED_MS: Record<Speed, number> = { fast: 450, normal: 1000, slow: 1700 }
 const WALK_MS = 230
 const DICE_ROLL_MS = 750
 const DICE_SHOW_MS = 650
-const CELEBRATE = ['결혼!', '복권 당첨!', '아기 탄생', '수능 상위권!', '게임 끝!', '회사 성장!', '감독 도전 성공!', '자녀 대성공!', '금메달!', '은메달!', '동메달!', '육순 잔치', '칠순 잔치']
+// 상점 카테고리 (물건 id로 나눔)
+const SHOP_CATS = [
+  { id: 'home', icon: '🏠', name: '집·차', match: (id: string) => id.startsWith('house') || id.startsWith('car') },
+  { id: 'love', icon: '💕', name: '연애', match: (id: string) => id.startsWith('agency') },
+  { id: 'pet', icon: '🐶', name: '반려동물', match: (id: string) => id === 'pet' },
+  { id: 'item', icon: '🎲', name: '카드·주사위', match: (id: string) => id === 'chance' || id.startsWith('dice_') },
+]
+const CELEBRATE = ['결혼!', '복권 1등!', '복권 2등!', '아기 탄생', '수능 상위권!', '게임 끝!', '회사 성장!', '감독 도전 성공!', '자녀 대성공!', '금메달!', '은메달!', '동메달!', '육순 잔치', '칠순 잔치']
 
 type Screen = 'title' | 'menu' | 'setup' | 'play'
 
@@ -77,7 +84,7 @@ export default function App() {
         onStart={(o) => {
           setSpeed(o.speed)
           setGame(createGame({
-            humanName: o.name, humans: o.humans, aiCount: o.ai, outfits: [o.outfit],
+            humanName: o.name, humanNames: o.names, humans: o.humans, aiCount: o.ai, outfits: [o.outfit],
             settings: { startAdult: o.adult, difficulty: o.difficulty },
           }))
           setScreen('play')
@@ -132,7 +139,26 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
   }, [walking, walkIdx, diceShow])
   const posOf = (q: GameState['players'][number]) => (walking && q.id === game.pathPlayer ? game.path[walkIdx] : q.pos)
 
-  const busy = rolling || diceShow !== null || walking
+  // ── 칸 사건 팝업: 걷기가 끝난 뒤 보여 주고 2.6초 뒤 저절로 꺼짐 ──
+  const [popShow, setPopShow] = useState<GameState['popup']>(null)
+  const lastPopId = useRef(game.popup?.id ?? 0)
+  useEffect(() => {
+    if (!game.popup || game.popup.id === lastPopId.current) return
+    lastPopId.current = game.popup.id
+    setPopShow(game.popup)
+  }, [game.popup])
+  const popVisible = !!popShow && !walking && diceShow === null
+  useEffect(() => {
+    if (!popVisible) return
+    const ms = popShow && game.players[popShow.playerId].human ? 2600 : 1500 // AI 차례는 짧게
+    const t = setTimeout(() => setPopShow(null), ms)
+    return () => clearTimeout(t)
+  }, [popVisible, popShow, game.players])
+  // 상점 카테고리
+  const [shopCat, setShopCat] = useState<string | null>(null)
+  useEffect(() => { setShopCat(null) }, [game.pending])
+
+  const busy = rolling || diceShow !== null || walking || popShow !== null
   const p = cur(game)
   const shown = walking ? game.players[game.pathPlayer] : p
   const pending = busy ? null : game.pending
@@ -166,7 +192,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
   useEffect(() => { if (game.banner) setBanner(game.banner) }, [game.banner])
   useEffect(() => {
     if (!banner || busy) return
-    const t = setTimeout(() => setBanner(null), banner.title.endsWith('단계') ? 2000 : 1800)
+    const t = setTimeout(() => setBanner(null), banner.title.endsWith('단계') ? 2000 : banner.title.startsWith('복권') ? 3200 : 1800)
     return () => clearTimeout(t)
   }, [banner, busy])
 
@@ -217,7 +243,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" /></svg>
           </button>
         </div>
-        <div className="hud-sub muted">{playerLine(game, shown)}</div>
+        <div className="hud-sub muted">{playerLine(game, shown)} · <b className="hud-stats">지력 {shown.stats.int} · 체력 {shown.stats.str} · 매력 {shown.stats.cha}</b></div>
       </header>
 
       <div className="side-buttons">
@@ -265,8 +291,16 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
             <h2 className="jua">{pending.title}</h2>
             <p>{pending.text}</p>
             {!game.players[pending.playerId].human && <p className="note">{game.players[pending.playerId].name}(AI)가 고르는 중…</p>}
+            {pending.type === 'shop' && !shopCat && (
+              <div className="shop-cats">
+                {SHOP_CATS.filter((c) => pending.options.some((o) => c.match(o.id))).map((c) => (
+                  <button key={c.id} onClick={() => setShopCat(c.id)}><b>{c.icon}</b>{c.name}</button>
+                ))}
+              </div>
+            )}
+            {pending.type === 'shop' && shopCat && <button className="ghost-btn" onClick={() => setShopCat(null)}>← 다른 물건 보기</button>}
             <div className="options">
-              {pending.options.map((o) => (
+              {pending.options.filter((o) => pending.type !== 'shop' || o.id === 'pass' || (shopCat && SHOP_CATS.find((c) => c.id === shopCat)!.match(o.id))).map((o) => (
                 <button key={o.id} disabled={o.disabled || !game.players[pending.playerId].human} onClick={() => act((s) => choose(s, o.id))}>
                   <b>{o.label}</b>{o.desc && <span>{o.desc}</span>}
                 </button>
@@ -274,6 +308,10 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
             </div>
           </div>
         </div>
+      )}
+
+      {popVisible && popShow && (
+        <EventPopup art={popShow.art} title={popShow.title} text={popShow.text} tone={popShow.tone} who={game.players[popShow.playerId].name} onClose={() => setPopShow(null)} />
       )}
 
       {!busy && game.mini && game.players[game.mini.playerId].human && (
@@ -310,7 +348,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
 
       {stageBanner && <StageCard title={banner.title} text={banner.text} />}
       {banner && !busy && !stageBanner && (
-        <div className={`banner b-${banner.tone}`} role="status">
+        <div className={`banner b-${banner.tone}${banner.title.startsWith('복권') ? ' b-lottery' : ''}`} role="status">
           <BannerArt title={banner.title} tone={banner.tone} />
           <b className="jua">{banner.title}</b>
           <span>{banner.text}</span>

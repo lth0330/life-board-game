@@ -55,6 +55,10 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
         default: return 1
       }
     }
+    case 'growPick': {
+      const k = id as 'int' | 'str' | 'cha'
+      return 10 - p.stats[k] + (per === 'elite' && k === 'int' ? 3 : 0) + (per === 'family' && k === 'cha' ? 2 : 0) + (p.biz?.stat === k ? 3 : 0) + rng.next()
+    }
     case 'collegeStat': {
       const k = id as 'int' | 'str' | 'cha'
       return 10 - p.stats[k] + (per === 'elite' && k === 'int' ? 3 : 0)

@@ -2,6 +2,7 @@ import type { CSSProperties, ReactElement } from 'react'
 import { Building, TileIcon, Tree } from '../art/Art'
 import { Landmark } from '../art/More'
 import { Character } from '../art/Character'
+import { ageOf, UNI_NAMES } from '../engine/game'
 import { distancesFrom, EVENT_ROAD_NAME } from '../engine/board'
 import { MINI_NAMES } from '../engine/game'
 import type { GameState, Player, Tile } from '../engine/types'
@@ -18,12 +19,18 @@ const TILE_STYLE: Record<string, { label: string; bg: string; fg: string }> = {
   rest: { label: '휴식', bg: '#E9DFC8', fg: '#2A2118' },
   goal: { label: '골', bg: '#FFD45C', fg: '#2A2118' },
   campus: { label: '대학교', bg: '#8A4FA8', fg: '#fff' },
+  uni: { label: '대학', bg: '#B48AD8', fg: '#fff' },
+}
+const UNI_LOOK: Record<string, { bg: string; icon: string }> = {
+  study: { bg: '#8A4FA8', icon: 'grow' }, club: { bg: '#2E6FD8', icon: 'happy' }, love: { bg: '#F3A3C0', icon: 'date' },
+  parttime: { bg: '#2F8F5B', icon: 'money' }, exam: { bg: '#C9553B', icon: 'risk' }, party: { bg: '#E8742C', icon: 'happy' }, scholar: { bg: '#E2B85C', icon: 'money' },
 }
 
 const STOP_LABEL: Record<string, string> = { club: '동아리', job: '직업', jobfair: '박람회', middleBranch: '새 가족' }
 
 export function tileLook(t: Tile) {
   const base = TILE_STYLE[t.kind]
+  if (t.uni) return { ...base, bg: UNI_LOOK[t.uni].bg, label: UNI_NAMES[t.uni] }
   const label = t.stop ? STOP_LABEL[t.stop] : t.mini ? MINI_NAMES[t.mini] : base.label
   return { ...base, label }
 }
@@ -53,8 +60,8 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos }: Props) {
   const focusPos = posOf(focus)
   const fd = st.tiles[focusPos].d
   const xAt = (t: Tile) => 540 + Math.round(Math.sin(t.d * 0.55) * 150) + t.lane * LANE - 60
-  const yAt = (t: Tile) => 1600 - (t.d - fd) * 150
-  const visible = (t: Tile) => t.d >= fd - 1.2 && t.d <= fd + 10
+  const yAt = (t: Tile) => 1600 - t.d * 150 // 칸 위치는 고정. 카메라(.track)가 fd만큼 움직임
+  const visible = (t: Tile) => t.d >= fd - 2.5 && t.d <= fd + 11
   const steps = showSteps ? distancesFrom(st, focusPos, 6) : new Map<number, number>()
   const items: ReactElement[] = []
   // 갈라진 길이 지나는 쪽에는 건물·나무를 더 바깥으로 밀어냄
@@ -68,7 +75,7 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos }: Props) {
     const small = look.label.length > 3
     items.push(
       <div key={`t${i}`} className={`tile${t.kind === 'mini' ? ' tile-mini' : ''}`} style={{ left: xAt(t), top: yAt(t), background: look.bg, color: look.fg }}>
-        <TileIcon kind={t.stop ? 'stop' : t.kind === 'campus' ? 'grow' : t.kind} size={50} />
+        <TileIcon kind={t.stop ? 'stop' : t.uni ? UNI_LOOK[t.uni].icon : t.kind === 'campus' ? 'grow' : t.kind} size={50} />
         <span className="tile-label" style={{ fontSize: small ? 17 : 21 }}>{look.label}</span>
         {step && <span className="tile-step">{step}</span>}
       </div>,
@@ -153,8 +160,8 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos }: Props) {
       const me = p.id === focus.id
       items.push(
         <div key={`s${p.id}`} className="shadow" style={{ left: xAt(t) + 20 + dx, top: yAt(t) + 70 }} />,
-        <div key={`c${p.id}`} className="char" style={{ ...stand, left: xAt(t) + 20 + dx, top: yAt(t) - 90 }}>
-          <Character outfit={p.outfit} view="back" size={80} />
+        <div key={`c${p.id}`} className="char" style={{ ...stand, left: xAt(t) + 20 + dx, top: yAt(t) - 90, opacity: me ? 1 : 0.5 }}>
+          <Character outfit={p.outfit} view="back" size={80} age={ageOf(s, p)} />
           <div className="name-tag" style={{ background: me ? p.color : 'rgba(42,33,24,0.6)', top: -40 - k * 34 }}>{p.name}</div>
         </div>,
       )
@@ -169,7 +176,9 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos }: Props) {
         <div className="cloud a" /><div className="cloud b" />
       </div>
       <div className="camera">
-        <div className="plane" style={{ transform: `rotateX(${TILT}deg)` }}>{items}</div>
+        <div className="plane" style={{ transform: `rotateX(${TILT}deg)` }}>
+          <div key={s.stageIdx} className="track" style={{ transform: `translateY(${fd * 150}px)` }}>{items}</div>
+        </div>
       </div>
     </div>
   )
