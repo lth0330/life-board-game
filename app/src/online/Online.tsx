@@ -1,20 +1,30 @@
 // 온라인 화면: 로그인·가입 → 온라인 메뉴(방 만들기·코드로 들어가기) → 대기실
-// 게임 진행 연결은 다음 단계 (docs/13-review.md 14)
-import { useCallback, useEffect, useRef, useState } from 'react'
+// 게임: 방장 기기가 엔진을 돌리고 바뀔 때마다 방에 올림, 손님 기기는 받은 상태를 보여 주고 누른 것만 방장에게 보냄
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createGame } from '../engine/game'
+import { applyOp, opActor, type Op } from '../engine/ops'
+import type { GameState } from '../engine/types'
 import { Frame } from '../ui/Screens'
 import {
   cleanId, cleanPw, client, createRoom, currentMe, ID_OK, join, login, logoutOnline, openRooms, parse, PW_OK, saveRoom, sendAction,
   type ActionPayload, type LobbyState, type Me, type Room, type Seat,
 } from './client'
 
-export function Online({ onBack }: { onBack: () => void }) {
+// 게임 화면(Play)은 App에서 그려서 넘겨받음 (서로 불러오는 고리를 피하려고)
+export interface PlayProps {
+  game: GameState; setGame: (g: GameState) => void; onQuit: () => void
+  online: { mine: number[]; host: boolean; send: (op: Op) => void }
+}
+type RenderPlay = (p: PlayProps) => ReactNode
+
+export function Online({ onBack, renderPlay }: { onBack: () => void; renderPlay: RenderPlay }) {
   const [me, setMe] = useState<Me | null | undefined>(undefined) // undefined: 확인 중
   const [roomId, setRoomId] = useState<string | null>(null)
   useEffect(() => { void currentMe().then(setMe) }, [])
 
   if (me === undefined) return <Frame><p className="center muted">불러오는 중…</p></Frame>
   if (!me) return <AuthScreen onDone={setMe} onBack={onBack} />
-  if (roomId) return <Lobby me={me} roomId={roomId} onLeave={() => setRoomId(null)} />
+  if (roomId) return <Lobby me={me} roomId={roomId} renderPlay={renderPlay} onLeave={() => setRoomId(null)} />
   return <OnlineHome me={me} onRoom={setRoomId} onBack={onBack} onLogout={() => { void logoutOnline().then(() => setMe(null)) }} />
 }
 
@@ -84,7 +94,11 @@ function OnlineHome({ me, onRoom, onBack, onLogout }: { me: Me; onRoom: (id: str
     setBusy(false)
     const room = rooms[0]
     if (!room) { setErr('그런 방이 없어요'); return }
-    if (room.status !== 'waiting') { setErr('이미 시작한 방이에요'); return }
+    const owners = parse<LobbyState>(room.state, { settings: { startAdult: false, difficulty: 'normal' } }).owners ?? []
+    if (room.status === 'playing') {
+      if (owners.includes(me.userId) || room.owner?.startsWith(me.userId)) { onRoom(room.id); return } // 내가 하던 게임: 이어 하기
+      setErr('이미 시작한 방이에요'); return
+    }
     const seats = parse<Seat[]>(room.seats, [])
     if (!seats.some((s) => s.userId === me.userId) && !seats.some((s) => s.kind === 'open')) { setErr('자리가 꽉 찼어요'); return }
     onRoom(room.id)
@@ -108,7 +122,7 @@ function OnlineHome({ me, onRoom, onBack, onLogout }: { me: Me; onRoom: (id: str
 // ───────── 대기실 ─────────
 const DIFF: [LobbyState['settings']['difficulty'], string][] = [['easy', '쉬움'], ['normal', '보통'], ['hard', '어려움']]
 
-function Lobby({ me, roomId, onLeave }: { me: Me; roomId: string; onLeave: () => void }) {
+function Lobby({ me, roomId, onLeave, renderPlay }: { me: Me; roomId: string; onLeave: () => void; renderPlay: RenderPlay }) {
   const [room, setRoom] = useState<Room | null>(null)
   const [closed, setClosed] = useState(false)
   const roomRef = useRef<Room | null>(null)
@@ -131,7 +145,7 @@ function Lobby({ me, roomId, onLeave }: { me: Me; roomId: string; onLeave: () =>
   // 손님: 들어가겠다고 알림
   const joined = useRef(false)
   useEffect(() => {
-    if (!room || isHost || joined.current) return
+    if (!room || isHost || joined.current || room.status !== 'waiting') return
     joined.current = true
     void sendAction(roomId, me, 'join')
   }, [room, isHost, roomId, me])
@@ -177,6 +191,7 @@ function Lobby({ me, roomId, onLeave }: { me: Me; roomId: string; onLeave: () =>
     )
   }
   if (!room) return <Frame><p className="center muted">방에 들어가는 중…</p></Frame>
+  if (room.status === 'playing') return <OnlineGame me={me} room={room} isHost={isHost} renderPlay={renderPlay} onLeave={onLeave} />
 
   const seats = parse<Seat[]>(room.seats, [])
   const lobby = parse<LobbyState>(room.state, { settings: { startAdult: false, difficulty: 'normal' } })
@@ -187,6 +202,18 @@ function Lobby({ me, roomId, onLeave }: { me: Me; roomId: string; onLeave: () =>
     if (!isHost || seats[i].kind === 'human') return
     const next = seats.map((s, k) => (k === i ? { kind: s.kind === 'ai' ? 'open' : 'ai' } as Seat : s))
     void saveRoom(room, { seats: next }).then(apply)
+  }
+  // 시작: 사람 자리 순서대로 플레이어 0, 1, …  그다음 AI
+  const start = async () => {
+    const people = seats.filter((s) => s.kind === 'human')
+    const ai = seats.filter((s) => s.kind === 'ai').length
+    const game = createGame({
+      humanName: people[0]?.name ?? '방장', humanNames: people.slice(1).map((s) => s.name ?? '친구'), humans: people.length, aiCount: ai,
+      settings: { startAdult: lobby.settings.startAdult, difficulty: lobby.settings.difficulty, online: true },
+    })
+    const owners = [...people.map((s) => s.userId ?? null), ...Array<null>(ai).fill(null)]
+    const r = await saveRoom(room, { status: 'playing', state: { ...lobby, owners, game } })
+    apply(r)
   }
   const setSettings = (patch: Partial<LobbyState['settings']>) => {
     if (!isHost) return
@@ -218,11 +245,93 @@ function Lobby({ me, roomId, onLeave }: { me: Me; roomId: string; onLeave: () =>
         </div>
       </div>
       {isHost ? (
-        <button className="wide big" disabled>시작 ({humans}명 + AI {players - humans}) · 다음 단계에서 연결</button>
+        <button className="wide big" disabled={players < 2} onClick={() => void start()}>시작 ({humans}명 + AI {players - humans})</button>
       ) : (
         <p className="center">방장이 시작하기를 기다리는 중…</p>
       )}
       <button className="wide ghost" onClick={() => void leave()}>{isHost ? '방 닫고 나가기' : '나가기'}</button>
     </Frame>
   )
+}
+
+// ───────── 게임 ─────────
+function OnlineGame({ me, room, isHost, renderPlay, onLeave }: { me: Me; room: Room; isHost: boolean; renderPlay: RenderPlay; onLeave: () => void }) {
+  // 방 상태는 바뀔 때만 다시 읽음 (게임 상태가 커서 화면을 그릴 때마다 읽지 않게)
+  const lobby = useMemo(() => parse<LobbyState>(room.state, { settings: { startAdult: false, difficulty: 'normal' } }), [room.state])
+  const owners = lobby.owners ?? []
+  const mine = owners.map((u, i) => (u === me.userId ? i : -1)).filter((i) => i >= 0)
+
+  // 방장: 내 기기의 게임이 진짜. 바뀔 때마다 순서대로 올림 (올리는 중이면 끝난 뒤 가장 새 것만)
+  const [hostGame, setHostGame] = useState<GameState | null>(() => (isHost ? lobby.game ?? null : null))
+  const gameRef = useRef(hostGame)
+  const ownersRef = useRef(owners)
+  const version = useRef(room.version ?? 0)
+  const uploading = useRef(false)
+  const dirty = useRef(false)
+  const roomRef = useRef(room)
+  roomRef.current = room
+  const settingsRef = useRef(lobby.settings)
+  const upload = useCallback(async () => {
+    if (uploading.current) { dirty.current = true; return }
+    uploading.current = true
+    do {
+      dirty.current = false
+      const g = gameRef.current
+      if (!g) break
+      version.current += 1
+      await saveRoom(roomRef.current, {
+        state: { settings: settingsRef.current, owners: ownersRef.current, game: g }, version: version.current,
+        ...(g.phase === 'gameover' ? { status: 'ended' as const } : {}),
+      }).catch(() => { dirty.current = true })
+    } while (dirty.current)
+    uploading.current = false
+  }, [])
+  const setGame = useCallback((g: GameState) => {
+    gameRef.current = g
+    setHostGame(g)
+    void upload()
+  }, [upload])
+
+  // 방장: 손님이 보낸 행동을 받아서 적용 (그 차례·선택 창 주인이 보낸 것만)
+  useEffect(() => {
+    if (!isHost) return
+    const sub = client.models.Action.onCreate({ filter: { roomId: { eq: room.id } } }).subscribe({
+      next: (a) => {
+        const g = gameRef.current
+        const p = parse<ActionPayload & { op?: Op } | null>(a.payload, null)
+        if (!g || !p) return
+        if (a.kind === 'leave') { // 게임 중에 나가면 AI가 대신
+          const i = ownersRef.current.indexOf(p.userId)
+          if (i < 0) return
+          ownersRef.current = ownersRef.current.map((u, k) => (k === i ? null : u))
+          const next = structuredClone(g)
+          next.players[i].human = false
+          setGame(next)
+          return
+        }
+        if (a.kind !== 'op' || !p.op) return
+        const actor = opActor(g, p.op)
+        if (actor === null || ownersRef.current[actor] !== p.userId) return
+        const next = structuredClone(g)
+        next.banner = null
+        next.speech = null
+        applyOp(next, p.op)
+        setGame(next)
+      },
+    })
+    return () => sub.unsubscribe()
+  }, [isHost, room.id, setGame])
+
+  const game = isHost ? hostGame : lobby.game ?? null
+  if (!game) return <Frame><p className="center muted">게임을 불러오는 중…</p></Frame>
+  const quit = () => {
+    if (!isHost && game.phase !== 'gameover') void sendAction(room.id, me, 'leave') // 손님이 나가면 AI가 대신
+    onLeave()
+  }
+  return renderPlay({
+    game,
+    setGame: isHost ? setGame : () => {},
+    onQuit: quit,
+    online: { mine, host: isHost, send: (op) => void sendAction(room.id, me, 'op', { op }) },
+  })
 }

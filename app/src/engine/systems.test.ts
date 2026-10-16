@@ -62,7 +62,7 @@ describe('AI끼리 판에서 새 시스템이 실제로 일어나는가', () => 
     console.log('60판 240명의 마지막 상태:', final)
     console.log('60판 동안 일어난 횟수 (기록 200줄 기준):', counts)
     for (const k of ['갈림길', '이벤트 길 미니게임', '같은 칸 만남', '결혼']) expect(counts[k] ?? 0, k).toBeGreaterThan(0)
-  })
+  }, 30000) // AI 60판이라 다른 테스트와 같이 돌면 5초를 넘길 수 있음
 })
 
 describe('사람 플레이어 흐름', () => {
@@ -150,5 +150,28 @@ describe('백수 취업 도전', () => {
     choose(s, job.id)
     expect(me.jobId).toBe(job.id.slice(4))
     expect(canSeekJob(s, me)).toBe(false)
+  })
+})
+
+describe('온라인 같은 칸 대결', () => {
+  it('타이밍 대결은 사람마다 차례로 하고, 모두 끝나면 결과를 낸다', () => {
+    const s = createGame({ humanName: '가', humanNames: ['나'], humans: 2, aiCount: 1, settings: { startAdult: true, difficulty: 'normal', online: true }, seed: 4 })
+    s.pending = null
+    s.mini = { game: 'timing', playerId: 0, level: 1, duel: { ids: [0, 1, 2], results: { 2: 50 }, queue: [1] } }
+    finishMini(s, 90)
+    expect(s.mini?.playerId).toBe(1)
+    expect(s.mini?.duel?.results[0]).toBe(90)
+    finishMini(s, 10)
+    expect(s.mini).toBe(null)
+    expect(s.log.some((l) => l.text.startsWith('타이밍:') && l.text.includes('가 90점') && l.text.includes('나 10점'))).toBe(true)
+  })
+  it('가위바위보는 사람마다 차례로 고른다', () => {
+    const s = createGame({ humanName: '가', humanNames: ['나'], humans: 2, aiCount: 0, settings: { startAdult: true, difficulty: 'normal', online: true }, seed: 4 })
+    s.pending = { type: 'rps', playerId: 0, title: '', text: '', options: [{ id: '0', label: '' }, { id: '1', label: '' }, { id: '2', label: '' }], data: { ids: [0, 1], picks: {}, queue: [1] } }
+    choose(s, '1')
+    expect(s.pending?.type).toBe('rps')
+    expect(s.pending?.playerId).toBe(1)
+    choose(s, '0')
+    expect(s.log.some((l) => l.text.includes('가 바위') && l.text.includes('나 가위'))).toBe(true)
   })
 })

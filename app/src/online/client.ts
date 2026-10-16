@@ -3,6 +3,7 @@ import { Amplify } from 'aws-amplify'
 import { fetchUserAttributes, getCurrentUser, signIn, signOut, signUp, updateUserAttributes } from 'aws-amplify/auth'
 import { generateClient } from 'aws-amplify/data'
 import type { Schema } from '../../amplify/data/resource'
+import type { GameState } from '../engine/types'
 import outputs from '../../amplify_outputs.json'
 
 Amplify.configure(outputs)
@@ -67,7 +68,8 @@ export const logoutOnline = () => signOut()
 export type SeatKind = 'human' | 'ai' | 'open'
 export interface Seat { kind: SeatKind; userId?: string; name?: string }
 export interface RoomSettings { startAdult: boolean; difficulty: 'easy' | 'normal' | 'hard' }
-export interface LobbyState { settings: RoomSettings }
+// 방 상태: 대기실 설정 + (시작하면) 플레이어마다 맡은 사람(userId, AI는 null)과 게임 상태
+export interface LobbyState { settings: RoomSettings; owners?: (string | null)[]; game?: GameState }
 
 export const parse = <T,>(v: unknown, fallback: T): T => {
   if (v == null) return fallback
@@ -98,13 +100,13 @@ export async function createRoom(me: Me): Promise<Room | string> {
 }
 
 // 방장만: 자리·설정·상태를 고침
-export async function saveRoom(room: Room, patch: { seats?: Seat[]; state?: unknown; status?: 'waiting' | 'playing' | 'ended' }) {
+export async function saveRoom(room: Room, patch: { seats?: Seat[]; state?: unknown; status?: 'waiting' | 'playing' | 'ended'; version?: number }) {
   const r = await client.models.Room.update({
     id: room.id,
     ...(patch.seats ? { seats: JSON.stringify(patch.seats) } : {}),
     ...(patch.state !== undefined ? { state: JSON.stringify(patch.state) } : {}),
     ...(patch.status ? { status: patch.status } : {}),
-    version: (room.version ?? 0) + 1,
+    version: patch.version ?? (room.version ?? 0) + 1,
   })
   return r.data
 }

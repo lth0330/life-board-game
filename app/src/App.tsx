@@ -4,9 +4,9 @@ import { Character } from './art/Character'
 import { aiStep } from './engine/ai'
 import { CARS, DICE_ITEMS, MINI_PRACTICE_LIMIT } from './engine/data'
 import {
-  ageOf, turnIncome, buyLottery, canAct, canUseCar, choose, createGame, cur, cureAddiction, finishMini, fortuneName, miniGuide, canSeekJob, seekJob, repayFriendLoan,
-  repayLoans, requestFriendLoan, roll, stageOf, startSabotage, takeLoan, toggleInsurance, tradeStock, playChance,
+  ageOf, turnIncome, canAct, canUseCar, createGame, cur, fortuneName, miniGuide, canSeekJob, stageOf,
 } from './engine/game'
+import { applyOp, type Op } from './engine/ops'
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
 import type { DiceItem, GameState } from './engine/types'
 import { currentProfile, deleteGame, loadGame, logout, saveGame, updateOutfit, type Profile } from './storage'
@@ -77,7 +77,9 @@ export default function App() {
       </>
     )
   }
-  if (screen === 'online') return <Online onBack={() => setScreen('menu')} />
+  if (screen === 'online') {
+    return <Online onBack={() => setScreen('menu')} renderPlay={(o) => <Play game={o.game} setGame={o.setGame} speed="fast" saving={false} onQuit={o.onQuit} online={o.online} />} />
+  }
   if (screen === 'setup' || !game) {
     return (
       <SetupScreen
@@ -101,7 +103,10 @@ export default function App() {
 
 type SheetKind = null | 'finance' | 'cards' | 'people' | 'map' | 'manual'
 
-function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGame: (g: GameState) => void; speed: Speed; saving: boolean; onQuit: () => void }) {
+// 온라인일 때: mine = 이 기기가 맡은 플레이어, host = 방장 기기(AI를 돌림), send = 손님 기기가 행동을 방장에게 보냄
+export interface OnlinePlay { mine: number[]; host: boolean; send: (op: Op) => void }
+
+export function Play({ game, setGame, speed, saving, onQuit, online }: { game: GameState; setGame: (g: GameState) => void; speed: Speed; saving: boolean; onQuit: () => void; online?: OnlinePlay }) {
   const [sheet, setSheet] = useState<SheetKind>(null)
   const [rolling, setRolling] = useState(false)
   const [menu, setMenu] = useState(false)
@@ -118,6 +123,15 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
     fn(next)
     setGame(next)
   }, [setGame])
+  // 플레이어 행동: 손님 기기는 방장에게 보내고, 방장·혼자 하기는 바로 적용
+  const run = useCallback((op: Op) => {
+    if (online && !online.host) online.send(op)
+    else act((s) => applyOp(s, op))
+  }, [act, online])
+  const isMine = (id: number) => (online ? online.mine.includes(id) : game.players[id].human)
+  // 단계 정산 창: 온라인은 각자 닫음 (다른 사람 화면을 닫지 않게)
+  const [closedSummary, setClosedSummary] = useState<number | null>(null)
+  const summaryOpen = !!game.summary && (!online || closedSummary !== game.stageIdx)
 
   // ── 주사위 결과 잠깐 보여주기 ──
   const [diceShow, setDiceShow] = useState<{ value: number; second?: number } | null>(null)
@@ -196,16 +210,16 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
     return () => clearTimeout(t)
   }, [hold, walking, diceShow, popShow])
 
-  const busy = rolling || diceShow !== null || walking || popShow !== null || hold !== null || !!game.summary || wheel !== null
+  const busy = rolling || diceShow !== null || walking || popShow !== null || hold !== null || summaryOpen || wheel !== null
   const p = cur(game)
   const shown = walking ? game.players[game.pathPlayer] : hold !== null ? game.players[hold] : p
   const pending = busy ? null : game.pending
-  const myTurn = p.human && canAct(game) && !busy
+  const myTurn = isMine(p.id) && canAct(game) && !busy
   const st = stageOf(game)
 
   // ── AI 진행 ──
   useEffect(() => {
-    if (game.phase === 'gameover' || busy) return
+    if (game.phase === 'gameover' || busy || (online && !online.host)) return // AI는 방장 기기만 돌림
     const aiPending = game.pending && !game.players[game.pending.playerId].human
     const aiTurn = !game.pending && !game.mini && !p.human && game.phase === 'roll'
     if (!aiPending && !aiTurn) return
@@ -216,7 +230,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
       } else act(aiStep)
     }, SPEED_MS[speed])
     return () => clearTimeout(t)
-  }, [game, busy, p.human, speed, act])
+  }, [game, busy, p.human, speed, act, online])
 
   // ── 말풍선·배너 ──
   const [speech, setSpeech] = useState(game.speech)
@@ -244,17 +258,18 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
   const onCampus = p.campusTurns > 0 && stageOf(game).tiles[p.pos].kind === 'campus'
   const doRoll = () => {
     if (!myTurn) return
-    if (onCampus) { act((s) => roll(s)); return } // 대학교에서는 주사위 대신 대학 생활
+    if (onCampus) { run(['roll', 0, false, null]); return } // 대학교에서는 주사위 대신 대학 생활
     const useCar = carMode
     const item = itemMode
     sfx('dice')
     setRolling(true)
-    setTimeout(() => { setRolling(false); act((s) => roll(s, 0, useCar, item)) }, DICE_ROLL_MS)
+    setTimeout(() => { setRolling(false); run(['roll', 0, useCar, item]) }, DICE_ROLL_MS)
   }
   const showCar = myTurn && canUseCar(p) && !onCampus
   const heldItems = myTurn && !onCampus ? [...new Set(p.diceItems)] : []
   const showSeek = myTurn && canSeekJob(game, p)
   const recent = game.log.slice(-3)
+  const sheetP = !myTurn && online ? game.players[online.mine[0]] : p // 온라인은 내 차례가 아닐 때 내 재테크·카드를 보여 줌
   const stageBanner = banner && !busy && banner.title.endsWith('단계')
 
   // 화면을 위로 밀어서 주사위 던지기
@@ -306,7 +321,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
 
       {(showCar || heldItems.length > 0 || showSeek) && (
         <div className="roll-mods">
-          {showSeek && <button className="car-toggle" onClick={() => act(seekJob)}>💼 취업 도전</button>}
+          {showSeek && <button className="car-toggle" onClick={() => run(['seekJob'])}>💼 취업 도전</button>}
           {showCar && (
             <button className={`car-toggle ${carMode ? 'on' : ''}`} aria-pressed={carMode} onClick={() => { setCarMode(!carMode); setItemMode(null) }}>
               {CARS[p.car].name} ±1 {carMode ? '사용함' : '쓰기'} · 남은 {p.carCharges}번
@@ -336,7 +351,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
             <EventArt type={pending.type} />
             <h2 className="jua">{pending.title}</h2>
             <p>{pending.text}</p>
-            {!game.players[pending.playerId].human && <p className="note">{game.players[pending.playerId].name}(AI)가 고르는 중…</p>}
+            {!isMine(pending.playerId) && <p className="note">{game.players[pending.playerId].name}{game.players[pending.playerId].human ? '님' : '(AI)'}이 고르는 중…</p>}
             {pending.type === 'shop' && !shopCat && (
               <div className="shop-cats">
                 {SHOP_CATS.filter((c) => pending.options.some((o) => c.match(o.id))).map((c) => (
@@ -347,7 +362,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
             {pending.type === 'shop' && shopCat && <button className="ghost-btn" onClick={() => setShopCat(null)}>← 다른 물건 보기</button>}
             <div className="options">
               {pending.options.filter((o) => pending.type !== 'shop' || o.id === 'pass' || (shopCat && SHOP_CATS.find((c) => c.id === shopCat)!.match(o.id))).map((o) => (
-                <button key={o.id} disabled={o.disabled || !game.players[pending.playerId].human} onClick={() => { sfx('click'); act((s) => choose(s, o.id)) }}>
+                <button key={o.id} disabled={o.disabled || !isMine(pending.playerId)} onClick={() => { sfx('click'); run(['choose', o.id]) }}>
                   <b>{o.label}</b>{o.desc && <span>{o.desc}</span>}
                 </button>
               ))}
@@ -356,7 +371,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
         </div>
       )}
 
-      {game.summary && !walking && <StageSummary s={game} onClose={() => act((s) => { s.summary = null })} />}
+      {summaryOpen && !walking && <StageSummary s={game} onClose={() => (online ? setClosedSummary(game.stageIdx) : act((s) => { s.summary = null }))} />}
 
       {wheel && <Roulette title={wheel.title} chance={wheel.chance} ok={wheel.ok} who={game.players[wheel.playerId].name} onDone={closeWheel} />}
 
@@ -366,26 +381,29 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
           : <EventPopup art={popShow.art} title={popShow.title} text={popShow.text} tone={popShow.tone} who={game.players[popShow.playerId].name} onClose={() => setPopShow(null)} />
       )}
 
-      {!busy && game.mini && game.players[game.mini.playerId].human && (
-        <MiniGame key={`${game.turn}-${game.mini.game}`} mini={game.mini} guide={miniGuide(game, game.mini.game, !!game.mini.duel)} practiceLimit={MINI_PRACTICE_LIMIT.local} onFinish={(v) => act((s) => finishMini(s, v))} />
+      {!busy && game.mini && isMine(game.mini.playerId) && (
+        <MiniGame key={`${game.turn}-${game.mini.game}`} mini={game.mini} guide={miniGuide(game, game.mini.game, !!game.mini.duel)} practiceLimit={online ? MINI_PRACTICE_LIMIT.online : MINI_PRACTICE_LIMIT.local} onFinish={(v) => run(['finishMini', v])} />
+      )}
+      {!busy && game.mini && !isMine(game.mini.playerId) && game.players[game.mini.playerId].human && (
+        <div className="speech waiting-note" role="status">{game.players[game.mini.playerId].name}님이 미니게임 중…</div>
       )}
 
       {sheet === 'finance' && (
         <FinanceSheet
-          s={game} p={p} canUse={myTurn}
-          onLottery={() => act(buyLottery)} onCure={() => act(cureAddiction)}
-          onTrade={(k, q) => act((s) => tradeStock(s, k, q))}
-          onInsurance={(k) => act((s) => toggleInsurance(s, k))}
-          onLoan={(a) => act((s) => takeLoan(s, a))} onRepay={(a) => act((s) => repayLoans(s, a))}
-          onFriendLoan={(id, a, r, t) => { setSheet(null); act((s) => requestFriendLoan(s, id, a, r, t)) }}
-          onRepayFriend={(i) => act((s) => repayFriendLoan(s, i))}
+          s={game} p={sheetP} canUse={myTurn}
+          onLottery={() => run(['buyLottery'])} onCure={() => run(['cureAddiction'])}
+          onTrade={(k, q) => run(['tradeStock', k, q])}
+          onInsurance={(k) => run(['toggleInsurance', k])}
+          onLoan={(a) => run(['takeLoan', a])} onRepay={(a) => run(['repayLoans', a])}
+          onFriendLoan={(id, a, r, t) => { setSheet(null); run(['requestFriendLoan', id, a, r, t]) }}
+          onRepayFriend={(i) => run(['repayFriendLoan', i])}
           onClose={() => setSheet(null)}
         />
       )}
       {sheet === 'cards' && (
-        <CardsSheet p={p} canUse={myTurn}
-          onUseChance={() => { setSheet(null); act(playChance) }}
-          onSabotage={() => { setSheet(null); act(startSabotage) }}
+        <CardsSheet p={sheetP} canUse={myTurn}
+          onUseChance={() => { setSheet(null); run(['playChance']) }}
+          onSabotage={() => { setSheet(null); run(['startSabotage']) }}
           onClose={() => setSheet(null)} />
       )}
       {sheet === 'people' && <PeopleSheet s={game} onClose={() => setSheet(null)} />}
@@ -412,7 +430,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
         <div className="sheet-backdrop" onClick={() => setMenu(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <h2 className="jua">설정</h2>
-            <p className="muted">{saving ? '게임은 자동 저장돼요. 메뉴에서 이어 할 수 있어요.' : '손님 모드라 저장되지 않아요.'}</p>
+            <p className="muted">{online ? '온라인 게임은 방에 저장돼요. 같은 방 코드로 다시 들어오면 이어져요.' : saving ? '게임은 자동 저장돼요. 메뉴에서 이어 할 수 있어요.' : '손님 모드라 저장되지 않아요.'}</p>
             <div className="sound-row">
               <button className={sound.sfx ? 'on' : ''} aria-pressed={sound.sfx} onClick={() => { setSoundPrefs({ sfx: !sound.sfx }); setSound(soundPrefs()); sfx('click') }}>🔊 효과음 {sound.sfx ? '켜짐' : '꺼짐'}</button>
               <button className={sound.bgm ? 'on' : ''} aria-pressed={sound.bgm} onClick={() => { unlockAudio(); setSoundPrefs({ bgm: !sound.bgm }); setSound(soundPrefs()) }}>🎵 배경음 {sound.bgm ? '켜짐' : '꺼짐'}</button>

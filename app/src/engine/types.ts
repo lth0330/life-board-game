@@ -115,7 +115,7 @@ export interface MiniState {
   playerId: number // 지금 미니게임을 하는 사람
   level: number // 0 쉬움 ~ 2 어려움 (능력치가 높을수록 쉬움)
   stake?: number // 카지노 판돈
-  duel?: { ids: number[]; results: Record<number, number> }
+  duel?: { ids: number[]; results: Record<number, number>; queue?: number[] } // queue: 아직 안 한 사람 (온라인)
 }
 
 // 창업한 회사. 회사 크기는 Player.jobRank. avg: 세 능력치 평균으로 / ranks·base·sale: 업종만의 단계 이름·수입·판 값
@@ -210,6 +210,7 @@ export interface LogEntry {
 export interface Settings {
   startAdult: boolean
   difficulty: Difficulty
+  online?: boolean // 온라인(각자 기기): 같은 칸 대결에서 사람은 모두 자기 기기로 함
 }
 
 export interface GameState {

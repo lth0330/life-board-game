@@ -1427,6 +1427,12 @@ export function finishMini(s: GameState, value: number) {
   if (!m) return
   const p = s.players[m.playerId]
   s.mini = null
+  if (m.duel?.queue?.length) { // 대결에서 아직 안 한 사람이 있으면 그 사람 차례 (온라인)
+    const next = s.players[m.duel.queue[0]]
+    s.mini = { game: m.game, playerId: next.id, level: miniLevel(next, m.game), duel: { ids: m.duel.ids, results: { ...m.duel.results, [p.id]: value }, queue: m.duel.queue.slice(1) } }
+    resume(s)
+    return
+  }
   const miniStart = s.logCount
   if (m.duel) resolveDuel(s, m.game as DuelId, m.duel.ids, { ...m.duel.results, [p.id]: value })
   else miniReward(s, p, m.game as MiniId, Math.max(0, Math.min(2, Math.round(value))), m.stake)
@@ -1531,17 +1537,16 @@ function meet(s: GameState) {
       const res: Record<number, number> = {}
       for (const q of all) res[q.id] = rng.int(1, 6)
       resolveDuel(s, game, ids, res)
-    } else if (game === 'rps') {
-      if (p.human) {
-        s.pending = {
-          type: 'rps', playerId: p.id, title: '가위바위보!', text: `${others.map((q) => q.name).join(', ')}와 한 판. 진 사람은 능력치 -1`,
-          options: [{ id: '0', label: '가위' }, { id: '1', label: '바위' }, { id: '2', label: '보' }], data: { ids },
-        }
-      } else resolveRps(s, ids, { [p.id]: rng.int(0, 2) })
-    } else {
+    }
+    // 직접 하는 사람: 온라인은 대결에 낀 사람 모두(각자 기기로 차례대로), 혼자 하기는 지금 차례인 사람만
+    const players = (s.settings.online ? all.filter((q) => q.human) : p.human ? [p] : []).map((q) => q.id)
+    if (game === 'rps') {
+      if (players.length) rpsPending(s, ids, {}, players)
+      else resolveRps(s, ids, { [p.id]: rng.int(0, 2) })
+    } else if (game === 'timing') {
       const res: Record<number, number> = {}
-      for (const q of all) if (q.id !== p.id || !p.human) res[q.id] = timingScore(rng, q)
-      if (p.human) s.mini = { game: 'timing', playerId: p.id, level: miniLevel(p, 'timing'), duel: { ids, results: res } }
+      for (const q of all) if (!players.includes(q.id)) res[q.id] = timingScore(rng, q)
+      if (players.length) s.mini = { game: 'timing', playerId: players[0], level: miniLevel(s.players[players[0]], 'timing'), duel: { ids, results: res, queue: players.slice(1) } }
       else resolveDuel(s, game, ids, res)
     }
     return
@@ -1553,6 +1558,16 @@ function meet(s: GameState) {
     const [text, fx] = rng.pick(good ? ev.good : ev.bad)
     fx(q)
     log(s, q.id, `[운세 ${fortuneName(q.fortune)}] ${text}`, good ? 'good' : 'bad')
+  }
+}
+
+// 가위바위보: queue의 첫 사람에게 묻고, 고른 것은 picks에 모음
+function rpsPending(s: GameState, ids: number[], picks: Record<number, number>, queue: number[]) {
+  const who = s.players[queue[0]]
+  const others = ids.filter((i) => i !== who.id).map((i) => s.players[i].name)
+  s.pending = {
+    type: 'rps', playerId: who.id, title: '가위바위보!', text: `${others.join(', ')}와 한 판. 진 사람은 능력치 -1`,
+    options: [{ id: '0', label: '가위' }, { id: '1', label: '바위' }, { id: '2', label: '보' }], data: { ids, picks, queue: queue.slice(1) },
   }
 }
 
@@ -2249,7 +2264,13 @@ export function choose(s: GameState, optionId: string) {
       p.sector = optionId as Sector
       log(s, p.id, `${optionId} 분야를 골랐다`, 'info')
       break
-    case 'rps': resolveRps(s, (pd.data as { ids: number[] }).ids, { [p.id]: +optionId }); break
+    case 'rps': {
+      const d = pd.data as { ids: number[]; picks?: Record<number, number>; queue?: number[] }
+      const picks = { ...d.picks, [p.id]: +optionId }
+      if (d.queue?.length) rpsPending(s, d.ids, picks, d.queue) // 다음 사람 차례 (온라인)
+      else resolveRps(s, d.ids, picks)
+      break
+    }
     case 'sabotageTarget': {
       const target = s.players[+optionId]
       if (target) applySabotage(s, p, target)
