@@ -436,11 +436,11 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
   content: ""; position: absolute; left: 50%; bottom: -10px; width: 14px; height: 14px; background: #fff;
   border-right: 3px solid var(--ink); border-bottom: 3px solid var(--ink); transform: translateX(-50%) rotate(45deg);
 }
+/* 처음부터 보이는 상태에서 커지기만 함 (애니메이션이 멈춰도 말풍선은 보이게) */
 @keyframes emote-pop {
-  0% { transform: scale(0.3); opacity: 0; }
-  10% { transform: scale(1.12); opacity: 1; }
-  18%, 85% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(0.9) translateY(-8px); opacity: 0; }
+  0% { transform: scale(0.6); }
+  12% { transform: scale(1.12); }
+  20%, 100% { transform: scale(1); }
 }
 @media (prefers-reduced-motion: reduce) { .emote-bubble { animation: none; } }
 .side-buttons .emote-btn { padding: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
