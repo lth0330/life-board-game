@@ -322,14 +322,16 @@ button.wide.secondary { background: #fff; color: var(--ink); border: 2px solid v
 .gauge { position: relative; height: 44px; border-radius: 22px; background: var(--paper-2); border: 3px solid var(--ink); overflow: hidden; }
 .gauge-zone { position: absolute; top: 0; bottom: 0; background: #7fe0a8; }
 .gauge-needle { position: absolute; top: -2px; bottom: -2px; width: 6px; margin-left: -3px; background: var(--accent); border-radius: 3px; }
+.gauge-needle.frozen { background: var(--ink); box-shadow: 0 0 0 3px #FFD45C; }
 .mini-result { display: flex; flex-direction: column; gap: 12px; align-items: center; padding: 12px 0; }
 .mini-result b { font-size: 34px; }
 
 /* ───── AI 말풍선 ───── */
 .speech {
-  position: absolute; left: 50%; top: 30%; transform: translateX(-50%); max-width: min(360px, calc(100% - 32px)); z-index: 4; font-size: 16px !important;
-  background: #fff; border: 3px solid; border-radius: 16px; padding: 8px 12px; font-size: 14px;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2); animation: pop-left 0.2s ease-out;
+  /* 위쪽 정보 줄 아래 오른쪽 구석에 작게. 클릭을 막지 않음 (2026-10-16 사용자: 가운데는 시야를 가림) */
+  position: absolute; right: 12px; top: 128px; max-width: min(240px, calc(100% - 32px)); z-index: 4; font-size: 14px;
+  background: rgba(255, 255, 255, 0.94); border: 3px solid; border-radius: 16px 4px 16px 16px; padding: 6px 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18); animation: pop-left 0.2s ease-out; pointer-events: none;
 }
 @keyframes pop-left { from { transform: scale(0.8); opacity: 0; } }
 
@@ -499,8 +501,9 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
 .mini-seq.slot span.stopped { outline: 3px solid #FFD45C; }
 
 /* 끌어서 지도 보기 */
-.world { touch-action: none; cursor: grab; }
-.world:active { cursor: grabbing; }
+.world { touch-action: none; user-select: none; -webkit-user-select: none; }
+.world.can-pan { cursor: grab; }
+.world.can-pan:active { cursor: grabbing; }
 .track.dragging { transition: none; }
 .pan-home { position: absolute; right: 16px; top: 132px; z-index: 3; min-height: 40px; padding: 0 14px; border-radius: 999px; font-family: 'Jua', sans-serif; background: var(--paper); border: 3px solid var(--ink); }
 
@@ -530,7 +533,7 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
 .sheet.mini.theme-fest { background: radial-gradient(circle at 20% 10%, #ffe7a8 0 8%, transparent 9%), radial-gradient(circle at 80% 12%, #ffc7d9 0 7%, transparent 8%), linear-gradient(#fff3f7, #ffd9e6); }
 .sheet.mini.theme-casino { background: radial-gradient(circle at 50% 0%, #2f8f5b, #1d5c3b); color: #fff7e8; }
 .sheet.mini.theme-casino .muted, .sheet.mini.theme-casino .note { color: #e8f3ea; }
-.sheet.mini.theme-casino button { color: var(--ink); }
+.sheet.mini.theme-casino button, .sheet.mini.theme-casino .mini-seq span, .sheet.mini.theme-casino .mini-level { color: var(--ink); } /* 흰 바탕 칸은 진한 글자 */
 .sheet.mini.theme-travel { background: linear-gradient(#cfe7f5, #fdf6e8 70%); }
 .sheet.mini.theme-duel { background: linear-gradient(#ffe2c7, #fdf6e8); }
 

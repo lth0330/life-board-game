@@ -143,20 +143,29 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
 
   // ── 칸 사건 팝업: 걷기가 끝난 뒤 보여 주고 2.6초 뒤 저절로 꺼짐 ──
   const [popShow, setPopShow] = useState<GameState['popup']>(null)
+  const [suspense, setSuspense] = useState(false) // AI 미니게임 '도전 중…'
   const lastPopId = useRef(game.popup?.id ?? 0)
   useEffect(() => {
     if (!game.popup || game.popup.id === lastPopId.current) return
     lastPopId.current = game.popup.id
     setPopShow(game.popup)
-    sfx(game.popup.tone === 'bad' ? 'bad' : game.popup.art === 'money' ? 'coin' : 'pop')
-  }, [game.popup])
+    // AI 미니게임은 도착하자마자 결과를 보여 주지 않고 '도전 중…'을 먼저 잠깐 보여 줌
+    const aiMini = !game.players[game.popup.playerId].human && game.popup.art === 'medal' && game.popup.title === '미니게임'
+    setSuspense(aiMini)
+    if (!aiMini) sfx(game.popup.tone === 'bad' ? 'bad' : game.popup.art === 'money' ? 'coin' : 'pop')
+  }, [game.popup, game.players])
   const popVisible = !!popShow && !walking && diceShow === null
   useEffect(() => {
-    if (!popVisible) return
+    if (!popVisible || !suspense || !popShow) return
+    const t = setTimeout(() => { setSuspense(false); sfx(popShow.tone === 'bad' ? 'bad' : 'pop') }, 1500)
+    return () => clearTimeout(t)
+  }, [popVisible, suspense, popShow])
+  useEffect(() => {
+    if (!popVisible || suspense) return
     const ms = popShow && game.players[popShow.playerId].human ? 2600 : 1500 // AI 차례는 짧게
     const t = setTimeout(() => setPopShow(null), ms)
     return () => clearTimeout(t)
-  }, [popVisible, popShow, game.players])
+  }, [popVisible, popShow, game.players, suspense])
   // 룰렛 연출 (대학 합격·감독 도전)
   const [wheel, setWheel] = useState<GameState['roulette']>(null)
   const lastWheel = useRef(game.roulette?.id ?? 0)
@@ -211,7 +220,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
   useEffect(() => {
     if (!game.speech) return
     setSpeech(game.speech)
-    const t = setTimeout(() => setSpeech(null), 2600)
+    const t = setTimeout(() => setSpeech(null), 5000)
     return () => clearTimeout(t)
   }, [game.speech])
   const [banner, setBanner] = useState(game.banner)
@@ -252,7 +261,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
       onPointerDown={(e) => { unlockAudio(); if ((e.target as HTMLElement).closest('.world')) swipeY.current = { y: e.clientY, t: Date.now() } }}
       onPointerUp={(e) => { const sw = swipeY.current; if (sw && sw.y - e.clientY > 70 && Date.now() - sw.t < 300) doRoll(); swipeY.current = null }}
     >
-      <Board s={game} focus={shown} posOf={posOf} walkingId={walking ? game.pathPlayer : null} showSteps={myTurn || (!p.human && game.phase === 'roll' && !busy)} />
+      <Board s={game} focus={shown} posOf={posOf} walkingId={walking ? game.pathPlayer : null} canPan={myTurn} showSteps={myTurn || (!p.human && game.phase === 'roll' && !busy)} />
 
       <header className="hud">
         <div className="hud-row">
@@ -347,7 +356,9 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
       {wheel && <Roulette title={wheel.title} chance={wheel.chance} ok={wheel.ok} who={game.players[wheel.playerId].name} onDone={closeWheel} />}
 
       {popVisible && popShow && (
-        <EventPopup art={popShow.art} title={popShow.title} text={popShow.text} tone={popShow.tone} who={game.players[popShow.playerId].name} onClose={() => setPopShow(null)} />
+        suspense
+          ? <EventPopup art={popShow.art} title={popShow.text.match(/^\[(.+?)\]/)?.[1] ?? popShow.title} text="도전 중…" tone="info" who={game.players[popShow.playerId].name} onClose={() => setSuspense(false)} />
+          : <EventPopup art={popShow.art} title={popShow.title} text={popShow.text} tone={popShow.tone} who={game.players[popShow.playerId].name} onClose={() => setPopShow(null)} />
       )}
 
       {!busy && game.mini && game.players[game.mini.playerId].human && (

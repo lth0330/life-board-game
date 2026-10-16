@@ -56,7 +56,7 @@ export const STAGE_DEFS: StageDef[] = [
     id: 'young', name: '청년', ages: [20, 39], rolls: 10, length: 50,
     weights: [['money', 22], ['card', 18], ['date', 32], ['risk', 14], ['happy', 9], ['grow', 8]],
     // 대학생이 3차례 늦게 출발해도 둘째 결혼식장(20)에 대부분 닿도록 앞쪽에 모음 (docs/13-review.md)
-    stops: { 1: 'job', 22: 'jobfair' }, points: { 5: 'shop', 10: 'marriage', 18: 'shop', 20: 'marriage' },
+    stops: { 1: 'job' }, points: { 5: 'shop', 10: 'marriage', 18: 'shop', 20: 'marriage' },
     campus: true,
     event: { at: 11, rejoin: 17, len: 7, name: '축제 거리', minis: ['firstImpression', 'rhythm', 'confess'], desc: '연애·매력 미니게임 (매력이 높을수록 쉬움)' },
   },
@@ -90,6 +90,14 @@ export const STAGE_DEFS: StageDef[] = [
 
 export const EVENT_ROAD_NAME: Record<StageId, string> = Object.fromEntries(STAGE_DEFS.map((d) => [d.id, d.event.name])) as Record<StageId, string>
 
+// 본 길은 돈·성장·행복 칸을 '좋은 일' 칸 하나로 합침 (무엇이 나올지는 도착했을 때 정함, 2026-10-16 사용자)
+// 옆길(학원·일·도시·시골 등)은 길 성격이 드러나도록 원래 칸 그대로
+const GOOD_PARTS: TileKind[] = ['money', 'grow', 'happy']
+function mainWeights(d: StageDef): [TileKind, number][] {
+  const good = d.weights.filter(([k]) => GOOD_PARTS.includes(k)).reduce((a, [, w]) => a + w, 0)
+  return [...d.weights.filter(([k]) => !GOOD_PARTS.includes(k)), ['good', good]]
+}
+
 const ROAD_WEIGHTS: Partial<Record<RoadId, [TileKind, number][]>> = {
   academy: [['grow', 70], ['card', 15], ['happy', 15]],
   play: [['happy', 50], ['grow', 30], ['card', 20]],
@@ -109,8 +117,8 @@ export function buildStage(d: StageDef, rng: Rng): Stage {
   // 본 길
   for (let dep = 0; dep < d.length; dep++) {
     if (removed(dep)) continue
-    let kind: TileKind = dep === 0 ? 'happy' : rng.weighted(d.weights)
-    if (kind === 'date' && d.dateUntil !== undefined && dep > d.dateUntil) kind = 'happy'
+    let kind: TileKind = dep === 0 ? 'good' : rng.weighted(mainWeights(d))
+    if (kind === 'date' && d.dateUntil !== undefined && dep > d.dateUntil) kind = 'good'
     if (dep === d.length - 1) kind = d.rolls ? 'rest' : 'goal'
     const t: Tile = { kind, next: [], d: dep, lane: 0, road: 'main' }
     if (d.stops[dep]) { t.kind = 'stop'; t.stop = d.stops[dep] }

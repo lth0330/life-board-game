@@ -80,37 +80,48 @@ function Timing({ level, rounds, duel, onDone }: { level: number; rounds: number
   const speed = [0.9, 1.25, 1.6][level]
   const [pos, setPos] = useState(0)
   const [scores, setScores] = useState<number[]>([])
+  const [frozen, setFrozen] = useState(false) // 멈춘 자리를 잠깐 보여 줌
   const t0 = useRef(performance.now())
+  const posAt = useCallback((now: number) => 50 + Math.sin(((now - t0.current) / 1000) * speed * Math.PI) * 50, [speed])
   useEffect(() => {
+    if (frozen) return
     let raf = 0
     const tick = (now: number) => {
-      const t = ((now - t0.current) / 1000) * speed
-      setPos(50 + Math.sin(t * Math.PI) * 50)
+      setPos(posAt(now))
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [speed])
+  }, [posAt, frozen])
+  // 손을 뗄 때가 아니라 누르는 순간의 바늘 위치로 판정 (화면에 그려진 위치가 아니라 그 순간 시각으로 계산)
   const stop = () => {
-    const dist = Math.abs(pos - 50)
-    const score = Math.max(0, Math.round(100 - dist * 2))
+    if (frozen) return
+    const at = posAt(performance.now())
+    setPos(at)
+    setFrozen(true)
+    const score = Math.max(0, Math.round(100 - Math.abs(at - 50) * 2))
     const next = [...scores, score]
     setScores(next)
-    t0.current = performance.now() - Math.random() * 800
-    if (next.length >= rounds) {
-      const avg = next.reduce((a, b) => a + b, 0) / next.length
-      if (duel) onDone(Math.round(avg))
-      else onDone(avg >= 100 - zone ? 2 : avg >= 100 - zone * 1.8 ? 1 : 0)
-    }
+    setTimeout(() => {
+      if (next.length >= rounds) {
+        const avg = next.reduce((a, b) => a + b, 0) / next.length
+        if (duel) onDone(Math.round(avg))
+        else onDone(avg >= 100 - zone ? 2 : avg >= 100 - zone * 1.8 ? 1 : 0)
+        return
+      }
+      t0.current = performance.now() - Math.random() * 800
+      setFrozen(false)
+    }, 600)
   }
   return (
     <div className="mini-body">
-      <p>바늘이 가운데 초록 구역에 왔을 때 멈추세요{rounds > 1 ? ` (${scores.length + 1}/${rounds})` : ''}</p>
+      <p>바늘이 가운데 초록 구역에 왔을 때 멈추세요{rounds > 1 ? ` (${Math.min(scores.length + (frozen ? 0 : 1), rounds)}/${rounds})` : ''}</p>
       <div className="gauge">
         <div className="gauge-zone" style={{ left: `${50 - zone / 2}%`, width: `${zone}%` }} />
-        <div className="gauge-needle" style={{ left: `${pos}%` }} />
+        <div className={`gauge-needle${frozen ? ' frozen' : ''}`} style={{ left: `${pos}%` }} />
       </div>
-      <button className="wide big" onClick={stop}>멈춰!</button>
+      {frozen && <p className="jua">{scores[scores.length - 1]}점</p>}
+      <button className="wide big" onPointerDown={(e) => { e.preventDefault(); stop() }} onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); stop() } }}>멈춰!</button>
     </div>
   )
 }

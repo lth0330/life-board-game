@@ -8,11 +8,12 @@ import { MINI_NAMES } from '../engine/game'
 import type { GameState, Player, Tile } from '../engine/types'
 
 const TILE_STYLE: Record<string, { label: string; bg: string; fg: string }> = {
+  good: { label: '좋은 일', bg: '#1E9E8C', fg: '#fff' },
   money: { label: '돈', bg: '#2F8F5B', fg: '#fff' },
   grow: { label: '성장', bg: '#2E6FD8', fg: '#fff' },
   happy: { label: '행복', bg: '#F2C230', fg: '#2A2118' },
   risk: { label: '위기', bg: '#C2452D', fg: '#fff' },
-  card: { label: '카드', bg: '#6F45BD', fg: '#fff' },
+  card: { label: '랜덤이벤트', bg: '#6F45BD', fg: '#fff' },
   stop: { label: '정지', bg: '#2A2118', fg: '#FFF7E8' },
   date: { label: '연애', bg: '#F3A3C0', fg: '#3A1020' },
   mini: { label: '게임', bg: '#E8742C', fg: '#fff' },
@@ -55,16 +56,19 @@ interface Props {
   showSteps: boolean
   posOf?: (p: Player) => number // 걷는 연출 중에는 실제 위치 대신 지금 보여줄 칸
   walkingId?: number | null // 지금 걷고 있는 사람 (통통 튀는 동작)
+  canPan?: boolean // 끌어서 보기는 내 차례에만
 }
 
-export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = null }: Props) {
+export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = null, canPan = false }: Props) {
   const st = s.stages[s.stageIdx]
   const focusPos = posOf(focus)
   const fd = st.tiles[focusPos].d
   // 끌어서 보기: pan.y > 0 이면 앞쪽(먼 칸), < 0 이면 뒤쪽
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null)
+  const [dragging, setDragging] = useState(false)
   useEffect(() => { setPan({ x: 0, y: 0 }) }, [focus.id, focusPos, s.stageIdx])
+  useEffect(() => { if (!canPan) { drag.current = null; setDragging(false); setPan({ x: 0, y: 0 }) } }, [canPan])
   const panD = pan.y / 150 // 끌어서 옮긴 깊이
   const xAt = (t: Tile) => 540 + Math.round(Math.sin(t.d * 0.55) * 150) + t.lane * LANE - 60
   const yAt = (t: Tile) => 1600 - t.d * 150 // 칸 위치는 고정. 카메라(.track)가 fd만큼 움직임
@@ -83,7 +87,7 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
     items.push(
       <div key={`t${i}`} className={`tile${t.kind === 'mini' ? ' tile-mini' : ''}${t.kind === 'stop' ? ' tile-stop' : ''}`} style={{ left: xAt(t), top: yAt(t), background: look.bg, color: look.fg }}>
         <TileIcon kind={t.stop ? 'stop' : t.uni ? UNI_LOOK[t.uni].icon : t.kind === 'campus' ? 'grow' : t.kind} size={50} />
-        <span className="tile-label" style={{ fontSize: small ? 17 : 21 }}>{look.label}</span>
+        <span className="tile-label" style={{ fontSize: look.label.length > 4 ? 14 : small ? 17 : 21 }}>{look.label}</span>
         {step && <span className="tile-step">{step}</span>}
       </div>,
     )
@@ -175,17 +179,25 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
   }
 
   const maxD = Math.max(...st.tiles.map((t) => t.d))
-  const onDown = (e: ReactPointerEvent) => { drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y } }
+  // 누른 채로 다른 화면 위를 지나가도 놓을 때까지 계속 따라오게 (포인터 붙잡기)
+  const onDown = (e: ReactPointerEvent) => {
+    if (!canPan) return
+    e.preventDefault() // 그림·글자 끌기로 착각하지 않게
+    e.currentTarget.setPointerCapture(e.pointerId)
+    drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y }
+    setDragging(true)
+  }
+  const onUp = () => { drag.current = null; setDragging(false) }
   const onMove = (e: ReactPointerEvent) => {
     const d = drag.current
-    if (!d || !e.buttons) return
+    if (!d) return
     const y = Math.max((-fd - 1) * 150, Math.min((maxD - fd) * 150, d.py + (e.clientY - d.y) * 2.5))
     const x = Math.max(-500, Math.min(500, d.px + (e.clientX - d.x) * 1.5))
     setPan({ x, y })
   }
   const panned = Math.abs(pan.x) > 20 || Math.abs(pan.y) > 40
   return (
-    <div className="world" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={() => { drag.current = null }} onPointerLeave={() => { drag.current = null }}>
+    <div className={`world${canPan ? ' can-pan' : ''}`} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onDragStart={(e) => e.preventDefault()}>
       <div className="sky-deco">
         <div className="hill a" /><div className="hill b" />
         <div className="ground" />
@@ -193,7 +205,7 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
       </div>
       <div className="camera">
         <div className="plane" style={{ transform: `rotateX(${TILT}deg)` }}>
-          <div key={s.stageIdx} className={`track${drag.current ? ' dragging' : ''}`} style={{ transform: `translate(${-st.tiles[focusPos].lane * LANE + pan.x}px, ${fd * 150 + pan.y}px)` }}>{items}</div>
+          <div key={s.stageIdx} className={`track${dragging ? ' dragging' : ''}`} style={{ transform: `translate(${-st.tiles[focusPos].lane * LANE + pan.x}px, ${fd * 150 + pan.y}px)` }}>{items}</div>
         </div>
       </div>
       {panned && <button className="pan-home" onClick={(e) => { e.stopPropagation(); setPan({ x: 0, y: 0 }) }} onPointerDown={(e) => e.stopPropagation()}>내 위치로</button>}

@@ -3,6 +3,7 @@ import type { ReactElement } from 'react'
 
 // ───── 칸 아이콘 (viewBox 0 0 48 48, 흰색 위주) ─────
 const ICONS: Record<string, ReactElement> = {
+  good: <g><rect x="11" y="21" width="26" height="18" rx="2" fill="#FFD45C" stroke="#fff" strokeWidth="2.5" /><rect x="9" y="15" width="30" height="8" rx="2" fill="#FFE58A" stroke="#fff" strokeWidth="2.5" /><path d="M24 15v24" stroke="#E2553B" strokeWidth="4" /><path d="M24 15c-3-6-10-6-9-1 1 3 6 2 9 1zM24 15c3-6 10-6 9-1-1 3-6 2-9 1z" fill="#E2553B" /></g>,
   money: <g><circle cx="24" cy="24" r="15" fill="#F2C230" stroke="#fff" strokeWidth="3" /><text x="24" y="30" textAnchor="middle" fontSize="16" fontWeight="700" fill="#7A5232">₩</text></g>,
   grow: <g fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round"><path d="M24 40V22" /><path d="M24 26c-10 0-13-8-13-12 8 0 13 4 13 12zM24 22c0-9 5-13 14-13 0 6-4 13-14 13z" fill="#7FE0A8" /></g>,
   happy: <g><circle cx="24" cy="24" r="15" fill="#fff" /><circle cx="19" cy="21" r="2.4" fill="#2A2118" /><circle cx="29" cy="21" r="2.4" fill="#2A2118" /><path d="M17 28q7 7 14 0" stroke="#2A2118" strokeWidth="2.6" fill="none" strokeLinecap="round" /></g>,

@@ -739,15 +739,16 @@ export function badEvent(s: GameState, p: Player, b: Bad) {
   else if (f === 1) { mult = 1.2; note = '조금 더 나빠졌다' }
   else if (f === 3 && rng.chance(0.6)) { mult = 0.5; note = '다행히 범인을 잡아 절반은 돌려받았다' }
   else if (f === 4) {
-    if (rng.chance(0.3)) {
+    // 대길: 전화위복 20% · 완전히 피함 50% · 그대로 30% (2026-10-16 사용자: 무조건 피하면 안 됨)
+    const r = rng.next()
+    if (r < 0.2) {
       const gain = Math.max(Math.round(loss * 0.5), 10)
       p.money += gain
       p.happy += 2
       log(s, p.id, `${b.text} … [대길] 전화위복! 오히려 +${won(gain)}`, 'good')
       return
     }
-    mult = 0
-    note = '운 좋게 아무 일도 없었다'
+    if (r < 0.7) { mult = 0; note = '운 좋게 아무 일도 없었다' }
   }
   const dodge = mult === 0 ? DODGE.find(([re]) => re.test(b.text))?.[1] : undefined
   if (dodge) { log(s, p.id, `[운세 ${fortuneName(f)}] ${dodge}`, 'good'); return }
@@ -838,7 +839,7 @@ export function roll(s: GameState, bonus = 0, useCar = false, item: DiceItem | n
 function aheadValue(s: GameState, p: Player, k: number) {
   const st = stageOf(s)
   const t = st.tiles[walkAhead(st, p.pos, k, p.forkChoice)].kind
-  return t === 'risk' ? -3 : t === 'money' || t === 'mini' ? 2 : t === 'card' || t === 'happy' || t === 'date' ? 1 : 0
+  return t === 'risk' ? -3 : t === 'money' || t === 'mini' || t === 'good' ? 2 : t === 'card' || t === 'happy' || t === 'grow' || t === 'date' ? 1 : 0
 }
 
 function aiAfterRoll(s: GameState, p: Player, n: number, carOn: boolean): string {
@@ -1059,7 +1060,7 @@ function uniTile(s: GameState, p: Player, ev: string) {
 }
 
 const POP_ART: Record<string, string> = { money: 'money', risk: 'warn', card: 'card', happy: 'rest', date: 'heart', mini: 'medal' }
-const POP_TITLE: Record<string, string> = { money: '돈 칸', risk: '위기 칸', card: '카드 칸', happy: '행복 칸', date: '연애 칸', mini: '미니게임' }
+const POP_TITLE: Record<string, string> = { money: '돈 칸', risk: '위기 칸', card: '랜덤이벤트', happy: '행복 칸', date: '연애 칸', mini: '미니게임' }
 
 // 사건 팝업: start 이후 남은 기록(내 것 + 모두에게 일어난 것)을 그림과 함께. 고를 게 있으면 선택 창이 대신 뜸
 function showPop(s: GameState, p: Player, start: number, art: string, title: string) {
@@ -1070,6 +1071,13 @@ function showPop(s: GameState, p: Player, start: number, art: string, title: str
   s.popup = { id: (s.popup?.id ?? 0) + 1, art, title, text: lines.map((l) => l.text).join('\n'), tone: lines.some((l) => l.tone === 'bad') ? 'bad' : lines[0].tone, playerId: p.id }
 }
 
+// 좋은 일 칸에서 나올 것: 청년 전에는 행복·능력치, 청년·중년은 돈·능력치·행복, 노년은 돈·행복
+function pickGood(s: GameState): 'money' | 'grow' | 'happy' {
+  const id = stageOf(s).id
+  const list: ('money' | 'grow' | 'happy')[] = id === 'child' || id === 'student' ? ['grow', 'happy'] : id === 'old' ? ['money', 'happy'] : ['money', 'grow', 'happy']
+  return rngOf(s).pick(list)
+}
+
 function land(s: GameState) {
   const p = cur(s)
   const t = tileOf(s, p)
@@ -1077,9 +1085,10 @@ function land(s: GameState) {
   const sc = scaleOf(s)
   const road = t.road
   const logStart = s.logCount
-  let popArt = POP_ART[t.kind]
-  let popTitle = POP_TITLE[t.kind]
-  switch (t.kind) {
+  const kind = t.kind === 'good' ? pickGood(s) : t.kind
+  let popArt = POP_ART[kind]
+  let popTitle = POP_TITLE[kind]
+  switch (kind) {
     case 'money': {
       const mult = road === 'startup' ? 2.5 : road === 'work' ? 1.5 : road === 'city' ? (rng.chance(0.5) ? 2 : -1) : 1
       const amt = Math.round(sc * rng.int(2, 5) * mult)
@@ -1096,7 +1105,7 @@ function land(s: GameState) {
         log(s, p.id, `${STAT_NAMES[k]} +${add}`, 'good')
       } else {
         s.pending = {
-          type: 'growPick', playerId: p.id, title: '성장 칸', text: `무엇을 키울까요? (+${add})`,
+          type: 'growPick', playerId: p.id, title: t.kind === 'good' ? '좋은 일: 성장' : '성장 칸', text: `무엇을 키울까요? (+${add})`,
           options: STATS.map((k) => ({ id: k, label: `${STAT_NAMES[k]} +${add}`, desc: `현재 : ${p.stats[k]}` })), data: { add },
         }
       }
@@ -1129,7 +1138,7 @@ function land(s: GameState) {
     case 'goal': break
   }
   // 칸 사건 팝업: 고를 게 없으면 이번 칸 기록을 그림과 함께 보여 줌 (화면에서 저절로 꺼짐)
-  if (t.kind === 'money') popTitle = isAdultStage(s) ? '보너스!' : '용돈!'
+  if (kind === 'money') popTitle = isAdultStage(s) ? '보너스!' : '용돈!'
   if (popArt) showPop(s, p, logStart, popArt, popTitle)
   s.meetCheck = true
   resume(s)
@@ -2430,8 +2439,11 @@ function applySabotage(s: GameState, p: Player, target: Player) {
   if (card === 'rumor') badEvent(s, victim, { text: '나쁜 소문이 퍼졌다', loss: 0, happyLoss: 6 })
   if (card === 'stockRumor') {
     const sector = SECTORS.reduce((a, k) => (victim.stocks[k] > victim.stocks[a] ? k : a), SECTORS[0])
-    s.stockPrice[sector] = Math.max(10, Math.round(s.stockPrice[sector] * 0.8))
-    log(s, null, `주가 루머로 ${sector}주 -20%`, 'bad')
+    if (victim.stocks[sector] <= 0) log(s, victim.id, `주가 루머… 그런데 ${victim.name}은(는) 주식이 없어서 효과가 없었다`, 'info')
+    else {
+      s.stockPrice[sector] = Math.max(10, Math.round(s.stockPrice[sector] * 0.8))
+      log(s, null, `주가 루머로 ${sector}주 -20%`, 'bad')
+    }
   }
   if (card === 'love') {
     const top = [...victim.suitors].sort((a, b) => b.affinity - a.affinity)[0]

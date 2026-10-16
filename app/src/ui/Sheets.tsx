@@ -208,7 +208,7 @@ export function CardsSheet({ p, canUse, onUseChance, onSabotage, onClose }: {
           {p.sabotage && <button disabled={!canUse} onClick={onSabotage}>상대 고르기</button>}
         </div>
       </div>
-      <p className="note">찬스·방해 카드는 한 장씩만 가질 수 있어요. 카드 칸, 이벤트 맵, 상점에서 얻어요.</p>
+      <p className="note">찬스·방해 카드는 한 장씩만 가질 수 있어요. 랜덤이벤트 칸, 이벤트 맵, 상점에서 얻어요.</p>
     </Sheet>
   )
 }
