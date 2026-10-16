@@ -443,6 +443,7 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
   20%, 100% { transform: scale(1); }
 }
 @media (prefers-reduced-motion: reduce) { .emote-bubble { animation: none; } }
+.emote-bubble.ready { outline: 1px solid transparent; } /* 다시 그리게 하는 용도 (Emotes.tsx) */
 .side-buttons .emote-btn { padding: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .side-buttons .emote-btn:disabled { opacity: 0.45; }
 .emote-picker-backdrop { position: fixed; inset: 0; z-index: 12; }
