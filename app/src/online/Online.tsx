@@ -6,7 +6,7 @@ import { applyOp, opActor, type Op } from '../engine/ops'
 import type { GameState } from '../engine/types'
 import { Frame } from '../ui/Screens'
 import {
-  cleanId, cleanPw, client, createRoom, currentMe, ID_OK, join, login, logoutOnline, openRooms, parse, PW_OK, saveRoom, sendAction,
+  cleanId, cleanPw, client, createRoom, currentMe, ID_OK, isRoomOwner, join, login, logoutOnline, openRooms, parse, PW_OK, saveRoom, sendAction,
   type ActionPayload, type LobbyState, type Me, type Room, type Seat,
 } from './client'
 
@@ -96,7 +96,7 @@ function OnlineHome({ me, onRoom, onBack, onLogout }: { me: Me; onRoom: (id: str
     if (!room) { setErr('그런 방이 없어요'); return }
     const owners = parse<LobbyState>(room.state, { settings: { startAdult: false, difficulty: 'normal' } }).owners ?? []
     if (room.status === 'playing') {
-      if (owners.includes(me.userId) || room.owner?.startsWith(me.userId)) { onRoom(room.id); return } // 내가 하던 게임: 이어 하기
+      if (owners.includes(me.userId) || isRoomOwner(room.owner, me)) { onRoom(room.id); return } // 내가 하던 게임: 이어 하기
       setErr('이미 시작한 방이에요'); return
     }
     const seats = parse<Seat[]>(room.seats, [])
@@ -133,7 +133,7 @@ function Lobby({ me, roomId, onLeave, renderPlay }: { me: Me; roomId: string; on
     setRoom(r)
     if (r.status === 'ended') setClosed(true)
   }, [])
-  const isHost = !!room?.owner && room.owner.startsWith(me.userId)
+  const isHost = isRoomOwner(room?.owner, me)
 
   // 방 불러오기 + 바뀔 때마다 받기
   useEffect(() => {

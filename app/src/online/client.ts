@@ -78,6 +78,10 @@ export const parse = <T,>(v: unknown, fallback: T): T => {
   return v as T
 }
 
+// 방 주인 확인: AWS가 주인을 '아이디'로 주기도 하고 '고유번호::아이디'로 주기도 해서 둘 다 봄
+export const isRoomOwner = (owner: string | null | undefined, me: Me) =>
+  !!owner && (owner === me.loginId || owner === `${me.userId}::${me.loginId}`)
+
 // 헷갈리는 글자(0·O·1·I·L)를 뺀 4자리 코드
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 const newCode = () => Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('')
