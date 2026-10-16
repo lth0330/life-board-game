@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactElement } from 'react'
 import { Building, TileIcon, Tree } from '../art/Art'
 import { Landmark } from '../art/More'
-import { Character } from '../art/Character'
+import { Character, type Expr } from '../art/Character'
+import { EmoteBubble } from './Emotes'
 import { ageOf, UNI_NAMES } from '../engine/game'
 import { distancesFrom, EVENT_ROAD_NAME } from '../engine/board'
 import { MINI_NAMES } from '../engine/game'
@@ -57,9 +58,10 @@ interface Props {
   posOf?: (p: Player) => number // 걷는 연출 중에는 실제 위치 대신 지금 보여줄 칸
   walkingId?: number | null // 지금 걷고 있는 사람 (통통 튀는 동작)
   canPan?: boolean // 끌어서 보기는 내 차례에만
+  emotes?: Record<number, Expr> // 지금 머리 위에 띄울 표정 (플레이어 번호 → 표정)
 }
 
-export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = null, canPan = false }: Props) {
+export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = null, canPan = false, emotes = {} }: Props) {
   const st = s.stages[s.stageIdx]
   const focusPos = posOf(focus)
   const fd = st.tiles[focusPos].d
@@ -170,9 +172,12 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
       const me = p.id === focus.id
       items.push(
         <div key={`s${p.id}`} className="shadow" style={{ left: xAt(t) + 20 + dx, top: yAt(t) + 70 }} />,
-        <div key={`c${p.id}`} className={`char${p.id === walkingId ? ' walking' : ''}`} style={{ ...stand, left: xAt(t) + 20 + dx, top: yAt(t) - 90, opacity: me ? 1 : 0.5 }}>
-          <Character outfit={p.outfit} view="back" size={80} age={ageOf(s, p)} />
-          <div className="name-tag" style={{ background: me ? p.color : 'rgba(42,33,24,0.6)', top: -40 - k * 34 }}>{p.name}</div>
+        <div key={`c${p.id}`} className={`char${p.id === walkingId ? ' walking' : ''}`} style={{ ...stand, left: xAt(t) + 20 + dx, top: yAt(t) - 90 }}>
+          <div style={{ opacity: me ? 1 : 0.5 }}>
+            <Character outfit={p.outfit} view="back" size={80} age={ageOf(s, p)} />
+            <div className="name-tag" style={{ background: me ? p.color : 'rgba(42,33,24,0.6)', top: -40 - k * 34 }}>{p.name}</div>
+          </div>
+          {emotes[p.id] && <div className="emote-on-board" style={{ top: -130 - k * 34 }}><EmoteBubble key={emotes[p.id]} outfit={p.outfit} age={ageOf(s, p)} expr={emotes[p.id]} /></div>}
         </div>,
       )
     })

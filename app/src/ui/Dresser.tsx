@@ -7,6 +7,8 @@ const COLOR_KEY: Record<Slot, keyof Outfit> = {
   hair: 'hairColor', hat: 'hatColor', top: 'topColor', outer: 'outerColor', bottom: 'bottomColor', shoes: 'shoesColor', acc: 'accColor',
 }
 const SLOTS: Slot[] = ['hat', 'top', 'outer', 'bottom', 'shoes', 'acc', 'hair']
+// 얼굴 쪽 아이템은 고르는 칸에 얼굴만 크게
+const HEAD_SLOTS: Slot[] = ['hat', 'hair']
 
 export function Dresser({ value, onChange, onDone }: { value: Outfit; onChange: (o: Outfit) => void; onDone: () => void }) {
   const [slot, setSlot] = useState<Slot>('hat')
@@ -49,7 +51,9 @@ export function Dresser({ value, onChange, onDone }: { value: Outfit; onChange: 
             const on = value[slot] === it.id
             return (
               <button key={it.id} className={on ? 'on' : ''} aria-pressed={on} onClick={() => set({ [slot]: it.id } as Partial<Outfit>)}>
-                <Character outfit={{ ...value, [slot]: it.id }} size={34} />
+                {HEAD_SLOTS.includes(slot)
+                  ? <Character outfit={{ ...value, [slot]: it.id }} size={48} crop="head" />
+                  : <Character outfit={{ ...value, [slot]: it.id }} size={34} />}
                 <span>{it.name}</span>
               </button>
             )

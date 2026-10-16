@@ -425,6 +425,33 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
 .char { width: 80px; height: 160px; display: block; }
 .char svg { display: block; }
 .char .name-tag { left: 50%; transform: translateX(-50%); }
+
+/* ───── 표정 말풍선 ───── */
+.emote-on-board { position: absolute; left: 50%; transform: translateX(-50%); }
+.emote-bubble {
+  position: relative; background: #fff; border: 3px solid var(--ink); border-radius: 50%; padding: 4px; line-height: 0;
+  animation: emote-pop 2.5s ease-out both;
+}
+.emote-bubble::after {
+  content: ""; position: absolute; left: 50%; bottom: -10px; width: 14px; height: 14px; background: #fff;
+  border-right: 3px solid var(--ink); border-bottom: 3px solid var(--ink); transform: translateX(-50%) rotate(45deg);
+}
+@keyframes emote-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  10% { transform: scale(1.12); opacity: 1; }
+  18%, 85% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.9) translateY(-8px); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .emote-bubble { animation: none; } }
+.side-buttons .emote-btn { padding: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.side-buttons .emote-btn:disabled { opacity: 0.45; }
+.emote-picker-backdrop { position: fixed; inset: 0; z-index: 12; }
+.emote-picker {
+  position: absolute; right: 70px; top: 132px; display: grid; grid-template-columns: repeat(4, 60px); gap: 6px;
+  background: var(--ink); border-radius: 16px; padding: 8px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+.emote-picker button { border: 0; border-radius: 12px; background: var(--paper); padding: 2px; line-height: 0; display: flex; justify-content: center; }
+.emote-picker button:active { background: var(--paper-2); }
 .hud-who { display: flex; align-items: center; gap: 6px; }
 .hud-face { width: 30px; height: 30px; border-radius: 50%; border: 3px solid; overflow: hidden; background: var(--sky); display: flex; justify-content: center; }
 .hud-face svg { margin-top: 2px; }

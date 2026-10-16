@@ -5,6 +5,9 @@ import { createGame } from '../engine/game'
 import { applyOp, opActor, type Op } from '../engine/ops'
 import type { GameState } from '../engine/types'
 import { Frame } from '../ui/Screens'
+import { EMOTES } from '../ui/Emotes'
+import type { Expr } from '../art/Character'
+import type { OnlinePlay } from '../App'
 import {
   cleanId, cleanPw, client, createRoom, currentMe, ID_OK, isRoomOwner, join, login, logoutOnline, openRooms, parse, PW_OK, saveRoom, sendAction,
   type ActionPayload, type LobbyState, type Me, type Room, type Seat,
@@ -13,7 +16,7 @@ import {
 // 게임 화면(Play)은 App에서 그려서 넘겨받음 (서로 불러오는 고리를 피하려고)
 export interface PlayProps {
   game: GameState; setGame: (g: GameState) => void; onQuit: () => void
-  online: { mine: number[]; host: boolean; send: (op: Op) => void }
+  online: OnlinePlay
 }
 type RenderPlay = (p: PlayProps) => ReactNode
 
@@ -322,6 +325,23 @@ function OnlineGame({ me, room, isHost, renderPlay, onLeave }: { me: Me; room: R
     return () => sub.unsubscribe()
   }, [isHost, room.id, setGame])
 
+  // 표정: 모든 기기가 표정 행동을 직접 받아서 띄움 (게임 상태는 다시 올리지 않음)
+  const [incoming, setIncoming] = useState<{ player: number; expr: Expr; id: string } | null>(null)
+  const ownersNow = useRef(owners)
+  ownersNow.current = isHost ? ownersRef.current : owners
+  useEffect(() => {
+    const sub = client.models.Action.onCreate({ filter: { roomId: { eq: room.id } } }).subscribe({
+      next: (a) => {
+        if (a.kind !== 'emote') return
+        const p = parse<ActionPayload & { player?: number; expr?: Expr } | null>(a.payload, null)
+        if (!p || p.userId === me.userId || typeof p.player !== 'number' || !p.expr || !EMOTES.includes(p.expr)) return
+        if (ownersNow.current[p.player] !== p.userId) return // 자기 플레이어 표정만
+        setIncoming({ player: p.player, expr: p.expr, id: a.id })
+      },
+    })
+    return () => sub.unsubscribe()
+  }, [room.id, me.userId])
+
   // 방장이 돌아옴: 상태를 다시 올려서 '방장이 나갔어요'를 지움
   const awayAtStart = useRef(lobby.hostAway)
   useEffect(() => {
@@ -346,7 +366,11 @@ function OnlineGame({ me, room, isHost, renderPlay, onLeave }: { me: Me; room: R
         game,
         setGame: isHost ? setGame : () => {},
         onQuit: () => void quit(),
-        online: { mine, host: isHost, send: (op) => void sendAction(room.id, me, 'op', { op }) },
+        online: {
+          mine, host: isHost, send: (op) => void sendAction(room.id, me, 'op', { op }),
+          emote: (player, expr) => { if (mine.includes(player)) void sendAction(room.id, me, 'emote', { player, expr }) },
+          incoming,
+        },
       })}
       {hostAway && (
         <div className="sheet-backdrop mini-backdrop host-away">

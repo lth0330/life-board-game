@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
-import { Character } from './art/Character'
+import { Character, type Expr } from './art/Character'
 import { aiStep } from './engine/ai'
 import { CARS, DICE_ITEMS, MINI_PRACTICE_LIMIT } from './engine/data'
 import {
@@ -14,6 +14,7 @@ import { BannerArt, EventArt, EventPopup, Roulette } from './art/More'
 import { setSoundPrefs, sfx, soundPrefs, unlockAudio } from './sound'
 import { Board, FullMap } from './ui/Board'
 import { Dresser } from './ui/Dresser'
+import { autoEmote, EMOTE_COOLDOWN_MS, EMOTE_MS, EmotePicker } from './ui/Emotes'
 import { Confetti, DiceThrow, StageCard } from './ui/Effects'
 import { Manual } from './ui/Manual'
 import { MiniGame } from './ui/MiniGames'
@@ -110,7 +111,12 @@ export default function App() {
 type SheetKind = null | 'finance' | 'cards' | 'people' | 'map' | 'manual'
 
 // 온라인일 때: mine = 이 기기가 맡은 플레이어, host = 방장 기기(AI를 돌림), send = 손님 기기가 행동을 방장에게 보냄
-export interface OnlinePlay { mine: number[]; host: boolean; send: (op: Op) => void }
+// emote = 내 표정을 다른 기기에 알림, incoming = 다른 사람이 보낸 표정 (id가 바뀔 때마다 띄움)
+export interface OnlinePlay {
+  mine: number[]; host: boolean; send: (op: Op) => void
+  emote?: (player: number, expr: Expr) => void
+  incoming?: { player: number; expr: Expr; id: string } | null
+}
 
 export function Play({ game, setGame, speed, saving, onQuit, online }: { game: GameState; setGame: (g: GameState) => void; speed: Speed; saving: boolean; onQuit: () => void; online?: OnlinePlay }) {
   const [sheet, setSheet] = useState<SheetKind>(null)
@@ -261,6 +267,60 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
 
   useEffect(() => { setCarMode(false); setItemMode(null) }, [game.turn])
 
+  // ── 표정 말풍선 ──
+  const [emotes, setEmotes] = useState<Record<number, Expr>>({})
+  const emoteTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({})
+  const showEmote = useCallback((pid: number, expr: Expr) => {
+    setEmotes((e) => ({ ...e, [pid]: expr }))
+    clearTimeout(emoteTimers.current[pid])
+    emoteTimers.current[pid] = setTimeout(() => setEmotes((e) => { const n = { ...e }; delete n[pid]; return n }), EMOTE_MS)
+  }, [])
+  useEffect(() => () => Object.values(emoteTimers.current).forEach(clearTimeout), [])
+  // AI: 새 기록이 좋은 일·나쁜 일이면 자동으로 (걷기·주사위·칸 사건 창이 끝난 뒤에 띄움)
+  const [aiQueue, setAiQueue] = useState<[number, Expr][]>([])
+  const seenLog = useRef(game.logCount ?? 0)
+  useEffect(() => {
+    const count = game.logCount ?? 0
+    const fresh = Math.min(count - seenLog.current, game.log.length)
+    seenLog.current = count
+    if (fresh <= 0) return
+    const last = new Map<number, Expr>()
+    for (const l of game.log.slice(-fresh)) {
+      if (l.playerId === null || game.players[l.playerId].human) continue
+      const e = autoEmote(l)
+      if (e) last.set(l.playerId, e)
+    }
+    if (last.size) setAiQueue((q) => [...q, ...last])
+  }, [game.logCount, game.log, game.players])
+  useEffect(() => {
+    if (!aiQueue.length || walking || diceShow !== null || popShow !== null) return
+    aiQueue.forEach(([pid, e]) => showEmote(pid, e))
+    setAiQueue([])
+  }, [aiQueue, walking, diceShow, popShow, showEmote])
+  // 다른 기기에서 온 표정
+  const incomingId = online?.incoming?.id
+  useEffect(() => {
+    const inc = online?.incoming
+    if (inc) showEmote(inc.player, inc.expr)
+  }, [incomingId]) // eslint-disable-line react-hooks/exhaustive-deps
+  // 플레이어: 직접 골라서 (온라인은 내 첫 플레이어, 혼자 하기는 지금 차례인 사람 아니면 첫 사람)
+  const emoteId = online ? online.mine[0] : p.human ? p.id : game.players.find((q) => q.human)?.id
+  const [picker, setPicker] = useState(false)
+  const [coolUntil, setCoolUntil] = useState(0)
+  const cooling = coolUntil > Date.now()
+  useEffect(() => {
+    if (!cooling) return
+    const t = setTimeout(() => setCoolUntil(0), coolUntil - Date.now())
+    return () => clearTimeout(t)
+  }, [cooling, coolUntil])
+  const pickEmote = (e: Expr) => {
+    if (emoteId === undefined || cooling) return
+    setPicker(false)
+    setCoolUntil(Date.now() + EMOTE_COOLDOWN_MS)
+    showEmote(emoteId, e)
+    online?.emote?.(emoteId, e)
+  }
+
   const onCampus = p.campusTurns > 0 && stageOf(game).tiles[p.pos].kind === 'campus'
   const doRoll = () => {
     if (!myTurn) return
@@ -286,7 +346,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
       onPointerDown={(e) => { unlockAudio(); if ((e.target as HTMLElement).closest('.world')) swipeY.current = { y: e.clientY, t: Date.now() } }}
       onPointerUp={(e) => { const sw = swipeY.current; if (sw && sw.y - e.clientY > 70 && Date.now() - sw.t < 300) doRoll(); swipeY.current = null }}
     >
-      <Board s={game} focus={shown} posOf={posOf} walkingId={walking ? game.pathPlayer : null} canPan={myTurn} showSteps={myTurn || (!p.human && game.phase === 'roll' && !busy)} />
+      <Board s={game} focus={shown} posOf={posOf} walkingId={walking ? game.pathPlayer : null} canPan={myTurn} emotes={emotes} showSteps={myTurn || (!p.human && game.phase === 'roll' && !busy)} />
 
       <header className="hud">
         <div className="hud-row">
@@ -315,7 +375,13 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
       <div className="side-buttons">
         <button onClick={() => setSheet('map')}>지도</button>
         <button onClick={() => setSheet('people')}>사람들</button>
+        {emoteId !== undefined && (
+          <button className="emote-btn" aria-label="표정" disabled={cooling} onClick={() => setPicker(true)}>
+            <Character outfit={game.players[emoteId].outfit} age={ageOf(game, game.players[emoteId])} expr="happy" size={44} crop="head" />
+          </button>
+        )}
       </div>
+      {picker && emoteId !== undefined && <EmotePicker outfit={game.players[emoteId].outfit} age={ageOf(game, game.players[emoteId])} onPick={pickEmote} onClose={() => setPicker(false)} />}
 
       <div className="ticker" style={{ visibility: busy ? "hidden" : "visible" }}>
         {recent.map((l, i) => (
