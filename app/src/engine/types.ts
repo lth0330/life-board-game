@@ -146,7 +146,7 @@ export interface Player {
   insuranceCooldown: Record<InsuranceKind, number>
   car: CarTier
   carCharges: number
-  record: { shopBuys: number; spent: number; lotteryWon: number; deeds: number; duelWins: number } // 결산 상 계산용
+  record: { shopBuys: number; spent: number; lotteryWon: number; deeds: number; duelWins: number; stockGain: number } // 결산 상 계산용
   celebrated: number[] // 이미 치른 육순(60)·칠순(70)
   jobTenure: number // 지금 직업에서 일한 턴 (퇴직금 계산)
   biz: Biz | null // 창업한 회사 (회사 크기는 jobRank)

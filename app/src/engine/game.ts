@@ -82,20 +82,23 @@ export function houseCost(s: GameState, p: Player, tier: number, coupon = p.chan
 export const SCORE_PER_POINT = 50 // 자산 50만당 1점 (2026-10-15 밸런스: 행복과 비슷한 무게)
 // 결산 상: 1등(같으면 모두)에게 10점. 기록이 0이면 없음
 export const AWARD_POINTS = 10
-export const AWARDS: { id: string; name: string; desc: string; value: (p: Player) => number }[] = [
+// 주식으로 번 돈: 판 동안 판 이익·손해 + 아직 들고 있는 주식의 (지금 값 - 산 값)
+export const stockGainOf = (s: GameState, p: Player) => p.record.stockGain + SECTORS.reduce((a, k) => a + p.stocks[k] * s.stockPrice[k] - p.stockCost[k], 0)
+export const AWARDS: { id: string; name: string; desc: string; value: (p: Player, s: GameState) => number }[] = [
   { id: 'shop', name: '쇼핑왕', desc: '상점에서 가장 많이 산 사람', value: (p) => p.record.shopBuys },
   { id: 'spend', name: '큰손', desc: '돈을 가장 많이 쓴 사람 (집·차·상점·복권·결혼식 등)', value: (p) => p.record.spent },
   { id: 'kids', name: '다둥이', desc: '아이가 가장 많은 사람', value: (p) => p.kids.length },
   { id: 'success', name: '자식 농사', desc: '크게 성공한 자녀가 가장 많은 사람', value: (p) => p.kids.filter((k) => k.result === 2).length },
   { id: 'lucky', name: '행운아', desc: '복권 당첨금이 가장 많은 사람', value: (p) => p.record.lotteryWon },
   { id: 'kind', name: '착한 사람', desc: '선행이 가장 많은 사람 (봉사·지갑 찾아주기·유기견·친구에게 돈 빌려주기)', value: (p) => p.record.deeds },
+  { id: 'invest', name: '투자왕', desc: '주식으로 가장 많이 번 사람 (판 이익 + 들고 있는 주식의 오른 만큼)', value: (p, s) => stockGainOf(s, p) },
   { id: 'duel', name: '만남의 왕', desc: '같은 칸 대결에서 1등을 가장 많이 한 사람', value: (p) => p.record.duelWins },
 ]
 export function awardsOf(s: GameState, p: Player) {
   return AWARDS.flatMap((a) => {
-    const best = Math.max(...s.players.map(a.value))
-    if (best <= 0 || a.value(p) !== best) return []
-    const ties = s.players.filter((q) => a.value(q) === best).length
+    const best = Math.max(...s.players.map((q) => a.value(q, s)))
+    if (best <= 0 || a.value(p, s) !== best) return []
+    const ties = s.players.filter((q) => a.value(q, s) === best).length
     return [{ ...a, points: Math.floor(AWARD_POINTS / ties), ties }] // 같은 기록이면 나눠 가짐: 2명 5점, 3명 3점, 4명 2점
   })
 }
@@ -136,7 +139,7 @@ function newPlayer(id: number, name: string, human: boolean, personality: Person
     pos: 0, rollsLeft: 0, finished: false, finishOrder: 0, turnsPlayed: 0,
     insurance: { health: false, property: false, car: false },
     insuranceCooldown: { health: 0, property: 0, car: 0 },
-    car: 0, carCharges: 0, carValue: 0, stockCost: { 생명: 0, IT: 0, 화학: 0, 의료: 0, 엔터: 0 }, jobTenure: 0, biz: null, bizKeep: null, medals: [], exAthlete: null, celebrated: [], record: { shopBuys: 0, spent: 0, lotteryWon: 0, deeds: 0, duelWins: 0 }, house: 0, loans: [], creditBad: 0,
+    car: 0, carCharges: 0, carValue: 0, stockCost: { 생명: 0, IT: 0, 화학: 0, 의료: 0, 엔터: 0 }, jobTenure: 0, biz: null, bizKeep: null, medals: [], exAthlete: null, celebrated: [], record: { shopBuys: 0, spent: 0, lotteryWon: 0, deeds: 0, duelWins: 0, stockGain: 0 }, house: 0, loans: [], creditBad: 0,
     lottery: { ticket: false, chance: 10, addicted: false },
     stocks: { 생명: 0, IT: 0, 화학: 0, 의료: 0, 엔터: 0 },
     suitors: [], spouse: null, divorced: false, children: 0, adopted: 0, kids: [], diceItems: [], pet: null, retire: null,
@@ -488,6 +491,7 @@ function forceLiquidate(s: GameState, p: Player, overdue: { amount: number }[]) 
   p.loans = p.loans.filter((l) => !overdue.includes(l))
   for (const k of SECTORS) {
     p.money += p.stocks[k] * s.stockPrice[k]
+    p.record.stockGain += p.stocks[k] * s.stockPrice[k] - p.stockCost[k]
     p.stocks[k] = 0
     p.stockCost[k] = 0
   }
@@ -2231,6 +2235,7 @@ export function tradeStock(s: GameState, sector: Sector, qty: number) {
   } else {
     const avg = held ? p.stockCost[sector] / held : price
     const gain = Math.round((price - avg) * -qty)
+    p.record.stockGain += gain
     p.stockCost[sector] = Math.round(avg * p.stocks[sector])
     log(s, p.id, `${sector}주 ${-qty}주 팔았다 (${won(price)}/주, ${gain >= 0 ? `+${won(gain)} 이익` : `${won(gain)} 손해`})`, gain >= 0 ? 'good' : 'bad')
   }
