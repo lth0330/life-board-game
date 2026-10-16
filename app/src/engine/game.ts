@@ -1759,10 +1759,12 @@ function uniTry(s: GameState, p: Player, k: StatKey) {
     p.major = k
     log(s, p.id, `🎯 ${u.name} 합격! (확률 ${Math.round(ch * 100)}%)`, 'good')
     s.banner = { title: `${u.name} 합격!`, text: p.name, tone: 'good' }
+    say(s, p, 'uniPass')
     applyRoadStart(s, p, 'college')
     return true
   }
   log(s, p.id, `${u.name} 불합격… (확률 ${Math.round(ch * 100)}%)`, 'bad')
+  say(s, p, 'uniFail')
   return false
 }
 
@@ -2019,6 +2021,7 @@ export function choose(s: GameState, optionId: string) {
         p.loans.push({ amount: m.borrow, dueTurn: p.turnsPlayed + HOUSE_RULES.mortgageTurns, kind: '주담대', installment: m.installment, missed: 0 })
         p.house = i; p.happy += HOUSES[i].happy
         log(s, p.id, `${old}${HOUSES[i].name}을 대출 끼고 샀다! 계약금 ${won(m.down)}, 매 턴 ${won(m.installment)}씩 갚기. 행복 +${HOUSES[i].happy}`, 'good')
+        say(s, p, 'house')
         s.banner = { title: '내 집 마련!', text: `${p.name}: ${HOUSES[i].name}`, tone: 'good' }
       } else if (optionId.startsWith('house')) {
         const i = +optionId.slice(5) as 0 | 1 | 2 | 3
@@ -2027,6 +2030,7 @@ export function choose(s: GameState, optionId: string) {
         if (p.chance === 'coupon') p.chance = null
         spend(p, cost); p.house = i; p.happy += HOUSES[i].happy
         log(s, p.id, `${old}${HOUSES[i].name}을 샀다! 행복 +${HOUSES[i].happy}`, 'good')
+        say(s, p, 'house')
       } else if (optionId.startsWith('car')) {
         const i = +optionId.slice(3) as 0 | 1 | 2 | 3
         const cost = carCost(p, i)
@@ -2157,6 +2161,7 @@ export function choose(s: GameState, optionId: string) {
         x.affinity = Math.max(0, x.affinity - 30)
         p.happy -= 5
         log(s, p.id, `${x.name}에게 차였다… 행복 -5`, 'bad')
+        say(s, p, 'confessFail')
       }
       break
     }
@@ -2549,6 +2554,7 @@ function endTurn(s: GameState) {
     payDebtsAtGoal(s, p)
     log(s, p.id, `${s.finishCount}번째로 골인!${bonus ? ` +${won(bonus)}` : ''}`, 'good')
     showPop(s, p, goalStart, 'trophy', `${s.finishCount}등으로 골인!`)
+    say(s, p, 'goal')
   }
   s.pending = null
   s.lastRoll = null
@@ -2634,7 +2640,7 @@ function nextStage(s: GameState) {
     if (st.id === 'middle' && p.jobId === 'athlete') { p.exAthlete = p.jobRank; log(s, p.id, `운동선수 은퇴!${p.medals.length ? ` (메달 ${p.medals.length}개)` : ''}`, 'info'); p.jobId = null; p.jobTenure = 0 }
     if (st.id !== 'young') careerRoll(s, p)
     if (st.id === 'old') {
-      if (p.jobId && p.jobId !== 'ceo') { paySeverance(s, p); log(s, p.id, `${jobOf(p)?.name} 은퇴${jobOf(p)?.pension ? ` (연금 매 턴 ${won(PENSION)})` : ''}`, 'info') }
+      if (p.jobId && p.jobId !== 'ceo') { paySeverance(s, p); log(s, p.id, `${jobOf(p)?.name} 은퇴${jobOf(p)?.pension ? ` (연금 매 턴 ${won(PENSION)})` : ''}`, 'info'); say(s, p, 'retire') }
       p.agency = null
     }
   }
