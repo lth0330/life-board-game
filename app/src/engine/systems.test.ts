@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { aiStep } from './ai'
 import { distancesFrom } from './board'
-import { choose, createGame, cur, finishMini, requestFriendLoan, roll, stageOf } from './game'
+import { canSeekJob, choose, createGame, cur, finishMini, requestFriendLoan, roll, seekJob, stageOf } from './game'
 import type { GameState } from './types'
 
 const newGame = (seed: number, startAdult = false, humans = 0, ai = 4) =>
@@ -131,5 +131,24 @@ describe('사람 플레이어 흐름', () => {
       } else aiStep(s)
     }
     expect(s.log.some((l) => l.text.includes('법적 공방'))).toBe(true)
+  })
+})
+
+describe('백수 취업 도전', () => {
+  it('청년 백수는 굴리기 전에 조건 맞는 직업을 고를 수 있다', () => {
+    const s = newGame(3, true, 1, 1)
+    if (s.pending) choose(s, 'work')
+    expect(s.pending?.type).toBe('job')
+    choose(s, 'jobless')
+    const me = cur(s)
+    expect(me.jobId).toBe(null)
+    me.stats = { int: 5, str: 5, cha: 5 }
+    expect(canSeekJob(s, me)).toBe(true)
+    seekJob(s)
+    expect(s.pending?.title).toBe('취업 도전')
+    const job = s.pending!.options.find((o) => o.id.startsWith('job:'))!
+    choose(s, job.id)
+    expect(me.jobId).toBe(job.id.slice(4))
+    expect(canSeekJob(s, me)).toBe(false)
   })
 })

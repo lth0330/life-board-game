@@ -4,8 +4,8 @@ import { Character } from './art/Character'
 import { aiStep } from './engine/ai'
 import { CARS, DICE_ITEMS, MINI_PRACTICE_LIMIT } from './engine/data'
 import {
-  ageOf, turnIncome, buyLottery, canAct, canUseCar, choose, createGame, cur, cureAddiction, finishMini, fortuneName, miniGuide, repayFriendLoan,
-  repayLoans, requestFriendLoan, roll, stageOf, startSabotage, takeLoan, toggleInsurance, tradeStock, useChance,
+  ageOf, turnIncome, buyLottery, canAct, canUseCar, choose, createGame, cur, cureAddiction, finishMini, fortuneName, miniGuide, canSeekJob, seekJob, repayFriendLoan,
+  repayLoans, requestFriendLoan, roll, stageOf, startSabotage, takeLoan, toggleInsurance, tradeStock, playChance,
 } from './engine/game'
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
 import type { DiceItem, GameState } from './engine/types'
@@ -250,6 +250,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
   }
   const showCar = myTurn && canUseCar(p) && !onCampus
   const heldItems = myTurn && !onCampus ? [...new Set(p.diceItems)] : []
+  const showSeek = myTurn && canSeekJob(game, p)
   const recent = game.log.slice(-3)
   const stageBanner = banner && !busy && banner.title.endsWith('단계')
 
@@ -300,8 +301,9 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
         ))}
       </div>
 
-      {(showCar || heldItems.length > 0) && (
+      {(showCar || heldItems.length > 0 || showSeek) && (
         <div className="roll-mods">
+          {showSeek && <button className="car-toggle" onClick={() => act(seekJob)}>💼 취업 도전</button>}
           {showCar && (
             <button className={`car-toggle ${carMode ? 'on' : ''}`} aria-pressed={carMode} onClick={() => { setCarMode(!carMode); setItemMode(null) }}>
               {CARS[p.car].name} ±1 {carMode ? '사용함' : '쓰기'} · 남은 {p.carCharges}번
@@ -379,7 +381,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
       )}
       {sheet === 'cards' && (
         <CardsSheet p={p} canUse={myTurn}
-          onUseChance={() => { setSheet(null); act(useChance) }}
+          onUseChance={() => { setSheet(null); act(playChance) }}
           onSabotage={() => { setSheet(null); act(startSabotage) }}
           onClose={() => setSheet(null)} />
       )}

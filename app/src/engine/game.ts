@@ -1111,7 +1111,7 @@ function land(s: GameState) {
       break
     }
     case 'grow': {
-      const add = isAdultStage(s) && !p.jobId ? 2 : 1
+      const add = 1 // 백수도 다른 직업과 같음 (2026-10-16 사용자: 백수 +1 없앰)
       // 학원 길은 지력, 놀이 길은 매력. 그 밖에는 플레이어가 고름
       if (road === 'academy' || road === 'play') {
         const k: StatKey = road === 'academy' ? 'int' : 'cha'
@@ -1802,7 +1802,7 @@ function jobOptions(s: GameState, p: Player, includeStay: boolean): ChoiceOption
   if (includeStay && biz && stageOf(s).id === 'middle') {
     opts.push({ id: 'biz', label: `창업: ${biz.name}`, desc: `자금 ${won(bizCost(p))}${p.jobId === 'chef' ? ' (요리사 할인)' : ''} · ${STAT_NAMES[biz.stat]} ${p.stats[biz.stat]} 바탕 · 소기업부터 · 지금 직장 퇴직금 받음`, disabled: p.money < bizCost(p) && p.creditBad > 0 })
   }
-  opts.push({ id: includeStay ? 'stay' : 'jobless', label: includeStay ? '지금 그대로' : '백수로 지내기', desc: includeStay ? '' : '월급 없음, 성장 칸 효과 +1' })
+  opts.push({ id: includeStay ? 'stay' : 'jobless', label: includeStay ? (p.jobId ? '지금 그대로' : '계속 백수로') : '백수로 지내기', desc: includeStay ? '' : '월급 없음, 매 턴 행복 +1, 굴리기 전에 언제든 취업 도전' })
   return opts
 }
 
@@ -2284,6 +2284,20 @@ export function buyLottery(s: GameState) {
   say(s, p, 'lotteryBuy')
 }
 
+// 백수 취업 도전: 청년·중년에 백수면 굴리기 전에 언제든 조건 맞는 직업을 고를 수 있음 (2026-10-16 사용자)
+export function canSeekJob(s: GameState, p: Player) {
+  const id = stageOf(s).id
+  return (id === 'young' || id === 'middle') && !p.jobId && p.collegeDecided && p.campusTurns === 0 && p.exAthlete === null && !p.biz && eligibleJobs(p, s.stageIdx).length > 0
+}
+export function seekJob(s: GameState) {
+  const p = cur(s)
+  if (!canAct(s) || !canSeekJob(s, p)) return
+  s.pending = { type: 'job', playerId: p.id, title: '취업 도전', text: `조건이 맞는 직업이에요. (지력 ${p.stats.int} · 체력 ${p.stats.str} · 매력 ${p.stats.cha})
+
+${jobGuide(p)}`, options: jobOptions(s, p, true) }
+  resume(s)
+}
+
 export function cureAddiction(s: GameState) {
   const p = cur(s)
   if (!canAct(s) || !p.lottery.addicted || p.money < 300) return
@@ -2472,7 +2486,7 @@ function lawsuit(s: GameState, plaintiff: Player, defendant: Player, kind: 'loan
 
 // ───────── 카드 사용 ─────────
 
-export function useChance(s: GameState) {
+export function playChance(s: GameState) {
   const p = cur(s)
   if (!canAct(s) || !p.chance) return
   if (p.chance === 'charm') {

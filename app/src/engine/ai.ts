@@ -2,7 +2,7 @@ import { BUSINESSES, DICE_ITEMS, JOBS, SECTORS } from './data'
 import {
   aiDiceItem, aiWantsCar, passChance, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, loanLimit, loanTotal, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, rngOf, salaryOf, scoreOf, stageOf, startSabotage, takeLoan, toggleInsurance,
-  tradeStock, useChance,
+  tradeStock, playChance,
 } from './game'
 import type { GameState, Pending, Player } from './types'
 
@@ -187,7 +187,7 @@ export function aiPreRoll(s: GameState) {
   const p = cur(s)
   const rng = rngOf(s)
   const per = p.personality
-  if (p.chance === 'charm' && p.fortune <= 1) useChance(s)
+  if (p.chance === 'charm' && p.fortune <= 1) playChance(s)
   if (p.sabotage && isAdultStage(s) && rng.chance(per === 'gambler' ? 0.6 : s.settings.difficulty === 'hard' ? 0.4 : 0.15)) {
     startSabotage(s)
     if (s.pending) choose(s, aiChoose(s))
