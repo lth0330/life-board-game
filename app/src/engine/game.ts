@@ -703,6 +703,15 @@ interface Bad { text: string; loss: number; happyLoss: number; kind?: InsuranceK
 
 // 운세 덕분에 나쁜 일을 완전히 피했을 때 대사 (사건 글에 들어 있는 낱말로 고름)
 const DODGE: [RegExp, string][] = [
+  [/무릎 수술/, '무릎이 아팠지만 꾸준히 걸어서 수술까지는 안 갔다'],
+  [/보이스피싱/, '전화가 수상해서 끊었다'],
+  [/중고/, '판매자가 수상해서 거래를 그만뒀다'],
+  [/월세/, '집주인이 월세를 올리려다 말았다'],
+  [/비가/, '비 예보가 있었지만 소풍 날 아침에 딱 그쳤다'],
+  [/체육복/, '체육복을 놓고 왔지만 옆 반 친구가 빌려줬다'],
+  [/사춘기/, '괜히 짜증이 났지만 금방 풀렸다'],
+  [/고백/, '고백했더니 생각해 보겠다는 답을 들었다'],
+  [/승진/, '동기 승진 소식에도 마음이 편했다'],
   [/허리/, '허리 디스크가 올 뻔했지만 건강검진에서 일찍 발견해 막았다'],
   [/위염/, '속이 쓰렸지만 일찍 약을 먹어서 위염을 피했다'],
   [/독감|감기/, '감기 기운이 있었지만 예방 주사 덕분에 멀쩡했다'],
@@ -1214,23 +1223,63 @@ function drawCard(s: GameState, p: Player) {
       () => { p.happy += 3; log(s, p.id, '선생님께 칭찬 스티커를 받았다. 행복 +3', 'good') },
       () => badEvent(s, p, { text: '친구랑 싸웠다', loss: 0, happyLoss: 3 }),
       () => { p.money += sc * 2; log(s, p.id, `세뱃돈을 받았다 +${won(sc * 2)}`, 'good') },
+      () => { p.stats.int = clampStat(p.stats.int + 1); log(s, p.id, '받아쓰기 100점! 지력 +1', 'good') },
+      () => { p.stats.str = clampStat(p.stats.str + 1); log(s, p.id, '줄넘기 2단 뛰기 성공! 체력 +1', 'good') },
+      () => { p.stats.cha = clampStat(p.stats.cha + 1); log(s, p.id, '장래희망 발표에서 박수를 받았다. 매력 +1', 'good') },
+      () => { p.money += sc; log(s, p.id, `이를 뺐더니 베개 밑에 동전이 있었다 +${won(sc)}`, 'good') },
+      () => badEvent(s, p, { text: '소풍 날 비가 왔다', loss: 0, happyLoss: 2 }),
+      () => badEvent(s, p, { text: '놀이터에서 넘어져 무릎이 까졌다', loss: sc, happyLoss: 1, kind: 'health' }),
     ],
     student: [
       () => { p.stats.int = clampStat(p.stats.int + 1); p.happy += 2; log(s, p.id, '시험 100점! 지력 +1, 행복 +2', 'good') },
       () => badEvent(s, p, { text: '지각해서 벌을 섰다', loss: 0, happyLoss: 2 }),
       () => { p.money += sc * 3; log(s, p.id, `아르바이트 월급 +${won(sc * 3)}`, 'good') },
+      () => { p.stats.cha = clampStat(p.stats.cha + 1); p.happy += 2; log(s, p.id, '반장 선거 당선! 매력 +1, 행복 +2', 'good') },
+      () => { p.stats.int = clampStat(p.stats.int + 1); p.money -= sc; log(s, p.id, `독서실 등록. 지력 +1, -${won(sc)}`, 'good') },
+      () => { p.happy += 4; p.money -= sc * 2; log(s, p.id, `수학여행! 행복 +4, -${won(sc * 2)}`, 'good') },
+      () => { p.happy += 3; p.money -= sc * 2; log(s, p.id, `첫 휴대폰이 생겼다. 행복 +3, -${won(sc * 2)}`, 'good') },
+      () => badEvent(s, p, { text: '체육복을 놓고 와서 벌점을 받았다', loss: 0, happyLoss: 1 }),
+      () => badEvent(s, p, { text: '사춘기라 괜히 다 싫다', loss: 0, happyLoss: 3 }),
+      () => { badEvent(s, p, { text: '짝사랑에게 고백했다가 차였다', loss: 0, happyLoss: 2 }); p.stats.cha = clampStat(p.stats.cha + 1); log(s, p.id, '그래도 용기를 낸 덕분에 매력 +1', 'good') },
     ],
     young: [
       () => { p.stats.cha = clampStat(p.stats.cha + 1); log(s, p.id, '첫 월급으로 옷을 샀다. 매력 +1', 'good') },
       () => badEvent(s, p, { text: '자취방 보증금 문제', loss: sc * 2, happyLoss: 1, kind: 'property' }),
+      () => { p.stats.int = clampStat(p.stats.int + 1); log(s, p.id, '자격증 합격! 지력 +1', 'good') },
+      () => { p.stats.str = clampStat(p.stats.str + 1); p.money -= sc; log(s, p.id, `헬스장 1년 등록. 체력 +1, -${won(sc)}`, 'good') },
+      () => { p.happy += 4; p.money -= sc * 2; log(s, p.id, `혼자 여행을 떠났다. 행복 +4, -${won(sc * 2)}`, 'good') },
+      () => { p.money -= sc; log(s, p.id, `친구 결혼식 축의금 -${won(sc)}`, 'info') },
+      () => badEvent(s, p, { text: '중고 거래 사기를 당했다', loss: sc * 2, happyLoss: 2 }),
+      () => {
+        if (p.house) { p.happy += 1; log(s, p.id, '친구들 월세가 올랐다는 소식. 내 집이 있어 다행이다 (행복 +1)', 'good') }
+        else badEvent(s, p, { text: '월세가 올랐다', loss: sc * 2, happyLoss: 0 })
+      },
     ],
     middle: [
       () => badEvent(s, p, { text: '건강검진에서 재검 판정', loss: sc * 2, happyLoss: 2, kind: 'health' }),
       () => { p.happy += 4; log(s, p.id, '오랜 친구들과 동창회. 행복 +4', 'good') },
+      () => { p.stats.str = clampStat(p.stats.str + 1); p.happy += 2; log(s, p.id, '마라톤 완주! 체력 +1, 행복 +2', 'good') },
+      () => { p.stats.cha = clampStat(p.stats.cha + 1); p.money -= sc * 2; log(s, p.id, `골프를 시작했다. 매력 +1, -${won(sc * 2)}`, 'good') },
+      () => { p.happy += 3; p.money -= sc * 2; log(s, p.id, `부모님 칠순 잔치. 행복 +3, -${won(sc * 2)}`, 'good') },
+      () => {
+        if (p.kids.length) { p.money -= sc * 2; log(s, p.id, `아이 학원비 -${won(sc * 2)}`, 'info') }
+        else { p.happy += 2; log(s, p.id, '조카에게 학원비 이야기를 들었다. 나는 홀가분 (행복 +2)', 'good') }
+      },
+      () => badEvent(s, p, { text: '허리 디스크가 왔다', loss: sc * 2, happyLoss: 2, kind: 'health' }),
+      () => badEvent(s, p, { text: '동기가 먼저 승진했다', loss: 0, happyLoss: 2 }),
     ],
     old: [
       () => { if (p.kids.length) { p.happy += 5; log(s, p.id, '손주가 찾아왔다. 행복 +5', 'good') } else { p.happy += 3; log(s, p.id, '옛 친구가 놀러 왔다. 행복 +3', 'good') } },
       () => badEvent(s, p, { text: '관절이 쑤신다', loss: sc, happyLoss: 2, kind: 'health' }),
+      () => { p.happy += 4; log(s, p.id, '자서전을 썼다. 행복 +4', 'good') },
+      () => { p.happy += 3; log(s, p.id, '노인 대학에 입학했다. 행복 +3', 'good') },
+      () => { p.happy += 2; log(s, p.id, '옛 사진을 정리했다. 행복 +2', 'good') },
+      () => {
+        if (p.kids.length) { p.money -= sc; p.happy += 3; log(s, p.id, `손주에게 용돈을 줬다. -${won(sc)}, 행복 +3`, 'good') }
+        else { p.happy += 2; log(s, p.id, '동네 아이들에게 사탕을 나눠 줬다. 행복 +2', 'good') }
+      },
+      () => badEvent(s, p, { text: '보이스피싱 전화에 속았다', loss: sc * 3, happyLoss: 2 }),
+      () => badEvent(s, p, { text: '무릎 수술을 받았다', loss: sc * 2, happyLoss: 2, kind: 'health' }),
     ],
   }
   deck.push(...stageCards[id], ...stageCards[id]) // 단계 카드가 더 자주 나오게
