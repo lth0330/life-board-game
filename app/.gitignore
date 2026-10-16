@@ -26,3 +26,4 @@ dist-ssr
 # Amplify (AWS) 만들어지는 파일
 .amplify
 amplify_outputs*
+.smoke

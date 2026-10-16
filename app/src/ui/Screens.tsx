@@ -10,7 +10,7 @@ import { Manual } from './Manual'
 export type Speed = 'fast' | 'normal' | 'slow'
 export interface SetupResult { name: string; names: string[]; humans: number; ai: number; adult: boolean; difficulty: Difficulty; speed: Speed; outfit: Outfit }
 
-function Frame({ children }: { children: ReactNode }) {
+export function Frame({ children }: { children: ReactNode }) {
   return (
     <div className="setup">
       <div className="setup-scene" aria-hidden="true"><div className="hill a" /><div className="hill b" /><div className="cloud a" /><div className="cloud b" /></div>
@@ -67,8 +67,8 @@ export function TitleScreen({ onProfile, onGuest }: { onProfile: (p: Profile) =>
 }
 
 // 메뉴: 이어 하기 / 새로 하기
-export function MenuScreen({ profile, slot, onContinue, onNew, onLogout, onDress }: {
-  profile: Profile | null; slot: SaveSlot | null; onContinue: () => void; onNew: () => void; onLogout: () => void; onDress: () => void
+export function MenuScreen({ profile, slot, onContinue, onNew, onOnline, onLogout, onDress }: {
+  profile: Profile | null; slot: SaveSlot | null; onContinue: () => void; onNew: () => void; onOnline: () => void; onLogout: () => void; onDress: () => void
 }) {
   const [manual, setManual] = useState(false)
   const [confirm, setConfirm] = useState(false)
@@ -98,6 +98,7 @@ export function MenuScreen({ profile, slot, onContinue, onNew, onLogout, onDress
       ) : (
         <button className={`wide ${st ? 'secondary' : 'big'}`} onClick={() => (st ? setConfirm(true) : onNew())}>새로 하기</button>
       )}
+      <button className="wide secondary" onClick={onOnline}>🌐 온라인으로 하기</button>
       {profile && <button className="wide secondary" onClick={onDress}>캐릭터 꾸미기</button>}
       <button className="wide ghost" onClick={() => setManual(true)}>게임 설명서</button>
       <button className="wide ghost" onClick={onLogout}>{profile ? '로그아웃' : '처음 화면으로'}</button>

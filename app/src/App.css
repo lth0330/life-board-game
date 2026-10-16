@@ -367,6 +367,16 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
 .menu-hello { display: flex; gap: 10px; align-items: center; background: var(--paper-2); border-radius: 14px; padding: 8px 12px; }
 .menu-hello p { margin: 2px 0 0; }
 .login-form { display: flex; flex-direction: column; gap: 12px; }
+/* ───── 온라인 대기실 ───── */
+.code-input { min-height: 44px; border-radius: 10px; border: 2px solid var(--ink); padding: 0 12px; font-size: 20px; letter-spacing: 6px; text-transform: uppercase; min-width: 0; }
+.room-code { font-size: 52px; letter-spacing: 12px; text-align: center; color: var(--accent); }
+.seats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.seat { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 64px; padding: 8px 10px; border-radius: 12px; border: 2px solid var(--ink); background: #fff; text-align: left; color: var(--ink); }
+.seat b { font-size: 12px; opacity: 0.6; }
+.seat em { font-style: normal; font-size: 12px; color: var(--ink-soft); }
+.seat-open { border-style: dashed; background: transparent; }
+.seat-human { background: #FFF4CC; }
+.lobby-settings { display: flex; flex-direction: column; gap: 6px; }
 .login-form h2 { margin: 0; }
 .setup-head { display: flex; justify-content: space-between; align-items: center; }
 .setup-head h1 { font-size: 32px; }

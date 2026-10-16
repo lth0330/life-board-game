@@ -1,10 +1,13 @@
 import { defineAuth } from '@aws-amplify/backend'
+import { preSignUp } from './pre-sign-up/resource'
 
-// 로그인: 이메일 + 비밀번호. 가입할 때 이메일로 인증 번호가 감
-// 게임 안 이름은 preferred_username에 저장 (나중에 바꿀 수 있음)
+// 로그인: 게임 아이디 + 비밀번호 (이메일 없음, 2026-10-16 사용자). 구글 로그인은 다음에 붙임
+// Amplify는 email/phone 로그인만 바로 지원해서, 아이디 로그인으로 바꾸는 설정은 backend.ts에서 함
+// 게임 안 이름(닉네임)은 preferred_username에 저장
 export const auth = defineAuth({
   loginWith: { email: true },
   userAttributes: {
     preferredUsername: { required: false, mutable: true },
   },
+  triggers: { preSignUp },
 })

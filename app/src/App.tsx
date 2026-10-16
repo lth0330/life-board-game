@@ -17,6 +17,7 @@ import { Dresser } from './ui/Dresser'
 import { Confetti, DiceThrow, StageCard } from './ui/Effects'
 import { Manual } from './ui/Manual'
 import { MiniGame } from './ui/MiniGames'
+import { Online } from './online/Online'
 import { MenuScreen, SetupScreen, TitleScreen, type Speed } from './ui/Screens'
 import { CardsSheet, FinanceSheet, GameOver, PeopleSheet, playerLine, StageSummary, won } from './ui/Sheets'
 
@@ -33,7 +34,7 @@ const SHOP_CATS = [
 ]
 const CELEBRATE = ['결혼!', '복권 1등!', '복권 2등!', '아기 탄생', '수능 상위권!', '게임 끝!', '회사 성장!', '감독 도전 성공!', '자녀 대성공!', '금메달!', '은메달!', '동메달!', '육순 잔치', '칠순 잔치']
 
-type Screen = 'title' | 'menu' | 'setup' | 'play'
+type Screen = 'title' | 'menu' | 'setup' | 'play' | 'online'
 
 export default function App() {
   const [profile, setProfile] = useState<Profile | null>(() => currentProfile())
@@ -68,6 +69,7 @@ export default function App() {
           slot={slot}
           onContinue={() => { if (slot) { setGame(slot.state); setScreen('play') } }}
           onNew={() => { if (profile) deleteGame(profile.name); setScreen('setup') }}
+          onOnline={() => setScreen('online')}
           onLogout={() => { logout(); setProfile(null); setScreen('title') }}
           onDress={() => setDress(true)}
         />
@@ -75,6 +77,7 @@ export default function App() {
       </>
     )
   }
+  if (screen === 'online') return <Online onBack={() => setScreen('menu')} />
   if (screen === 'setup' || !game) {
     return (
       <SetupScreen
