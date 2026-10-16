@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import { Character } from './art/Character'
 import { aiStep } from './engine/ai'
@@ -17,9 +17,11 @@ import { Dresser } from './ui/Dresser'
 import { Confetti, DiceThrow, StageCard } from './ui/Effects'
 import { Manual } from './ui/Manual'
 import { MiniGame } from './ui/MiniGames'
-import { Online } from './online/Online'
 import { MenuScreen, SetupScreen, TitleScreen, type Speed } from './ui/Screens'
 import { CardsSheet, FinanceSheet, GameOver, PeopleSheet, playerLine, StageSummary, won } from './ui/Sheets'
+
+// 온라인 화면(AWS 연결 포함)은 '온라인으로 하기'를 눌렀을 때만 내려받음 (혼자 하기는 가볍게)
+const Online = lazy(() => import('./online/Online').then((m) => ({ default: m.Online })))
 
 const SPEED_MS: Record<Speed, number> = { fast: 450, normal: 1000, slow: 1700 }
 const WALK_MS = 230
@@ -78,7 +80,11 @@ export default function App() {
     )
   }
   if (screen === 'online') {
-    return <Online onBack={() => setScreen('menu')} renderPlay={(o) => <Play game={o.game} setGame={o.setGame} speed="fast" saving={false} onQuit={o.onQuit} online={o.online} />} />
+    return (
+      <Suspense fallback={<div className="setup"><p className="center muted">온라인 불러오는 중…</p></div>}>
+        <Online onBack={() => setScreen('menu')} renderPlay={(o) => <Play game={o.game} setGame={o.setGame} speed="fast" saving={false} onQuit={o.onQuit} online={o.online} />} />
+      </Suspense>
+    )
   }
   if (screen === 'setup' || !game) {
     return (
