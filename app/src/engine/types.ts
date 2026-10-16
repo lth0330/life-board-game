@@ -11,7 +11,7 @@ export type ForkId = 'academy' | 'college' | 'startup' | 'retire' | 'event'
 export type MiniId =
   | 'race' | 'tug' | 'throw'
   | 'memory' | 'pairs' | 'quickmath'
-  | 'firstImpression' | 'rhythm' | 'confess'
+  | 'firstImpression' | 'rhythm' | 'confess' | 'dance'
   | 'oddEven' | 'highLow' | 'slot'
   | 'capital' | 'souvenir' | 'photo'
 export type DuelId = 'dice' | 'rps' | 'timing'

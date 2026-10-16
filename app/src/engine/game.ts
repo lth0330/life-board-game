@@ -1365,14 +1365,14 @@ function everyoneStorm(s: GameState) {
 const MINI_STAT: Record<MiniId, StatKey | 'fortune' | null> = {
   race: 'str', tug: 'str', throw: 'str',
   memory: 'int', pairs: 'int', quickmath: 'int',
-  firstImpression: 'cha', rhythm: 'cha', confess: 'cha',
+  firstImpression: 'cha', rhythm: 'cha', confess: 'cha', dance: 'cha',
   oddEven: 'fortune', highLow: 'fortune', slot: 'fortune',
   capital: 'int', souvenir: null, photo: 'int',
 }
 export const MINI_NAMES: Record<MiniId | DuelId, string> = {
   race: '달리기', tug: '줄다리기', throw: '공 던지기',
   memory: '기억력', pairs: '같은 그림 찾기', quickmath: '빠른 계산',
-  firstImpression: '첫인상', rhythm: '무대 공연', confess: '고백 타이밍',
+  firstImpression: '첫인상', rhythm: '무대 공연', confess: '고백 타이밍', dance: '댄스 따라 하기',
   oddEven: '홀짝', highLow: '카드 높낮이', slot: '슬롯머신',
   capital: '수도 맞히기', souvenir: '기념품 고르기', photo: '추억 사진',
   dice: '주사위 대결', rps: '가위바위보', timing: '타이밍 멈추기',
@@ -1462,12 +1462,12 @@ function miniReward(s: GameState, p: Player, game: MiniId, grade: number, stake?
     if (grade === 2) { statUp('int', 2); log(s, p.id, `${name} 금메달! 지력 +2`, 'good') }
     else if (grade === 1) { statUp('int', 1); log(s, p.id, `${name} 통과! 지력 +1`, 'good') }
     else log(s, p.id, `${name} 아쉽게 탈락`, 'info')
-  } else if (['firstImpression', 'rhythm', 'confess'].includes(game) && stageOf(s).id === 'student') {
+  } else if (['firstImpression', 'rhythm', 'confess', 'dance'].includes(game) && stageOf(s).id === 'student') {
     // 학교 축제: 연애 대신 매력
     if (grade === 2) { statUp('cha', 2); p.happy += 2; log(s, p.id, `[학교 축제] ${name} 1등! 매력 +2`, 'good') }
     else if (grade === 1) { statUp('cha', 1); log(s, p.id, `[학교 축제] ${name} 성공! 매력 +1`, 'good') }
     else { p.happy -= 1; log(s, p.id, `[학교 축제] ${name}… 긴장해서 망쳤다. 행복 -1`, 'bad') }
-  } else if (['firstImpression', 'rhythm', 'confess'].includes(game)) {
+  } else if (['firstImpression', 'rhythm', 'confess', 'dance'].includes(game)) {
     if (grade === 2) { statUp('cha', 1); addAffinityOrMeet(s, p, 30) }
     else if (grade === 1) addAffinityOrMeet(s, p, 15)
     else { p.happy -= 2; log(s, p.id, `${name} 대실패… 행복 -2`, 'bad') }

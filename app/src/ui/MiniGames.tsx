@@ -17,7 +17,7 @@ const shuffle = <T,>(a: T[]) => [...a].sort(() => Math.random() - 0.5)
 const MINI_THEME: Record<string, string> = {
   race: 'sport', tug: 'sport', throw: 'sport',
   memory: 'brain', pairs: 'brain', quickmath: 'brain',
-  firstImpression: 'fest', rhythm: 'fest', confess: 'fest',
+  firstImpression: 'fest', rhythm: 'fest', confess: 'fest', dance: 'fest',
   oddEven: 'casino', highLow: 'casino', slot: 'casino',
   capital: 'travel', souvenir: 'travel', photo: 'travel',
 }
@@ -37,9 +37,12 @@ export function MiniGame({ mini, onFinish }: Props) {
   const isDuel = !!mini.duel
   const body = (() => {
     switch (mini.game) {
-      case 'tug': case 'throw': case 'confess': case 'timing':
-        return <Timing level={mini.level} rounds={1} duel={isDuel} onDone={done} />
-      case 'rhythm': return <Timing level={mini.level} rounds={3} duel={false} onDone={done} />
+      case 'timing': return <Timing level={mini.level} rounds={1} duel={isDuel} onDone={done} />
+      case 'tug': return <Tug level={mini.level} onDone={done} />
+      case 'throw': return <Throw level={mini.level} onDone={done} />
+      case 'confess': return <Confess level={mini.level} onDone={done} />
+      case 'rhythm': return <Rhythm level={mini.level} onDone={done} />
+      case 'dance': return <Dance level={mini.level} onDone={done} />
       case 'race': return <Mash level={mini.level} onDone={done} />
       case 'memory': return <Memory level={mini.level} symbols={['●', '■', '▲', '★', '♥', '◆']} onDone={done} />
       case 'photo': return <Memory level={mini.level} symbols={['파리', '도쿄', '뉴욕', '로마', '카이로', '시드니']} onDone={done} />
@@ -122,6 +125,213 @@ function Timing({ level, rounds, duel, onDone }: { level: number; rounds: number
       </div>
       {frozen && <p className="jua">{scores[scores.length - 1]}점</p>}
       <button className="wide big" onPointerDown={(e) => { e.preventDefault(); stop() }} onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); stop() } }}>멈춰!</button>
+    </div>
+  )
+}
+
+// 줄다리기: 왼쪽·오른쪽을 번갈아 눌러 줄을 당김. 상대는 계속 당김 (체력이 높을수록 상대가 약함)
+function Tug({ level, onDone }: { level: number; onDone: (v: number) => void }) {
+  const pull = [10, 16, 22][level] // 상대가 1초에 당기는 양
+  const [pos, setPos] = useState(0) // 100이면 내가 이김
+  const [left, setLeft] = useState(6)
+  const [started, setStarted] = useState(false)
+  const posRef = useRef(0)
+  const leftRef = useRef(6)
+  const lastSide = useRef<'L' | 'R' | null>(null)
+  const ended = useRef(false)
+  const finish = useCallback((v: number) => { if (!ended.current) { ended.current = true; onDone(v) } }, [onDone])
+  useEffect(() => {
+    if (!started) return
+    const t0 = performance.now()
+    const t = setInterval(() => {
+      const el = (performance.now() - t0) / 1000
+      posRef.current = Math.max(-100, posRef.current - pull * 0.1)
+      leftRef.current = Math.max(0, 6 - el)
+      setPos(posRef.current)
+      setLeft(Math.ceil(leftRef.current))
+      if (el >= 6) { clearInterval(t); finish(posRef.current >= 50 ? 1 : 0) }
+    }, 100)
+    return () => clearInterval(t)
+  }, [started, pull, finish])
+  const tap = (side: 'L' | 'R') => {
+    if (ended.current) return
+    if (!started) setStarted(true)
+    if (lastSide.current === side) return // 같은 쪽을 두 번 누르면 안 당겨짐
+    lastSide.current = side
+    posRef.current = Math.min(100, posRef.current + 7)
+    setPos(posRef.current)
+    if (posRef.current >= 100) finish(leftRef.current >= 2 ? 2 : 1)
+  }
+  return (
+    <div className="mini-body">
+      <p>왼손·오른손을 <b>번갈아</b> 눌러 줄을 당기세요! (6초)</p>
+      <div className="tug-track"><div className="tug-flag" style={{ left: `${50 + pos / 2}%` }}>🚩</div></div>
+      <div className="mini-big jua">{left}초</div>
+      <div className="mini-grid two">
+        <button onPointerDown={(e) => { e.preventDefault(); tap('L') }}>왼손</button>
+        <button onPointerDown={(e) => { e.preventDefault(); tap('R') }}>오른손</button>
+      </div>
+    </div>
+  )
+}
+
+// 공 던지기: 누르고 있으면 힘이 찼다 빠졌다 함. 목표 칸에서 손을 떼기
+function Throw({ level, onDone }: { level: number; onDone: (v: number) => void }) {
+  const w = [24, 16, 10][level] // 목표 칸 너비
+  const speed = [0.8, 1.1, 1.4][level]
+  const target = useMemo(() => 55 + rand(25), [])
+  const [power, setPower] = useState(0)
+  const [state, setState] = useState<'ready' | 'hold' | 'done'>('ready')
+  const t0 = useRef(0)
+  const powerAt = useCallback((now: number) => Math.abs(Math.sin(((now - t0.current) / 1000) * speed * Math.PI / 2)) * 100, [speed])
+  useEffect(() => {
+    if (state !== 'hold') return
+    let raf = 0
+    const tick = (now: number) => { setPower(powerAt(now)); raf = requestAnimationFrame(tick) }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [state, powerAt])
+  const down = () => { if (state !== 'ready') return; t0.current = performance.now(); setState('hold') }
+  const up = () => {
+    if (state !== 'hold') return
+    const v = powerAt(performance.now())
+    setPower(v)
+    setState('done')
+    const d = Math.abs(v - (target + w / 2))
+    setTimeout(() => onDone(d <= w / 4 ? 2 : d <= w / 2 ? 1 : 0), 600)
+  }
+  return (
+    <div className="mini-body">
+      <p>버튼을 <b>누르고 있다가</b> 힘이 초록 칸에 왔을 때 떼세요</p>
+      <div className="gauge">
+        <div className="gauge-zone" style={{ left: `${target}%`, width: `${w}%` }} />
+        <div className="power-fill" style={{ width: `${power}%` }} />
+      </div>
+      <button className="wide big" onPointerDown={(e) => { e.preventDefault(); down() }} onPointerUp={up} onPointerLeave={up} onPointerCancel={up}>
+        {state === 'ready' ? '꾹 누르기' : state === 'hold' ? '…지금 떼기!' : '던졌다!'}
+      </button>
+    </div>
+  )
+}
+
+// 고백 타이밍: 하트가 콩닥콩닥. 가장 클 때 누르기
+function Confess({ level, onDone }: { level: number; onDone: (v: number) => void }) {
+  const speed = [0.8, 1.1, 1.4][level]
+  const great = [0.97, 0.985, 0.993][level]
+  const ok = [0.88, 0.93, 0.96][level]
+  const [beat, setBeat] = useState(0)
+  const [stopped, setStopped] = useState(false)
+  const t0 = useRef(performance.now())
+  const beatAt = useCallback((now: number) => Math.abs(Math.sin(((now - t0.current) / 1000) * speed * Math.PI)), [speed])
+  useEffect(() => {
+    if (stopped) return
+    let raf = 0
+    const tick = (now: number) => { setBeat(beatAt(now)); raf = requestAnimationFrame(tick) }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [stopped, beatAt])
+  const press = () => {
+    if (stopped) return
+    const v = beatAt(performance.now())
+    setBeat(v)
+    setStopped(true)
+    setTimeout(() => onDone(v >= great ? 2 : v >= ok ? 1 : 0), 600)
+  }
+  return (
+    <div className="mini-body">
+      <p>하트가 <b>가장 커졌을 때</b> 고백하세요</p>
+      <div className="heart-box"><span className="heart" style={{ transform: `scale(${0.5 + beat * 0.7})` }}>💗</span></div>
+      <button className="wide big" onPointerDown={(e) => { e.preventDefault(); press() }}>고백!</button>
+    </div>
+  )
+}
+
+// 무대 공연: 음표 4개가 떨어짐. 선에 닿을 때 누르기
+function Rhythm({ level, onDone }: { level: number; onDone: (v: number) => void }) {
+  const fall = [1800, 1400, 1100][level] // 위에서 선까지 걸리는 시간(ms)
+  const perfect = [130, 100, 70][level]
+  const good = [240, 180, 130][level]
+  const hits = useMemo(() => { let t = fall + 600; return Array.from({ length: 4 }, () => (t += 700 + rand(500))) }, [fall]) // 선에 닿는 시각
+  const [now, setNow] = useState(0)
+  const [marks, setMarks] = useState<(number | null)[]>([null, null, null, null]) // 2 딱 맞음, 1 좋음, 0 놓침
+  const marksRef = useRef(marks)
+  const t0 = useRef(performance.now())
+  const ended = useRef(false)
+  const setM = (m: (number | null)[]) => { marksRef.current = m; setMarks(m) }
+  useEffect(() => {
+    let raf = 0
+    const tick = (t: number) => {
+      const el = t - t0.current
+      setNow(el)
+      const m = marksRef.current
+      if (m.some((x, i) => x === null && el > hits[i] + good)) {
+        marksRef.current = m.map((x, i) => (x === null && el > hits[i] + good ? 0 : x))
+        setMarks(marksRef.current)
+      }
+      if (!ended.current && marksRef.current.every((x) => x !== null)) {
+        ended.current = true
+        const sum = marksRef.current.reduce<number>((a, x) => a + (x ?? 0), 0)
+        setTimeout(() => onDone(sum >= 6 ? 2 : sum >= 3 ? 1 : 0), 500)
+        return
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [hits, good, onDone])
+  const press = () => {
+    const el = performance.now() - t0.current
+    const m = marksRef.current
+    const i = m.findIndex((x, k) => x === null && Math.abs(el - hits[k]) <= good)
+    if (i < 0) return
+    const d = Math.abs(el - hits[i])
+    setM(m.map((x, k) => (k === i ? (d <= perfect ? 2 : 1) : x)))
+  }
+  return (
+    <div className="mini-body">
+      <p>음표가 <b>선에 닿을 때</b> 누르세요 (4개)</p>
+      <div className="rhythm-track">
+        <div className="rhythm-line" />
+        {hits.map((h, i) => {
+          const y = ((now - (h - fall)) / fall) * 85 // 85%가 선
+          if (marks[i] !== null || y < -10 || y > 100) return null
+          return <span key={i} className="note" style={{ top: `${y}%` }}>♪</span>
+        })}
+      </div>
+      <div className="mini-seq">{marks.map((x, i) => <span key={i}>{x === null ? '·' : ['놓침', '좋아', '딱!'][x]}</span>)}</div>
+      <button className="wide big" onPointerDown={(e) => { e.preventDefault(); press() }}>♪ 지금!</button>
+    </div>
+  )
+}
+
+// 댄스 따라 하기: 화살표 순서를 보고 그대로 누르기 (매력이 높을수록 짧음)
+const ARROWS = ['↑', '↓', '←', '→']
+function Dance({ level, onDone }: { level: number; onDone: (v: number) => void }) {
+  const len = [4, 5, 6][level]
+  const seq = useMemo(() => Array.from({ length: len }, () => ARROWS[rand(4)]), [len])
+  const [shown, setShown] = useState(0) // 지금까지 보여 준 개수 (len이면 내 차례)
+  const [picked, setPicked] = useState<string[]>([])
+  useEffect(() => {
+    if (shown >= len) return
+    const t = setTimeout(() => setShown((n) => n + 1), 700)
+    return () => clearTimeout(t)
+  }, [shown, len])
+  const showing = shown < len
+  const pick = (a: string) => {
+    if (showing || picked.length >= len) return
+    const next = [...picked, a]
+    setPicked(next)
+    if (next.length === len) {
+      const right = next.filter((v, i) => v === seq[i]).length
+      setTimeout(() => onDone(right === len ? 2 : right >= len - 1 ? 1 : 0), 400)
+    }
+  }
+  return (
+    <div className="mini-body">
+      <p>{showing ? '춤 동작을 잘 보세요' : '본 순서대로 따라 하세요!'}</p>
+      <div className="mini-big jua dance-show" key={shown}>{showing ? seq[shown] : picked.length < len ? '?' : '끝!'}</div>
+      <div className="mini-seq">{Array.from({ length: len }, (_, i) => <span key={i}>{picked[i] ?? ''}</span>)}</div>
+      <div className="mini-grid dance-btns">{ARROWS.map((a) => <button key={a} disabled={showing} onClick={() => pick(a)}>{a}</button>)}</div>
     </div>
   )
 }

@@ -323,6 +323,18 @@ button.wide.secondary { background: #fff; color: var(--ink); border: 2px solid v
 .gauge-zone { position: absolute; top: 0; bottom: 0; background: #7fe0a8; }
 .gauge-needle { position: absolute; top: -2px; bottom: -2px; width: 6px; margin-left: -3px; background: var(--accent); border-radius: 3px; }
 .gauge-needle.frozen { background: var(--ink); box-shadow: 0 0 0 3px #FFD45C; }
+.power-fill { position: absolute; top: 0; bottom: 0; left: 0; background: rgba(226, 85, 59, 0.75); }
+.tug-track { position: relative; height: 40px; border-radius: 20px; background: var(--paper-2); border: 3px solid var(--ink); }
+.tug-track::before { content: ''; position: absolute; left: 50%; top: -4px; bottom: -4px; width: 2px; background: var(--ink); }
+.tug-track::after { content: ''; position: absolute; left: 4%; right: 4%; top: 50%; height: 4px; margin-top: -2px; background: #B48A5A; }
+.tug-flag { position: absolute; top: 2px; font-size: 24px; transform: translateX(-50%); z-index: 1; }
+.heart-box { height: 150px; display: flex; align-items: center; justify-content: center; }
+.heart { font-size: 96px; line-height: 1; display: inline-block; }
+.rhythm-track { position: relative; height: 200px; border-radius: 14px; background: #3A2A4A; overflow: hidden; }
+.rhythm-line { position: absolute; left: 0; right: 0; top: 85%; height: 4px; background: #FFD45C; }
+.note { position: absolute; left: 50%; font-size: 30px; color: #fff; transform: translate(-50%, -50%); }
+.dance-show { font-size: 56px; min-height: 64px; }
+.mini-grid.dance-btns { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .mini-result { display: flex; flex-direction: column; gap: 12px; align-items: center; padding: 12px 0; }
 .mini-result b { font-size: 34px; }
 

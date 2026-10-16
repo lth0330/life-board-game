@@ -43,9 +43,10 @@ describe('주사위 아이템', () => {
 
   it('주사위 아이템을 쓰면 자동차 ±1은 쓰이지 않는다', () => {
     const s = readyHuman(5)
-    cur(s).diceItems = ['even']
+    const me = cur(s) // 칸에 따라 차례가 넘어갈 수 있으므로 굴린 사람을 잡아 둠
+    me.diceItems = ['even']
     roll(s, 0, true, 'even')
-    expect(cur(s).carCharges).toBe(2)
+    expect(me.carCharges).toBe(2)
     expect(s.pending?.type).not.toBe('afterRoll')
   })
 

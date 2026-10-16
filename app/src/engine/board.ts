@@ -50,7 +50,7 @@ export const STAGE_DEFS: StageDef[] = [
     weights: [['grow', 30], ['card', 25], ['happy', 15], ['money', 15], ['risk', 15]],
     stops: { 6: 'club' }, points: {},
     event: { at: 13, rejoin: 20, len: 9, name: '두뇌 올림피아드', minis: ['memory', 'pairs', 'quickmath'], desc: '지력 미니게임 (지력이 높을수록 쉬움)' },
-    event2: { at: 13, rejoin: 20, len: 9, name: '학교 축제', minis: ['rhythm', 'firstImpression'], desc: '매력 미니게임 (매력이 높을수록 쉬움, 이기면 매력↑)' },
+    event2: { at: 13, rejoin: 20, len: 9, name: '학교 축제', minis: ['rhythm', 'firstImpression', 'dance'], desc: '매력 미니게임 (매력이 높을수록 쉬움, 이기면 매력↑)' },
   },
   {
     id: 'young', name: '청년', ages: [20, 39], rolls: 10, length: 50,
