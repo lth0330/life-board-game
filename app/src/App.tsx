@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import { Character } from './art/Character'
 import { aiStep } from './engine/ai'
-import { CARS, DICE_ITEMS } from './engine/data'
+import { CARS, DICE_ITEMS, MINI_PRACTICE_LIMIT } from './engine/data'
 import {
-  ageOf, turnIncome, buyLottery, canAct, canUseCar, choose, createGame, cur, cureAddiction, finishMini, fortuneName, repayFriendLoan,
+  ageOf, turnIncome, buyLottery, canAct, canUseCar, choose, createGame, cur, cureAddiction, finishMini, fortuneName, miniGuide, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, stageOf, startSabotage, takeLoan, toggleInsurance, tradeStock, useChance,
 } from './engine/game'
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
@@ -362,7 +362,7 @@ function Play({ game, setGame, speed, saving, onQuit }: { game: GameState; setGa
       )}
 
       {!busy && game.mini && game.players[game.mini.playerId].human && (
-        <MiniGame key={`${game.turn}-${game.mini.game}`} mini={game.mini} onFinish={(v) => act((s) => finishMini(s, v))} />
+        <MiniGame key={`${game.turn}-${game.mini.game}`} mini={game.mini} guide={miniGuide(game, game.mini.game, !!game.mini.duel)} practiceLimit={MINI_PRACTICE_LIMIT.local} onFinish={(v) => act((s) => finishMini(s, v))} />
       )}
 
       {sheet === 'finance' && (

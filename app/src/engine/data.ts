@@ -167,3 +167,6 @@ export const KIDS = {
   birthdayGift: [50, 150, 300], // 육순·칠순 때 어른 자녀 1명이 주는 용돈 (잘 안 풀림 / 보통 / 크게 성공)
   eduTrouble: [0.08, 0.03, 0.02], // 교육을 고른 뒤 어린 자녀 1명당 매 턴 나쁜 사건 확률 (안 함 / 보통 / 많이)
 }
+
+// 미니게임 연습 횟수: 혼자 할 때는 제한 없음, 온라인은 다른 사람이 기다리므로 3번까지 (2026-10-16 사용자)
+export const MINI_PRACTICE_LIMIT = { local: Infinity, online: 3 }

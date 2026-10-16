@@ -7,7 +7,33 @@ import type { MiniState } from '../engine/types'
 // 미니게임 화면. 결과: 0 실패, 1 성공, 2 대성공 (대결 timing은 0~100점)
 // level 0 쉬움 ~ 2 어려움 (능력치가 높을수록 쉬움)
 
-interface Props { mini: MiniState; onFinish: (value: number) => void }
+interface Props {
+  mini: MiniState
+  onFinish: (value: number) => void
+  guide: { stat: string; reward: string } // 설명서: 무엇이 쉽게 해 주나, 보상
+  practiceLimit: number // 연습 횟수 (혼자 무제한, 온라인 3번)
+}
+
+// 설명서: 게임 방법
+const HOW: Record<string, string> = {
+  race: '5초 동안 버튼을 최대한 많이 누르세요. 목표 횟수를 넘기면 대성공이에요.',
+  tug: '왼손·오른손 버튼을 번갈아 눌러 줄을 당겨요. 같은 쪽만 누르면 안 당겨져요. 깃발을 끝까지 끌어오면 이겨요.',
+  throw: '버튼을 꾹 누르고 있으면 힘이 찼다 빠졌다 해요. 힘이 초록 칸 가운데에 왔을 때 손을 떼세요.',
+  memory: '잠깐 보여 주는 모양의 순서를 기억했다가 그대로 누르세요.',
+  photo: '잠깐 보여 주는 여행지 순서를 기억했다가 그대로 누르세요.',
+  pairs: '카드를 두 장씩 뒤집어 같은 그림을 모두 찾으세요. 시간이 정해져 있어요.',
+  quickmath: '덧셈 문제 5개가 나와요. 알맞은 답을 빨리 고르세요.',
+  firstImpression: '상황에 맞는 가장 좋은 말이나 행동을 고르세요.',
+  rhythm: '음표 4개가 위에서 떨어져요. 노란 선에 닿을 때 "지금!"을 누르세요.',
+  confess: '하트가 콩닥콩닥 커졌다 작아져요. 가장 커졌을 때 "고백!"을 누르세요.',
+  dance: '화살표 춤 동작이 하나씩 나와요. 다 본 뒤 같은 순서로 화살표를 누르세요.',
+  oddEven: '주사위 두 개의 합이 홀수일지 짝수일지 고르세요.',
+  highLow: '다음 카드가 지금 카드보다 높을지 낮을지 두 번 맞히세요. 카드는 1~13이에요.',
+  slot: '시작을 누르면 릴 3개가 돌아요. 버튼으로 하나씩 멈춰서 같은 그림을 맞추세요.',
+  capital: '나라 이름을 보고 수도를 고르세요.',
+  souvenir: '기념품 상자 3개 중 하나를 고르세요. 무엇이 들었는지는 운이에요.',
+  timing: '바늘이 왔다 갔다 해요. 가운데 초록 구역에 왔을 때 "멈춰!"를 누르세요. 가운데에 가까울수록 점수가 높아요.',
+}
 
 const LEVEL_NAME = ['쉬움', '보통', '어려움']
 const rand = (n: number) => Math.floor(Math.random() * n)
@@ -23,18 +49,34 @@ const MINI_THEME: Record<string, string> = {
 }
 const THEME_LANDMARK: Record<string, string> = { sport: '운동회', brain: '두뇌 올림피아드', fest: '축제 거리', casino: '카지노', travel: '세계일주' }
 
-export function MiniGame({ mini, onFinish }: Props) {
+export function MiniGame({ mini, onFinish, guide, practiceLimit }: Props) {
+  // 시작 화면(설명서·연습·시작) → 연습이면 결과를 보여 주고 다시 시작 화면, 시작이면 진짜 결과
+  const [mode, setMode] = useState<'intro' | 'help' | 'practice' | 'real'>('intro')
+  const [practiced, setPracticed] = useState(0)
+  const [round, setRound] = useState(0) // 게임을 새로 시작할 때마다 바꿔서 처음부터 다시 그림
+  const [practiceResult, setPracticeResult] = useState<number | null>(null)
   const [result, setResult] = useState<number | null>(null)
   const resultRef = useRef<number | null>(null)
+  const modeRef = useRef(mode)
+  modeRef.current = mode
+  const roundRef = useRef(round)
+  roundRef.current = round
+  const doneRound = useRef(-1)
   const isDuelRef = useRef(!!mini.duel)
-  // 한 번만 결과를 받음 (타이머·StrictMode에서 두 번 불려도 안전)
+  // 판마다 한 번만 결과를 받음 (타이머·StrictMode에서 두 번 불려도 안전)
   const done = useCallback((v: number) => {
+    if (doneRound.current === roundRef.current) return
+    doneRound.current = roundRef.current
+    sfx(isDuelRef.current ? (v >= 50 ? 'win' : 'lose') : v >= 1 ? 'win' : 'lose')
+    if (modeRef.current === 'practice') { setPracticeResult(v); return }
     if (resultRef.current !== null) return
     resultRef.current = v
     setResult(v)
-    sfx(isDuelRef.current ? (v >= 50 ? 'win' : 'lose') : v >= 1 ? 'win' : 'lose')
   }, [])
   const isDuel = !!mini.duel
+  const resultText = (v: number) => (isDuel ? `${v}점!` : ['아쉬워요', '성공!', '대성공!'][v])
+  const play = (m: 'practice' | 'real') => { setPracticeResult(null); setRound((r) => r + 1); setMode(m) }
+  const canPractice = practiced < practiceLimit
   const body = (() => {
     switch (mini.game) {
       case 'timing': return <Timing level={mini.level} rounds={1} duel={isDuel} onDone={done} />
@@ -66,12 +108,38 @@ export function MiniGame({ mini, onFinish }: Props) {
           <span className="mini-level">난이도 {LEVEL_NAME[mini.level]}</span>
         </div>
         {mini.stake ? <p className="note">판돈 {mini.stake.toLocaleString('ko-KR')}만</p> : null}
-        {result === null ? body : (
-          <div className="mini-result">
-            <b className="jua">{isDuel ? `${result}점!` : ['아쉬워요', '성공!', '대성공!'][result]}</b>
-            <button className="wide big" onClick={() => onFinish(result)}>확인</button>
+        {mode === 'intro' && (
+          <div className="mini-intro">
+            <button className="wide" onClick={() => setMode('help')}>📖 설명서</button>
+            <button className="wide" disabled={!canPractice} onClick={() => { setPracticed((n) => n + 1); play('practice') }}>
+              🔁 연습하기{Number.isFinite(practiceLimit) ? ` (남은 ${practiceLimit - practiced}번)` : ''}
+            </button>
+            <button className="wide big" onClick={() => play('real')}>▶ 시작</button>
           </div>
         )}
+        {mode === 'help' && (
+          <div className="mini-help">
+            <p>{HOW[mini.game] ?? ''}</p>
+            <p className="note">💪 {guide.stat}</p>
+            <p className="note">🎁 {guide.reward}</p>
+            <button className="wide" onClick={() => setMode('intro')}>돌아가기</button>
+          </div>
+        )}
+        {mode === 'practice' && (practiceResult === null
+          ? <><div className="practice-tag">연습 중 · 결과는 보상에 들어가지 않아요</div><div key={round}>{body}</div></>
+          : (
+            <div className="mini-result">
+              <span className="practice-tag">연습 결과</span>
+              <b className="jua">{resultText(practiceResult)}</b>
+              <button className="wide big" onClick={() => setMode('intro')}>돌아가기</button>
+            </div>
+          ))}
+        {mode === 'real' && (result === null ? <div key={round}>{body}</div> : (
+          <div className="mini-result">
+            <b className="jua">{resultText(result)}</b>
+            <button className="wide big" onClick={() => onFinish(result)}>확인</button>
+          </div>
+        ))}
       </div>
     </div>
   )

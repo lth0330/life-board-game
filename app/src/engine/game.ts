@@ -1450,6 +1450,22 @@ function addAffinityOrMeet(s: GameState, p: Player, amount: number) {
 }
 
 
+// 미니게임 설명서에 보여 줄 '무엇이 쉽게 해 주나'와 보상 (miniReward와 같은 내용)
+export function miniGuide(s: GameState, game: MiniId | DuelId, duel: boolean): { stat: string; reward: string } {
+  if (duel) return { stat: '같은 칸에 선 사람끼리 점수 대결', reward: '1등이 꼴찌에게서 돈을 받아요' }
+  const k = MINI_STAT[game as MiniId]
+  const stat = k === 'fortune' ? '운세가 좋을수록 유리해요' : k ? `${STAT_NAMES[k]}이 높을수록 쉬워요` : '운에 맡겨요'
+  const chance = ' · 대성공이면 가끔 찬스 카드'
+  let reward: string
+  if (['race', 'tug', 'throw'].includes(game)) reward = '대성공 체력 +2·행복 +3 / 성공 체력 +1 / 실패 행복 -1'
+  else if (['memory', 'pairs', 'quickmath'].includes(game)) reward = '대성공 지력 +2 / 성공 지력 +1 / 실패 없음'
+  else if (['firstImpression', 'rhythm', 'confess', 'dance'].includes(game) && stageOf(s).id === 'student') reward = '대성공 매력 +2·행복 +2 / 성공 매력 +1 / 실패 행복 -1'
+  else if (['firstImpression', 'rhythm', 'confess', 'dance'].includes(game)) reward = '대성공 매력 +1·호감도 +30 (없으면 새 사람) / 성공 호감도 +15 / 실패 행복 -2'
+  else if (CASINO.includes(game as MiniId)) reward = '대박 판돈의 2배 / 조금 따면 절반 / 지면 판돈을 잃어요'
+  else reward = '대성공 행복 +8 / 성공 +4 / 실패 +1'
+  return { stat, reward: reward + chance }
+}
+
 function miniReward(s: GameState, p: Player, game: MiniId, grade: number, stake?: number) {
   const name = MINI_NAMES[game]
   if (grade === 2 && !p.chance && rngOf(s).chance(0.25)) giveChance(s, p, randomChance(rngOf(s)))
