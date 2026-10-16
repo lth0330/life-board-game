@@ -208,3 +208,10 @@ AI 320명을 돌려 보니 단계 길의 60~70%까지만 가는 경우가 많았
 - ✅ (사용자 결정) 문서엔 '백수는 아무 때나 취업'인데 기능이 없던 것 → 청년·중년 굴리기 전 **💼 취업 도전** 버튼 (AI는 아직 안 씀)
 - ✅ (사용자 결정) 백수 성장 +1 없앰. 행복 +1은 그대로
 - ✅ 찬스 카드 함수 이름 `useChance` → `playChance` (검사 도구가 React 함수로 잘못 보던 오류 2개)
+
+## 14. 온라인 — AWS (2026-10-16)
+- ✅ 1 요금 알림 `lifegame-monthly` (한 달 1달러, 실제 80%·예상 100% 넘으면 이메일)
+- ✅ 2 백엔드 `app/amplify/` (Amplify Gen 2): 로그인 Cognito(이메일), 데이터 Room(코드·자리·게임 상태·버전, 방장만 고침) · Action(들어가기·주사위·선택 등, 보낸 사람만 고침), 로그인한 사람은 읽기 가능
+  - 서울 리전 준비 작업(CDK bootstrap) 끝, 시험 환경(sandbox)에 올림: `cd app && npx ampx sandbox --once` (먼저 `eval "$(aws configure export-credentials --format env)"`)
+  - 시험: 시험 계정 로그인 → 방 만들기 → 코드로 찾기 → 행동 보내기 → 지우기 모두 됨 (시험 계정·데이터는 지움)
+  - `amplify_outputs.json`(접속 주소)과 `.amplify/`는 커밋하지 않음
