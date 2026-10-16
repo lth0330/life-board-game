@@ -322,16 +322,42 @@ function OnlineGame({ me, room, isHost, renderPlay, onLeave }: { me: Me; room: R
     return () => sub.unsubscribe()
   }, [isHost, room.id, setGame])
 
+  // 방장이 돌아옴: 상태를 다시 올려서 '방장이 나갔어요'를 지움
+  const awayAtStart = useRef(lobby.hostAway)
+  useEffect(() => {
+    if (isHost && awayAtStart.current) void upload()
+  }, [isHost, upload])
+
   const game = isHost ? hostGame : lobby.game ?? null
   if (!game) return <Frame><p className="center muted">게임을 불러오는 중…</p></Frame>
-  const quit = () => {
-    if (!isHost && game.phase !== 'gameover') void sendAction(room.id, me, 'leave') // 손님이 나가면 AI가 대신
+  const quit = async () => {
+    if (game.phase !== 'gameover') {
+      if (isHost) { // 방장이 나가면 손님 화면에 알림
+        version.current += 1
+        await saveRoom(roomRef.current, { state: { settings: settingsRef.current, owners: ownersRef.current, game, hostAway: true }, version: version.current }).catch(() => {})
+      } else void sendAction(room.id, me, 'leave') // 손님이 나가면 AI가 대신
+    }
     onLeave()
   }
-  return renderPlay({
-    game,
-    setGame: isHost ? setGame : () => {},
-    onQuit: quit,
-    online: { mine, host: isHost, send: (op) => void sendAction(room.id, me, 'op', { op }) },
-  })
+  const hostAway = !isHost && lobby.hostAway && game.phase !== 'gameover'
+  return (
+    <>
+      {renderPlay({
+        game,
+        setGame: isHost ? setGame : () => {},
+        onQuit: () => void quit(),
+        online: { mine, host: isHost, send: (op) => void sendAction(room.id, me, 'op', { op }) },
+      })}
+      {hostAway && (
+        <div className="sheet-backdrop mini-backdrop host-away">
+          <div className="sheet mini center">
+            <h2 className="jua">방장이 나갔어요</h2>
+            <p>방장이 같은 코드({room.code})로 다시 들어오면 이어서 해요</p>
+            <p className="muted">기다리는 중…</p>
+            <button className="wide" onClick={() => void quit()}>나가기</button>
+          </div>
+        </div>
+      )}
+    </>
+  )
 }
