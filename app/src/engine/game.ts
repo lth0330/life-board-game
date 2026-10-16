@@ -85,7 +85,8 @@ export const AWARD_POINTS = 10
 // 주식으로 번 돈: 판 동안 판 이익·손해 + 아직 들고 있는 주식의 (지금 값 - 산 값)
 export const stockGainOf = (s: GameState, p: Player) => p.record.stockGain + SECTORS.reduce((a, k) => a + p.stocks[k] * s.stockPrice[k] - p.stockCost[k], 0)
 export const AWARDS: { id: string; name: string; desc: string; value: (p: Player, s: GameState) => number }[] = [
-  { id: 'shop', name: '쇼핑왕', desc: '상점에서 가장 많이 산 사람', value: (p) => p.record.shopBuys },
+  // 산 개수가 같으면 상점에서 쓴 돈이 많은 사람 (2026-10-16: 공동 수상이 64% 판에서 나와서)
+  { id: 'shop', name: '쇼핑왕', desc: '상점에서 가장 많이 산 사람 (개수가 같으면 쓴 돈이 많은 사람)', value: (p) => p.record.shopBuys * 1e7 + p.record.shopSpent },
   { id: 'spend', name: '큰손', desc: '돈을 가장 많이 쓴 사람 (집·차·상점·복권·결혼식 등)', value: (p) => p.record.spent },
   { id: 'kids', name: '다둥이', desc: '아이가 가장 많은 사람', value: (p) => p.kids.length },
   { id: 'success', name: '자식 농사', desc: '크게 성공한 자녀가 가장 많은 사람', value: (p) => p.kids.filter((k) => k.result === 2).length },
@@ -139,7 +140,7 @@ function newPlayer(id: number, name: string, human: boolean, personality: Person
     pos: 0, rollsLeft: 0, finished: false, finishOrder: 0, turnsPlayed: 0,
     insurance: { health: false, property: false, car: false },
     insuranceCooldown: { health: 0, property: 0, car: 0 },
-    car: 0, carCharges: 0, carValue: 0, stockCost: { 생명: 0, IT: 0, 화학: 0, 의료: 0, 엔터: 0 }, jobTenure: 0, biz: null, bizKeep: null, medals: [], exAthlete: null, celebrated: [], record: { shopBuys: 0, spent: 0, lotteryWon: 0, deeds: 0, duelWins: 0, stockGain: 0 }, house: 0, loans: [], creditBad: 0,
+    car: 0, carCharges: 0, carValue: 0, stockCost: { 생명: 0, IT: 0, 화학: 0, 의료: 0, 엔터: 0 }, jobTenure: 0, biz: null, bizKeep: null, medals: [], exAthlete: null, celebrated: [], record: { shopBuys: 0, spent: 0, lotteryWon: 0, deeds: 0, duelWins: 0, stockGain: 0, shopSpent: 0 }, house: 0, loans: [], creditBad: 0,
     lottery: { ticket: false, chance: 10, addicted: false },
     stocks: { 생명: 0, IT: 0, 화학: 0, 의료: 0, 엔터: 0 },
     suitors: [], spouse: null, divorced: false, children: 0, adopted: 0, kids: [], diceItems: [], pet: null, retire: null,
@@ -1835,6 +1836,7 @@ export function choose(s: GameState, optionId: string) {
   const rng = rngOf(s)
   const sc = scaleOf(s)
   s.pending = null
+  const spent0 = p.record.spent
   switch (pd.type) {
     case 'afterRoll': {
       const d = (pd.data ?? {}) as { item?: DiceItem | null; bonus?: number }
@@ -2190,6 +2192,7 @@ export function choose(s: GameState, optionId: string) {
       break
     }
   }
+  if (pd.type === 'shop') p.record.shopSpent += p.record.spent - spent0
   resume(s)
 }
 
