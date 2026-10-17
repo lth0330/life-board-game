@@ -4,6 +4,7 @@ import { fetchUserAttributes, getCurrentUser, signIn, signOut, signUp, updateUse
 import { generateClient } from 'aws-amplify/data'
 import type { Schema } from '../../amplify/data/resource'
 import type { GameState } from '../engine/types'
+import type { Outfit } from '../engine/outfit'
 import outputs from '../../amplify_outputs.json'
 
 Amplify.configure(outputs)
@@ -66,7 +67,7 @@ export const logoutOnline = () => signOut()
 
 // ───────── 방 ─────────
 export type SeatKind = 'human' | 'ai' | 'open'
-export interface Seat { kind: SeatKind; userId?: string; name?: string }
+export interface Seat { kind: SeatKind; userId?: string; name?: string; outfit?: Outfit } // outfit: 그 사람 계정 옷차림
 export interface RoomSettings { startAdult: boolean; difficulty: 'easy' | 'normal' | 'hard' }
 // 방 상태: 대기실 설정 + (시작하면) 플레이어마다 맡은 사람(userId, AI는 null)과 게임 상태
 // hostAway: 게임 중에 방장이 나가기를 누름 (방장이 돌아와 상태를 다시 올리면 없어짐)
@@ -91,11 +92,11 @@ export async function openRooms(code: string) {
   return r.data.filter((x) => x.status !== 'ended')
 }
 
-export async function createRoom(me: Me): Promise<Room | string> {
+export async function createRoom(me: Me, outfit: Outfit): Promise<Room | string> {
   for (let i = 0; i < 5; i++) {
     const code = newCode()
     if ((await openRooms(code)).length) continue // 쓰고 있는 코드면 다시
-    const seats: Seat[] = [{ kind: 'human', userId: me.userId, name: me.nick }, { kind: 'ai' }, { kind: 'open' }, { kind: 'open' }]
+    const seats: Seat[] = [{ kind: 'human', userId: me.userId, name: me.nick, outfit }, { kind: 'ai' }, { kind: 'open' }, { kind: 'open' }]
     const state: LobbyState = { settings: { startAdult: false, difficulty: 'normal' } }
     const r = await client.models.Room.create({ code, hostName: me.nick, status: 'waiting', seats: JSON.stringify(seats), state: JSON.stringify(state), version: 0 })
     if (r.data) return r.data

@@ -154,7 +154,7 @@ export interface NewGameOptions {
   humanNames?: string[] // 2번째 사람부터 이름
   aiCount: number
   humans?: number
-  outfits?: Outfit[] // 사람 플레이어 옷차림 (없으면 무작위)
+  outfits?: (Outfit | undefined)[] // 사람 플레이어 옷차림 (없으면 무작위)
   settings: Settings
   seed?: number
 }

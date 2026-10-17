@@ -90,3 +90,17 @@ export function randomOutfit(rng: Rng, mainColor: string): Outfit {
     acc: rng.chance(0.5) ? pick('acc') : 'none', accColor: rng.pick(CLOTH_COLORS),
   }
 }
+
+// 저장소나 다른 기기에서 받은 옷차림을 안전하게: 모르는 값은 기본값으로 (깨진 값으로 그림이 망가지지 않게)
+const COLOR_OK = /^#[0-9a-fA-F]{6}$/
+export function cleanOutfit(v: unknown): Outfit {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
+  const out: Outfit = { ...DEFAULT_OUTFIT, gender: o.gender === 'f' ? 'f' : 'm' }
+  for (const slot of Object.keys(ITEMS) as Slot[]) {
+    if (typeof o[slot] === 'string' && ITEMS[slot].some((it) => it.id === o[slot])) out[slot] = o[slot] as string
+  }
+  for (const k of ['skin', 'hairColor', 'hatColor', 'topColor', 'outerColor', 'bottomColor', 'shoesColor', 'accColor'] as const) {
+    if (typeof o[k] === 'string' && COLOR_OK.test(o[k] as string)) out[k] = o[k] as string
+  }
+  return out
+}

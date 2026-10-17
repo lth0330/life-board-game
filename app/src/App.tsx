@@ -9,7 +9,8 @@ import {
 import { applyOp, type Op } from './engine/ops'
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
 import type { DiceItem, GameState } from './engine/types'
-import { currentProfile, deleteGame, loadGame, logout, saveGame, updateOutfit, type Profile } from './storage'
+import { deleteLocalGame, dropOldProfiles, lastAccount, makeSlot, rememberAccount, saveLocalGame, type Profile, type SaveSlot } from './storage'
+import type { Me } from './online/client'
 import { BannerArt, EventArt, EventPopup, Roulette } from './art/More'
 import { setSoundPrefs, sfx, soundPrefs, unlockAudio } from './sound'
 import { Board, FullMap } from './ui/Board'
@@ -18,11 +19,14 @@ import { autoEmote, EMOTE_COOLDOWN_MS, EMOTE_MS, EmotePicker } from './ui/Emotes
 import { Confetti, DiceThrow, StageCard } from './ui/Effects'
 import { Manual } from './ui/Manual'
 import { MiniGame } from './ui/MiniGames'
-import { MenuScreen, SetupScreen, TitleScreen, type Speed } from './ui/Screens'
+import { Frame, MenuScreen, SetupScreen, TitleScreen, type Speed } from './ui/Screens'
 import { CardsSheet, FinanceSheet, GameOver, PeopleSheet, playerLine, StageSummary, won } from './ui/Sheets'
 
 // 온라인 화면(AWS 연결 포함)은 '온라인으로 하기'를 눌렀을 때만 내려받음 (혼자 하기는 가볍게)
 const Online = lazy(() => import('./online/Online').then((m) => ({ default: m.Online })))
+// 로그인 화면과 계정 저장도 AWS 코드라 필요할 때만
+const AuthScreen = lazy(() => import('./account/AuthScreen'))
+const account = () => import('./account/api')
 
 const SPEED_MS: Record<Speed, number> = { fast: 450, normal: 1000, slow: 1700 }
 const WALK_MS = 230
@@ -37,60 +41,140 @@ const SHOP_CATS = [
 ]
 const CELEBRATE = ['결혼!', '복권 1등!', '복권 2등!', '아기 탄생', '수능 상위권!', '게임 끝!', '회사 성장!', '감독 도전 성공!', '자녀 대성공!', '금메달!', '은메달!', '동메달!', '육순 잔치', '칠순 잔치']
 
-type Screen = 'title' | 'menu' | 'setup' | 'play' | 'online'
+type Screen = 'title' | 'auth' | 'menu' | 'setup' | 'play' | 'online'
+const CLOUD_SAVE_MS = 8000 // 계정 저장은 많아야 8초에 한 번 (이 기기에는 매번)
 
 export default function App() {
-  const [profile, setProfile] = useState<Profile | null>(() => currentProfile())
-  const [screen, setScreen] = useState<Screen>(() => (currentProfile() ? 'menu' : 'title'))
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [slot, setSlot] = useState<SaveSlot | null>(null) // 이어 하기
+  const [screen, setScreen] = useState<Screen>(() => (lastAccount() ? 'menu' : 'title'))
+  const [booting, setBooting] = useState(() => !!lastAccount())
+  const [authMode, setAuthMode] = useState<'login' | 'join'>('login')
+  const [afterAuth, setAfterAuth] = useState<Screen>('menu')
+  const [notice, setNotice] = useState('')
   const [game, setGame] = useState<GameState | null>(null)
   const [speed, setSpeed] = useState<Speed>('fast')
   const [dress, setDress] = useState(false)
   const outfit = profile?.outfit ?? DEFAULT_OUTFIT
+  const profileRef = useRef(profile)
+  profileRef.current = profile
 
-  // 로그인했으면 매번 자동 저장
+  // 예전에 로그인했으면 계정을 다시 불러옴
   useEffect(() => {
-    if (!game || !profile) return
-    if (game.phase === 'gameover') deleteGame(profile.name)
-    else saveGame(profile.name, game)
-  }, [game, profile])
+    dropOldProfiles()
+    if (!lastAccount()) return
+    account().then((a) => a.restoreAccount()).then((r) => {
+      if (r) { setProfile(r.profile); setSlot(r.slot) } else { rememberAccount(null); setScreen('title') }
+    }).catch(() => { setScreen('title'); setNotice('계정을 불러오지 못했어요. 인터넷 연결을 확인해 주세요') })
+      .finally(() => setBooting(false))
+  }, [])
 
+  // ── 자동 저장: 이 기기에는 매번, 계정에는 모아서 (창을 닫거나 숨길 때·메뉴로 나갈 때는 바로) ──
+  const pending = useRef<SaveSlot | null | undefined>(undefined) // undefined: 보낼 것 없음, null: 저장 지우기
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const flush = useCallback(() => {
+    if (timer.current) { clearTimeout(timer.current); timer.current = null }
+    const p = profileRef.current
+    const save = pending.current
+    if (!p || save === undefined) return
+    pending.current = undefined
+    account().then((a) => a.saveCloud(p.cloudId, { save })).catch(() => { if (pending.current === undefined) pending.current = save })
+  }, [])
+  useEffect(() => {
+    if (!game || !profile || screen !== 'play') return
+    if (game.phase === 'gameover') {
+      deleteLocalGame(profile.loginId)
+      pending.current = null
+      flush()
+      return
+    }
+    const s = makeSlot(game)
+    saveLocalGame(profile.loginId, s)
+    pending.current = s
+    if (!timer.current) timer.current = setTimeout(flush, CLOUD_SAVE_MS)
+  }, [game, profile, screen, flush])
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === 'hidden') flush() }
+    document.addEventListener('visibilitychange', onHide)
+    window.addEventListener('pagehide', flush)
+    return () => { document.removeEventListener('visibilitychange', onHide); window.removeEventListener('pagehide', flush) }
+  }, [flush])
+
+  // 옷차림: 바꿀 때마다 화면엔 바로, 계정엔 잠깐 모았다가
+  const outfitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const changeOutfit = (o: Outfit) => {
     if (!profile) return
-    updateOutfit(profile.name, o)
     setProfile({ ...profile, outfit: o })
+    if (outfitTimer.current) clearTimeout(outfitTimer.current)
+    const id = profile.cloudId
+    outfitTimer.current = setTimeout(() => { account().then((a) => a.saveCloud(id, { outfit: o })).catch(() => {}) }, 1200)
   }
 
+  const onAuthed = async (me: Me) => {
+    try {
+      const r = await (await account()).openAccount(me)
+      rememberAccount(me.loginId)
+      setProfile(r.profile)
+      setSlot(r.slot)
+      setNotice('')
+      setScreen(afterAuth)
+    } catch {
+      setNotice('계정을 불러오지 못했어요. 잠시 뒤 다시 해 주세요')
+      setScreen('title')
+    }
+  }
+  const askLogin = (mode: 'login' | 'join', next: Screen) => { setAuthMode(mode); setAfterAuth(next); setScreen('auth') }
+  const logoutAll = () => {
+    flush()
+    account().then((a) => a.logoutOnline()).catch(() => {})
+    rememberAccount(null)
+    setProfile(null)
+    setSlot(null)
+    setScreen('title')
+  }
+
+  if (booting) return <Frame><p className="center muted">계정 불러오는 중…</p></Frame>
   if (screen === 'title') {
-    return <TitleScreen onProfile={(p) => { setProfile(p); setScreen('menu') }} onGuest={() => { setProfile(null); setScreen('menu') }} />
+    return <TitleScreen notice={notice} onAuth={(m) => askLogin(m, 'menu')} onGuest={() => { setProfile(null); setScreen('menu') }} />
+  }
+  if (screen === 'auth') {
+    return (
+      <Suspense fallback={<Frame><p className="center muted">불러오는 중…</p></Frame>}>
+        <AuthScreen initial={authMode} onDone={(me) => void onAuthed(me)} onBack={() => setScreen(afterAuth === 'online' ? 'menu' : 'title')} />
+      </Suspense>
+    )
   }
   if (screen === 'menu') {
-    const slot = profile ? loadGame(profile.name) : null
     return (
       <>
         <MenuScreen
           profile={profile}
-          slot={slot}
+          slot={profile ? slot : null}
           onContinue={() => { if (slot) { setGame(slot.state); setScreen('play') } }}
-          onNew={() => { if (profile) deleteGame(profile.name); setScreen('setup') }}
-          onOnline={() => setScreen('online')}
-          onLogout={() => { logout(); setProfile(null); setScreen('title') }}
+          onNew={() => {
+            if (profile) { deleteLocalGame(profile.loginId); pending.current = null; flush(); setSlot(null) }
+            setScreen('setup')
+          }}
+          onOnline={() => (profile ? setScreen('online') : askLogin('login', 'online'))}
+          onLogout={() => (profile ? logoutAll() : setScreen('title'))}
           onDress={() => setDress(true)}
         />
         {dress && <Dresser value={outfit} onChange={changeOutfit} onDone={() => setDress(false)} />}
       </>
     )
   }
-  if (screen === 'online') {
+  if (screen === 'online' && profile) {
     return (
       <Suspense fallback={<div className="setup"><p className="center muted">온라인 불러오는 중…</p></div>}>
-        <Online onBack={() => setScreen('menu')} renderPlay={(o) => <Play game={o.game} setGame={o.setGame} speed="fast" saving={false} onQuit={o.onQuit} online={o.online} />} />
+        <Online me={profile} outfit={outfit} onOutfit={changeOutfit} onBack={() => setScreen('menu')}
+          renderPlay={(o) => <Play game={o.game} setGame={o.setGame} speed="fast" saving={false} onQuit={o.onQuit} online={o.online} />} />
       </Suspense>
     )
   }
   if (screen === 'setup' || !game) {
     return (
       <SetupScreen
-        defaultName={profile?.name ?? '나'}
+        defaultName={profile?.nick ?? '나'}
         outfit={outfit}
         onOutfit={changeOutfit}
         onBack={() => setScreen('menu')}
@@ -105,7 +189,14 @@ export default function App() {
       />
     )
   }
-  return <Play game={game} setGame={setGame} speed={speed} saving={!!profile} onQuit={() => { setGame(null); setScreen('menu') }} />
+  return (
+    <Play game={game} setGame={setGame} speed={speed} saving={!!profile} onQuit={() => {
+      flush()
+      if (profile) setSlot(game.phase === 'gameover' ? null : makeSlot(game))
+      setGame(null)
+      setScreen('menu')
+    }} />
+  )
 }
 
 type SheetKind = null | 'finance' | 'cards' | 'people' | 'map' | 'manual'

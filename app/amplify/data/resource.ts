@@ -17,6 +17,14 @@ const schema = a.schema({
     .secondaryIndexes((index) => [index('code')])
     .authorization((allow) => [allow.owner(), allow.authenticated().to(['read'])]),
 
+  // 계정마다 하나: 옷차림과 혼자 하던 게임 (본인만 읽고 씀). 2026-10-17 진짜 로그인
+  Profile: a
+    .model({
+      outfit: a.json(), // Outfit
+      save: a.json(), // { version, savedAt, state } 혼자 하던 게임 이어 하기 1개
+    })
+    .authorization((allow) => [allow.owner()]),
+
   Action: a
     .model({
       roomId: a.id().required(),

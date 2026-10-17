@@ -1,4 +1,4 @@
-// 온라인 화면: 로그인·가입 → 온라인 메뉴(방 만들기·코드로 들어가기) → 대기실
+// 온라인 화면: 온라인 메뉴(방 만들기·코드로 들어가기·꾸미기) → 대기실. 로그인은 처음 화면에서 (account/)
 // 게임: 방장 기기가 엔진을 돌리고 바뀔 때마다 방에 올림, 손님 기기는 받은 상태를 보여 주고 누른 것만 방장에게 보냄
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createGame } from '../engine/game'
@@ -8,8 +8,11 @@ import { Frame } from '../ui/Screens'
 import { EMOTES } from '../ui/Emotes'
 import type { Expr } from '../art/Character'
 import type { OnlinePlay } from '../App'
+import { Character } from '../art/Character'
+import { cleanOutfit, type Outfit } from '../engine/outfit'
+import { Dresser } from '../ui/Dresser'
 import {
-  cleanId, cleanPw, client, createRoom, currentMe, ID_OK, isRoomOwner, join, login, logoutOnline, openRooms, parse, PW_OK, saveRoom, sendAction,
+  client, createRoom, isRoomOwner, openRooms, parse, saveRoom, sendAction,
   type ActionPayload, type LobbyState, type Me, type Room, type Seat,
 } from './client'
 
@@ -20,72 +23,23 @@ export interface PlayProps {
 }
 type RenderPlay = (p: PlayProps) => ReactNode
 
-export function Online({ onBack, renderPlay }: { onBack: () => void; renderPlay: RenderPlay }) {
-  const [me, setMe] = useState<Me | null | undefined>(undefined) // undefined: 확인 중
+export function Online({ me, outfit, onOutfit, onBack, renderPlay }: {
+  me: Me; outfit: Outfit; onOutfit: (o: Outfit) => void; onBack: () => void; renderPlay: RenderPlay
+}) {
   const [roomId, setRoomId] = useState<string | null>(null)
-  useEffect(() => { void currentMe().then(setMe) }, [])
-
-  if (me === undefined) return <Frame><p className="center muted">불러오는 중…</p></Frame>
-  if (!me) return <AuthScreen onDone={setMe} onBack={onBack} />
-  if (roomId) return <Lobby me={me} roomId={roomId} renderPlay={renderPlay} onLeave={() => setRoomId(null)} />
-  return <OnlineHome me={me} onRoom={setRoomId} onBack={onBack} onLogout={() => { void logoutOnline().then(() => setMe(null)) }} />
-}
-
-// ───────── 로그인 · 가입 ─────────
-function AuthScreen({ onDone, onBack }: { onDone: (me: Me) => void; onBack: () => void }) {
-  const [mode, setMode] = useState<'login' | 'join'>('login')
-  const [id, setId] = useState('')
-  const [pw, setPw] = useState('')
-  const [nick, setNick] = useState('')
-  const [err, setErr] = useState('')
-  const [busy, setBusy] = useState(false)
-  const submit = async () => {
-    if (!ID_OK.test(id)) { setErr('아이디는 영어 소문자·숫자 4~16자예요'); return }
-    if (!PW_OK.test(pw)) { setErr('비밀번호는 영어·숫자·특수기호 6자 이상이에요'); return }
-    if (mode === 'join' && !nick.trim()) { setErr('닉네임을 적어 주세요'); return }
-    setBusy(true)
-    const e = mode === 'join' ? await join(id, pw, nick.trim()) : await login(id, pw)
-    setBusy(false)
-    if (e) { setErr(e); return }
-    const m = await currentMe()
-    if (m) onDone(m)
-  }
-  return (
-    <Frame>
-      <h2 className="jua center">온라인으로 하기</h2>
-      <div className="seg">
-        <button className={mode === 'login' ? 'on' : ''} onClick={() => { setMode('login'); setErr('') }}>로그인</button>
-        <button className={mode === 'join' ? 'on' : ''} onClick={() => { setMode('join'); setErr('') }}>회원가입</button>
-      </div>
-      <form className="login-form" onSubmit={(e) => { e.preventDefault(); void submit() }}>
-        <label className="field"><span>아이디 (영어 소문자·숫자 4~16자)</span>
-          <input value={id} onChange={(e) => setId(cleanId(e.target.value))} autoComplete="username" autoCapitalize="none" spellCheck={false} />
-        </label>
-        <label className="field"><span>비밀번호 (영어·숫자·특수기호 6자 이상)</span>
-          <input value={pw} type="password" onChange={(e) => setPw(cleanPw(e.target.value))} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
-        </label>
-        {mode === 'join' && (
-          <label className="field"><span>닉네임 (게임에서 보이는 이름)</span>
-            <input value={nick} maxLength={8} onChange={(e) => setNick(e.target.value)} />
-          </label>
-        )}
-        {err && <p className="bad">{err}</p>}
-        <button className="wide big" type="submit" disabled={busy}>{busy ? '잠시만요…' : mode === 'login' ? '로그인' : '가입하고 시작'}</button>
-        {mode === 'join' && <p className="muted center">이메일을 받지 않아서 비밀번호를 잊으면 스스로 찾을 수 없어요</p>}
-        <button className="wide ghost" type="button" onClick={onBack}>뒤로</button>
-      </form>
-    </Frame>
-  )
+  if (roomId) return <Lobby me={me} outfit={outfit} roomId={roomId} renderPlay={renderPlay} onLeave={() => setRoomId(null)} />
+  return <OnlineHome me={me} outfit={outfit} onOutfit={onOutfit} onRoom={setRoomId} onBack={onBack} />
 }
 
 // ───────── 온라인 메뉴 ─────────
-function OnlineHome({ me, onRoom, onBack, onLogout }: { me: Me; onRoom: (id: string) => void; onBack: () => void; onLogout: () => void }) {
+function OnlineHome({ me, outfit, onOutfit, onRoom, onBack }: { me: Me; outfit: Outfit; onOutfit: (o: Outfit) => void; onRoom: (id: string) => void; onBack: () => void }) {
+  const [dress, setDress] = useState(false)
   const [code, setCode] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const make = async () => {
     setBusy(true); setErr('')
-    const r = await createRoom(me)
+    const r = await createRoom(me, outfit)
     setBusy(false)
     if (typeof r === 'string') setErr(r)
     else onRoom(r.id)
@@ -108,7 +62,10 @@ function OnlineHome({ me, onRoom, onBack, onLogout }: { me: Me; onRoom: (id: str
   }
   return (
     <Frame>
-      <h2 className="jua center">{me.nick}님, 어서 오세요</h2>
+      <div className="menu-hello">
+        <Character outfit={outfit} size={44} />
+        <b className="jua">{me.nick}님, 어서 오세요</b>
+      </div>
       <button className="wide big" disabled={busy} onClick={() => void make()}>방 만들기</button>
       <div className="row">
         <input className="grow code-input" value={code} placeholder="방 코드" maxLength={4}
@@ -116,8 +73,9 @@ function OnlineHome({ me, onRoom, onBack, onLogout }: { me: Me; onRoom: (id: str
         <button className="grow" disabled={busy} onClick={() => void enter()}>들어가기</button>
       </div>
       {err && <p className="bad">{err}</p>}
-      <button className="wide ghost" onClick={onLogout}>로그아웃 ({me.loginId})</button>
+      <button className="wide secondary" onClick={() => setDress(true)}>캐릭터 꾸미기</button>
       <button className="wide ghost" onClick={onBack}>처음 메뉴로</button>
+      {dress && <Dresser value={outfit} onChange={onOutfit} onDone={() => setDress(false)} />}
     </Frame>
   )
 }
@@ -125,7 +83,7 @@ function OnlineHome({ me, onRoom, onBack, onLogout }: { me: Me; onRoom: (id: str
 // ───────── 대기실 ─────────
 const DIFF: [LobbyState['settings']['difficulty'], string][] = [['easy', '쉬움'], ['normal', '보통'], ['hard', '어려움']]
 
-function Lobby({ me, roomId, onLeave, renderPlay }: { me: Me; roomId: string; onLeave: () => void; renderPlay: RenderPlay }) {
+function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Outfit; roomId: string; onLeave: () => void; renderPlay: RenderPlay }) {
   const [room, setRoom] = useState<Room | null>(null)
   const [closed, setClosed] = useState(false)
   const roomRef = useRef<Room | null>(null)
@@ -150,8 +108,8 @@ function Lobby({ me, roomId, onLeave, renderPlay }: { me: Me; roomId: string; on
   useEffect(() => {
     if (!room || isHost || joined.current || room.status !== 'waiting') return
     joined.current = true
-    void sendAction(roomId, me, 'join')
-  }, [room, isHost, roomId, me])
+    void sendAction(roomId, me, 'join', { outfit })
+  }, [room, isHost, roomId, me, outfit])
 
   // 방장: 들어오기·나가기 행동을 받아 자리를 고침
   useEffect(() => {
@@ -160,13 +118,13 @@ function Lobby({ me, roomId, onLeave, renderPlay }: { me: Me; roomId: string; on
       next: (a) => {
         const r = roomRef.current
         if (!r || r.status !== 'waiting') return
-        const p = parse<ActionPayload | null>(a.payload, null)
+        const p = parse<ActionPayload & { outfit?: unknown } | null>(a.payload, null)
         if (!p) return
         const seats = parse<Seat[]>(r.seats, [])
         if (a.kind === 'join' && !seats.some((s) => s.userId === p.userId)) {
           const i = seats.findIndex((s) => s.kind === 'open')
           if (i < 0) return
-          seats[i] = { kind: 'human', userId: p.userId, name: a.name ?? '친구' }
+          seats[i] = { kind: 'human', userId: p.userId, name: a.name ?? '친구', outfit: cleanOutfit(p.outfit) }
         } else if (a.kind === 'leave') {
           const i = seats.findIndex((s) => s.userId === p.userId)
           if (i < 0) return
@@ -212,6 +170,7 @@ function Lobby({ me, roomId, onLeave, renderPlay }: { me: Me; roomId: string; on
     const ai = seats.filter((s) => s.kind === 'ai').length
     const game = createGame({
       humanName: people[0]?.name ?? '방장', humanNames: people.slice(1).map((s) => s.name ?? '친구'), humans: people.length, aiCount: ai,
+      outfits: people.map((s) => (s.outfit ? cleanOutfit(s.outfit) : undefined)),
       settings: { startAdult: lobby.settings.startAdult, difficulty: lobby.settings.difficulty, online: true },
     })
     const owners = [...people.map((s) => s.userId ?? null), ...Array<null>(ai).fill(null)]
@@ -231,6 +190,7 @@ function Lobby({ me, roomId, onLeave, renderPlay }: { me: Me; roomId: string; on
         {seats.map((s, i) => (
           <button key={i} className={`seat seat-${s.kind}`} disabled={!isHost || s.kind === 'human'} onClick={() => toggleSeat(i)}>
             <b>{i + 1}</b>
+            {s.kind === 'human' && s.outfit && <Character outfit={cleanOutfit(s.outfit)} size={30} crop="head" />}
             <span>{s.kind === 'human' ? `${s.name}${i === 0 ? ' (방장)' : ''}${s.userId === me.userId ? ' · 나' : ''}` : s.kind === 'ai' ? '🤖 AI' : '빈자리'}</span>
             {isHost && s.kind !== 'human' && <em>{s.kind === 'ai' ? '눌러서 비우기' : '눌러서 AI 넣기'}</em>}
           </button>

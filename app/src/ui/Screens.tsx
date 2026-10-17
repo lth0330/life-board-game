@@ -3,7 +3,7 @@ import { Logo } from '../art/Art'
 import { Character } from '../art/Character'
 import { DEFAULT_OUTFIT, type Outfit } from '../engine/outfit'
 import type { Difficulty } from '../engine/types'
-import { createProfile, listProfiles, login, type Profile, type SaveSlot } from '../storage'
+import type { Profile, SaveSlot } from '../storage'
 import { Dresser } from './Dresser'
 import { Manual } from './Manual'
 
@@ -19,48 +19,23 @@ export function Frame({ children }: { children: ReactNode }) {
   )
 }
 
-// 처음 화면: 로그인 / 프로필 만들기 / 로그인 없이 / 설명서
-export function TitleScreen({ onProfile, onGuest }: { onProfile: (p: Profile) => void; onGuest: () => void }) {
-  const [mode, setMode] = useState<'home' | 'login' | 'create'>('home')
-  const [name, setName] = useState('')
-  const [pin, setPin] = useState('')
-  const [err, setErr] = useState('')
+// 처음 화면: 로그인 / 회원가입 (온라인 계정) / 로그인 없이 / 설명서
+export function TitleScreen({ notice, onAuth, onGuest }: { notice?: string; onAuth: (mode: 'login' | 'join') => void; onGuest: () => void }) {
   const [manual, setManual] = useState(false)
-  const profiles = listProfiles()
-  const submit = async () => {
-    const r = mode === 'login' ? await login(name, pin) : await createProfile(name, pin)
-    if (typeof r === 'string') setErr(r)
-    else onProfile(r)
-  }
   return (
     <Frame>
       <div className="title-logo"><Logo size={260} /></div>
       <div className="title-cast" aria-hidden="true">
         <Character outfit={{ ...DEFAULT_OUTFIT, hat: 'cap', hatColor: '#C2452D' }} size={46} />
-        <Character outfit={{ ...DEFAULT_OUTFIT, hair: 'long', hairColor: '#A8692E', top: 'dress', topColor: '#F3A3C0', acc: 'bag', accColor: '#2F8F5B' }} size={46} />
+        <Character outfit={{ ...DEFAULT_OUTFIT, gender: 'f', hair: 'long', hairColor: '#A8692E', top: 'dress', topColor: '#F3A3C0', acc: 'bag', accColor: '#2F8F5B' }} size={46} />
         <Character outfit={{ ...DEFAULT_OUTFIT, hair: 'curly', skin: '#C98F62', top: 'hoodie', topColor: '#2F8F5B', acc: 'glasses' }} size={46} />
       </div>
-      {mode === 'home' ? (
-        <>
-          <button className="wide big" onClick={() => { setMode('login'); setErr('') }} disabled={!profiles.length}>로그인</button>
-          <button className="wide secondary" onClick={() => { setMode('create'); setErr('') }}>프로필 만들기</button>
-          <button className="wide secondary" onClick={onGuest}>로그인 없이 하기 (저장 안 됨)</button>
-          <button className="wide ghost" onClick={() => setManual(true)}>게임 설명서</button>
-          <p className="muted center">프로필과 저장은 지금은 이 기기 안에만 남아요.</p>
-        </>
-      ) : (
-        <form className="login-form" onSubmit={(e) => { e.preventDefault(); void submit() }}>
-          <h2 className="jua">{mode === 'login' ? '로그인' : '프로필 만들기'}</h2>
-          {mode === 'login' && profiles.length > 0 && (
-            <div className="seg">{profiles.map((p) => <button type="button" key={p.name} className={name === p.name ? 'on' : ''} onClick={() => setName(p.name)}>{p.name}</button>)}</div>
-          )}
-          <label className="field"><span>이름</span><input value={name} maxLength={8} onChange={(e) => setName(e.target.value)} autoComplete="username" /></label>
-          <label className="field"><span>비밀번호 (숫자 4자리)</span><input value={pin} inputMode="numeric" maxLength={4} type="password" onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></label>
-          {err && <p className="bad">{err}</p>}
-          <button className="wide big" type="submit">{mode === 'login' ? '들어가기' : '만들기'}</button>
-          <button className="wide ghost" type="button" onClick={() => setMode('home')}>뒤로</button>
-        </form>
-      )}
+      {notice && <p className="bad center">{notice}</p>}
+      <button className="wide big" onClick={() => onAuth('login')}>로그인</button>
+      <button className="wide secondary" onClick={() => onAuth('join')}>회원가입</button>
+      <button className="wide secondary" onClick={onGuest}>로그인 없이 하기 (저장 안 됨)</button>
+      <button className="wide ghost" onClick={() => setManual(true)}>게임 설명서</button>
+      <p className="muted center">한 계정으로 혼자 하기 저장과 온라인을 같이 써요. 다른 기기에서도 이어 할 수 있어요.</p>
       {manual && <Manual onClose={() => setManual(false)} />}
     </Frame>
   )
@@ -78,10 +53,10 @@ export function MenuScreen({ profile, slot, onContinue, onNew, onOnline, onLogou
     <Frame>
       <div className="title-logo"><Logo size={200} /></div>
       <div className="menu-hello">
-        {profile?.outfit && <Character outfit={profile.outfit} size={44} />}
+        {profile && <Character outfit={profile.outfit} size={44} />}
         <div>
-          <b className="jua">{profile ? `${profile.name}님, 어서 오세요` : '손님 모드'}</b>
-          <p className="muted">{profile ? '게임은 자동 저장돼요' : '로그인하지 않으면 저장되지 않아요'}</p>
+          <b className="jua">{profile ? `${profile.nick}님, 어서 오세요` : '손님 모드'}</b>
+          <p className="muted">{profile ? `${profile.loginId} · 게임은 계정에 자동 저장돼요` : '로그인하지 않으면 저장되지 않아요'}</p>
         </div>
       </div>
       {st && p0 && (
