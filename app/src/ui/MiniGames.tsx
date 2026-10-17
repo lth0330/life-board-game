@@ -38,6 +38,9 @@ const HOW: Record<string, string> = {
 const LEVEL_NAME = ['쉬움', '보통', '어려움']
 const rand = (n: number) => Math.floor(Math.random() * n)
 const shuffle = <T,>(a: T[]) => [...a].sort(() => Math.random() - 0.5)
+// 연습에서 나온 문제는 진짜 판에 다시 안 나오게 (퀴즈류). 이 미니게임 창이 열려 있는 동안만 기억
+type Seen = Set<string>
+const fresh = <T,>(pool: T[], key: (x: T) => string, seen: Seen) => { const left = pool.filter((x) => !seen.has(key(x))); return left.length ? left : pool }
 
 // 미니게임 주제별 배경·그림 (이벤트 길과 같은 그림)
 const MINI_THEME: Record<string, string> = {
@@ -63,6 +66,7 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit }: Props) {
   roundRef.current = round
   const doneRound = useRef(-1)
   const isDuelRef = useRef(!!mini.duel)
+  const seen = useRef<Seen>(new Set())
   // 판마다 한 번만 결과를 받음 (타이머·StrictMode에서 두 번 불려도 안전)
   const done = useCallback((v: number) => {
     if (doneRound.current === roundRef.current) return
@@ -90,11 +94,11 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit }: Props) {
       case 'photo': return <Memory level={mini.level} symbols={['파리', '도쿄', '뉴욕', '로마', '카이로', '시드니']} onDone={done} />
       case 'pairs': return <Pairs level={mini.level} onDone={done} />
       case 'quickmath': return <QuickMath level={mini.level} onDone={done} />
-      case 'firstImpression': return <FirstImpression level={mini.level} onDone={done} />
+      case 'firstImpression': return <FirstImpression level={mini.level} seen={seen.current} onDone={done} />
       case 'oddEven': return <OddEven level={mini.level} onDone={done} />
       case 'highLow': return <HighLow onDone={done} />
       case 'slot': return <Slot level={mini.level} onDone={done} />
-      case 'capital': return <Capital level={mini.level} onDone={done} />
+      case 'capital': return <Capital level={mini.level} seen={seen.current} onDone={done} />
       case 'souvenir': return <Souvenir onDone={done} />
       default: return <Souvenir onDone={done} />
     }
@@ -121,7 +125,7 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit }: Props) {
           <div className="mini-help">
             <p>{HOW[mini.game] ?? ''}</p>
             <p className="note">💪 {guide.stat}</p>
-            <p className="note">🎁 {guide.reward}</p>
+            <div className="note">🎁 보상<ul className="reward-list">{guide.reward.split(/ \/ | · /).map((x) => <li key={x}>{x}</li>)}</ul></div>
             <button className="wide" onClick={() => setMode('intro')}>돌아가기</button>
           </div>
         )}
@@ -363,7 +367,7 @@ function Rhythm({ level, onDone }: { level: number; onDone: (v: number) => void 
         {hits.map((h, i) => {
           const y = ((now - (h - fall)) / fall) * 85 // 85%가 선
           if (marks[i] !== null || y < -10 || y > 100) return null
-          return <span key={i} className="note" style={{ top: `${y}%` }}>♪</span>
+          return <span key={i} className="rhythm-note" style={{ top: `${y}%` }}>♪</span>
         })}
       </div>
       <div className="mini-seq">{marks.map((x, i) => <span key={i}>{x === null ? '·' : ['놓침', '좋아', '딱!'][x]}</span>)}</div>
@@ -542,8 +546,8 @@ const IMPRESSIONS = [
 ]
 
 // 첫인상 고르기. 매력이 높으면 선택지가 적고 쉬움
-function FirstImpression({ level, onDone }: { level: number; onDone: (v: number) => void }) {
-  const sc = useMemo(() => IMPRESSIONS[rand(IMPRESSIONS.length)], [])
+function FirstImpression({ level, seen, onDone }: { level: number; seen: Seen; onDone: (v: number) => void }) {
+  const sc = useMemo(() => { const pool = fresh(IMPRESSIONS, (x) => x.q, seen); const pick = pool[rand(pool.length)]; seen.add(pick.q); return pick }, [seen])
   const shown = useMemo(() => {
     const idx = sc.a.map((_, i) => i)
     const bad = idx.filter((i) => !sc.best.includes(i))
@@ -653,11 +657,13 @@ const CAPITALS: [string, string, number][] = [
 ]
 
 // 세계일주 수도 맞히기 3문제. 지력이 높으면 쉬운 나라가 나옴
-function Capital({ level, onDone }: { level: number; onDone: (v: number) => void }) {
+function Capital({ level, seen, onDone }: { level: number; seen: Seen; onDone: (v: number) => void }) {
   const qs = useMemo(() => {
-    const pool = CAPITALS.filter((c) => c[2] <= level)
-    return shuffle(pool).slice(0, 3).map((c) => ({ country: c[0], ans: c[1], opts: shuffle([c[1], ...shuffle(CAPITALS.filter((x) => x[1] !== c[1])).slice(0, 2).map((x) => x[1])]) }))
-  }, [level])
+    const pool = fresh(CAPITALS.filter((c) => c[2] <= level), (c) => c[0], seen)
+    const picks = shuffle(pool).slice(0, 3)
+    picks.forEach((c) => seen.add(c[0]))
+    return picks.map((c) => ({ country: c[0], ans: c[1], opts: shuffle([c[1], ...shuffle(CAPITALS.filter((x) => x[1] !== c[1])).slice(0, 2).map((x) => x[1])]) }))
+  }, [level, seen])
   const [i, setI] = useState(0)
   const [right, setRight] = useState(0)
   const answer = (o: string) => {

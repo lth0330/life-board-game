@@ -56,14 +56,16 @@ export const STAGE_DEFS: StageDef[] = [
     id: 'young', name: '청년', ages: [20, 39], rolls: 10, length: 50,
     weights: [['money', 22], ['card', 18], ['date', 32], ['risk', 14], ['happy', 9], ['grow', 8]],
     // 대학생이 3차례 늦게 출발해도 둘째 결혼식장(20)에 대부분 닿도록 앞쪽에 모음 (docs/13-review.md)
-    stops: { 1: 'job' }, points: { 5: 'shop', 10: 'marriage', 18: 'shop', 20: 'marriage' },
+    // 직업 칸 = 출발 칸 (바로 취업은 제자리에서 고름, 대학 졸업생은 여기로 합류. 2026-10-17 사용자)
+    stops: { 0: 'job' }, points: { 5: 'shop', 10: 'marriage', 18: 'shop', 20: 'marriage' },
     campus: true,
     event: { at: 11, rejoin: 17, len: 7, name: '축제 거리', minis: ['firstImpression', 'rhythm', 'confess'], desc: '연애·매력 미니게임 (매력이 높을수록 쉬움)' },
   },
   {
     id: 'middle', name: '중년', ages: [40, 59], rolls: 8, length: 40,
     weights: [['money', 25], ['risk', 25], ['happy', 20], ['card', 20], ['grow', 10], ['date', 20]],
-    stops: { 15: 'middleBranch', 20: 'jobfair' }, points: { 13: 'marriage', 17: 'shop' }, dateUntil: 13,
+    // 12: 승진 심사 (능력치 조건만 맞으면 무조건 한 단계 승진, 2026-10-17 사용자)
+    stops: { 12: 'promotion', 15: 'middleBranch', 20: 'jobfair' }, points: { 13: 'marriage', 17: 'shop' }, dateUntil: 13,
     life: {
       id: 'startup', at: 5, rejoin: 11, title: '인생 2막', text: '앞으로 어떻게 살까요? (창업 길은 백수만. 직장인은 중년 중반 취업 박람회에서 창업)',
       roads: [

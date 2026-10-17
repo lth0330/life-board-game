@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as R
 import { Building, TileIcon, Tree } from '../art/Art'
 import { Landmark } from '../art/More'
 import { Character, type Expr } from '../art/Character'
-import { EmoteBubble } from './Emotes'
+import { EmoteBubble, RpsBubble } from './Emotes'
 import { ageOf, UNI_NAMES } from '../engine/game'
 import { distancesFrom, EVENT_ROAD_NAME } from '../engine/board'
 import { MINI_NAMES } from '../engine/game'
@@ -28,7 +28,7 @@ const UNI_LOOK: Record<string, { bg: string; icon: string }> = {
   parttime: { bg: '#2F8F5B', icon: 'money' }, exam: { bg: '#C9553B', icon: 'risk' }, party: { bg: '#E8742C', icon: 'happy' }, scholar: { bg: '#E2B85C', icon: 'money' },
 }
 
-const STOP_LABEL: Record<string, string> = { club: '동아리', job: '직업', jobfair: '박람회', middleBranch: '새 가족' }
+const STOP_LABEL: Record<string, string> = { club: '동아리', job: '직업', jobfair: '박람회', middleBranch: '새 가족', promotion: '승진 심사' }
 
 export function tileLook(t: Tile) {
   const base = TILE_STYLE[t.kind]
@@ -59,9 +59,10 @@ interface Props {
   walkingId?: number | null // 지금 걷고 있는 사람 (통통 튀는 동작)
   canPan?: boolean // 끌어서 보기는 내 차례에만
   emotes?: Record<number, Expr> // 지금 머리 위에 띄울 표정 (플레이어 번호 → 표정)
+  hands?: Record<number, number | null> // 가위바위보 손 (null = 고르는 중)
 }
 
-export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = null, canPan = false, emotes = {} }: Props) {
+export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = null, canPan = false, emotes = {}, hands = {} }: Props) {
   const st = s.stages[s.stageIdx]
   const focusPos = posOf(focus)
   const fd = st.tiles[focusPos].d
@@ -104,7 +105,7 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
     // 갈림길 표지판
     if (t.fork) {
       items.push(
-        <div key={`f${i}`} className="sign-post" style={{ ...stand, left: xAt(t) - 330, top: yAt(t) - 200 }}>
+        <div key={`f${i}`} className="sign-post" style={{ ...stand, left: xAt(t) - 330, top: yAt(t) - 60 }}>
           <div className="sign-board">
             {t.fork.options.map((o) => {
               const target = st.tiles[o.to]
@@ -172,12 +173,14 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
       const me = p.id === focus.id
       items.push(
         <div key={`s${p.id}`} className="shadow" style={{ left: xAt(t) + 20 + dx, top: yAt(t) + 70 }} />,
-        <div key={`c${p.id}`} className={`char${p.id === walkingId ? ' walking' : ''}`} style={{ ...stand, left: xAt(t) + 20 + dx, top: yAt(t) - 90 }}>
+        <div key={`c${p.id}`} className={`char${p.id === walkingId ? ' walking' : ''}${ageOf(s, p) <= 2 ? ' baby' : ''}`} style={{ ...stand, left: xAt(t) + 20 + dx, top: yAt(t) - 90 }}>
           <div style={{ opacity: me ? 1 : 0.5 }}>
             <Character outfit={p.outfit} view="back" size={80} age={ageOf(s, p)} />
             <div className="name-tag" style={{ background: me ? p.color : 'rgba(42,33,24,0.6)', top: -40 - k * 34 }}>{p.name}</div>
           </div>
-          {emotes[p.id] && <div className="emote-on-board" style={{ top: -130 - k * 34 }}><EmoteBubble key={emotes[p.id]} outfit={p.outfit} age={ageOf(s, p)} expr={emotes[p.id]} /></div>}
+          {p.id in hands
+            ? <div className="emote-on-board" style={{ top: -130 - k * 34 }}><RpsBubble value={hands[p.id]} /></div>
+            : emotes[p.id] && <div className="emote-on-board" style={{ top: -130 - k * 34 }}><EmoteBubble key={emotes[p.id]} outfit={p.outfit} age={ageOf(s, p)} expr={emotes[p.id]} /></div>}
         </div>,
       )
     })

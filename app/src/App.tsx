@@ -20,7 +20,7 @@ import { Confetti, DiceThrow, StageCard } from './ui/Effects'
 import { Manual } from './ui/Manual'
 import { MiniGame } from './ui/MiniGames'
 import { Frame, MenuScreen, SetupScreen, TitleScreen, type Speed } from './ui/Screens'
-import { CardsSheet, FinanceSheet, GameOver, PeopleSheet, playerLine, StageSummary, won } from './ui/Sheets'
+import { CardsSheet, FinanceSheet, GameOver, MyInfoSheet, PeopleSheet, playerLine, StageSummary, won } from './ui/Sheets'
 
 // 온라인 화면(AWS 연결 포함)은 '온라인으로 하기'를 눌렀을 때만 내려받음 (혼자 하기는 가볍게)
 const Online = lazy(() => import('./online/Online').then((m) => ({ default: m.Online })))
@@ -199,7 +199,7 @@ export default function App() {
   )
 }
 
-type SheetKind = null | 'finance' | 'cards' | 'people' | 'map' | 'manual'
+type SheetKind = null | 'finance' | 'cards' | 'people' | 'map' | 'manual' | 'me'
 
 // 온라인일 때: mine = 이 기기가 맡은 플레이어, host = 방장 기기(AI를 돌림), send = 손님 기기가 행동을 방장에게 보냄
 // emote = 내 표정을 다른 기기에 알림, incoming = 다른 사람이 보낸 표정 (id가 바뀔 때마다 띄움)
@@ -358,6 +358,19 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
 
   useEffect(() => { setCarMode(false); setItemMode(null) }, [game.turn])
 
+  // ── 같은 칸 가위바위보: 고르는 동안 머리 위 손이 돌다가, 다 고르면 2.8초 공개 ──
+  const rps = game.rpsShow
+  const [rpsReveal, setRpsReveal] = useState<Record<number, number> | null>(null)
+  useEffect(() => {
+    if (!rps?.picks) return
+    setRpsReveal(rps.picks)
+    const t = setTimeout(() => setRpsReveal(null), 2800)
+    return () => clearTimeout(t)
+  }, [rps?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  const hands: Record<number, number | null> = rps && !rps.picks && game.pending?.type === 'rps'
+    ? Object.fromEntries(rps.ids.map((i) => [i, null]))
+    : rpsReveal ?? {}
+
   // ── 표정 말풍선 ──
   const [emotes, setEmotes] = useState<Record<number, Expr>>({})
   const emoteTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({})
@@ -413,14 +426,20 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
   }
 
   const onCampus = p.campusTurns > 0 && stageOf(game).tiles[p.pos].kind === 'campus'
+  // 주사위: 한 번 누르면 돌고, 한 번 더 누르면 멈춤 (결과는 운. 2026-10-17 사용자)
+  const [spinning, setSpinning] = useState(false)
   const doRoll = () => {
+    if (spinning) {
+      setSpinning(false)
+      setRolling(false)
+      run(['roll', 0, carMode, itemMode])
+      return
+    }
     if (!myTurn) return
     if (onCampus) { run(['roll', 0, false, null]); return } // 대학교에서는 주사위 대신 대학 생활
-    const useCar = carMode
-    const item = itemMode
     sfx('dice')
     setRolling(true)
-    setTimeout(() => { setRolling(false); run(['roll', 0, useCar, item]) }, DICE_ROLL_MS)
+    setSpinning(true)
   }
   const showCar = myTurn && canUseCar(p) && !onCampus
   const heldItems = myTurn && !onCampus ? [...new Set(p.diceItems)] : []
@@ -437,7 +456,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
       onPointerDown={(e) => { unlockAudio(); if ((e.target as HTMLElement).closest('.world')) swipeY.current = { y: e.clientY, t: Date.now() } }}
       onPointerUp={(e) => { const sw = swipeY.current; if (sw && sw.y - e.clientY > 70 && Date.now() - sw.t < 300) doRoll(); swipeY.current = null }}
     >
-      <Board s={game} focus={shown} posOf={posOf} walkingId={walking ? game.pathPlayer : null} canPan={myTurn} emotes={emotes} showSteps={myTurn || (!p.human && game.phase === 'roll' && !busy)} />
+      <Board s={game} focus={shown} posOf={posOf} walkingId={walking ? game.pathPlayer : null} canPan={myTurn} emotes={emotes} hands={hands} showSteps={myTurn || (!p.human && game.phase === 'roll' && !busy)} />
 
       <header className="hud">
         <div className="hud-row">
@@ -466,6 +485,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
       <div className="side-buttons">
         <button onClick={() => setSheet('map')}>지도</button>
         <button onClick={() => setSheet('people')}>사람들</button>
+        <button onClick={() => setSheet('me')}>내 정보</button>
         {emoteId !== undefined && (
           <button className="emote-btn" aria-label="표정" disabled={cooling} onClick={() => setPicker(true)}>
             <Character outfit={game.players[emoteId].outfit} age={ageOf(game, game.players[emoteId])} expr="happy" size={44} crop="head" />
@@ -500,8 +520,8 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
 
       <div className="controls">
         <button className="mid" onClick={() => setSheet('cards')}>카드{(p.chance || p.sabotage) ? <em>{(p.chance ? 1 : 0) + (p.sabotage ? 1 : 0)}</em> : null}</button>
-        <button className="dice-btn" disabled={!myTurn} onClick={doRoll}>
-          {onCampus ? <span>대학<br />생활</span> : <span>주사위<br />던지기</span>}
+        <button className={`dice-btn${spinning ? ' spinning' : ''}`} disabled={!myTurn && !spinning} onClick={doRoll}>
+          {spinning ? <span>멈추기!</span> : onCampus ? <span>대학<br />생활</span> : <span>주사위<br />던지기</span>}
         </button>
         <button className="mid" onClick={() => setSheet('finance')}>재테크</button>
       </div>
@@ -509,7 +529,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
       {(rolling || diceShow !== null) && <DiceThrow value={rolling ? null : diceShow?.value ?? null} second={rolling ? (itemMode === 'twin' ? null : undefined) : diceShow?.second} />}
 
       {pending && (
-        <div className="sheet-backdrop">
+        <div className={`sheet-backdrop${pending.type === 'rps' ? ' see-board' : ''}`}>
           <div className="sheet decision">
             <EventArt type={pending.type} />
             <h2 className="jua">{pending.title}</h2>
@@ -580,6 +600,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
           onClose={() => setSheet(null)} />
       )}
       {sheet === 'people' && <PeopleSheet s={game} onClose={() => setSheet(null)} />}
+      {sheet === 'me' && <MyInfoSheet s={game} p={game.players[emoteId ?? p.id]} onClose={() => setSheet(null)} />}
       {sheet === 'map' && <FullMap s={game} onClose={() => setSheet(null)} />}
       {sheet === 'manual' && <Manual onClose={() => setSheet(null)} />}
 

@@ -4,7 +4,7 @@ export type StageId = 'child' | 'student' | 'young' | 'middle' | 'old'
 export type StatKey = 'int' | 'str' | 'cha'
 export type TileKind = 'good' | 'money' | 'grow' | 'happy' | 'risk' | 'card' | 'stop' | 'date' | 'mini' | 'rest' | 'goal' | 'campus' | 'uni'
 export type UniEvent = 'study' | 'club' | 'love' | 'parttime' | 'exam' | 'party' | 'scholar'
-export type StopEvent = 'club' | 'job' | 'jobfair' | 'middleBranch'
+export type StopEvent = 'club' | 'job' | 'jobfair' | 'middleBranch' | 'promotion'
 // 갈라지는 길의 테마 (칸 효과가 그 길답게 바뀜)
 export type RoadId = 'main' | 'academy' | 'play' | 'college' | 'work' | 'startup' | 'company' | 'city' | 'country' | 'event' | 'campus'
 export type ForkId = 'academy' | 'college' | 'startup' | 'retire' | 'event'
@@ -230,6 +230,9 @@ export interface GameState {
   pathPlayer: number
   dice: { value: number; id: number; second?: number } | null // 마지막으로 굴린 주사위 (연출용)
   lastRoll: number | null
+  // 같은 칸 가위바위보 연출: picks가 없으면 고르는 중(머리 위 손이 돌아감), 있으면 다 같이 공개
+  rpsShow?: { id: number; ids: number[]; picks: Record<number, number> | null } | null
+  reroll?: { item: DiceItem | null; bonus: number } | null // 찬스 카드 다시 굴리기: 사람은 직접 다시 굴림 (아이템은 이미 씀)
   log: LogEntry[]
   logCount: number // 지금까지 남긴 기록 수 (팝업에 이번 칸 기록만 모으려고)
   popup: { id: number; art: string; title: string; text: string; tone: 'good' | 'bad' | 'info'; playerId: number } | null // 칸 사건 팝업

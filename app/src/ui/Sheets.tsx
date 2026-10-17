@@ -336,3 +336,63 @@ export function GameOver({ s, onRestart }: { s: GameState; onRestart: () => void
 }
 
 export const JOB_COUNT = JOBS.length
+
+// 내 정보: 나 · 가족(배우자·아이·반려동물) · 재산(집·차·주식·빚) · 카드 (2026-10-17 사용자)
+export function MyInfoSheet({ s, p, onClose }: { s: GameState; p: Player; onClose: () => void }) {
+  const age = ageOf(s, p)
+  const job = jobOf(p)
+  const sp = p.spouse
+  const debt = p.loans.reduce((a, l) => a + l.amount, 0) // 주택담보대출 포함
+  const fDebt = friendDebt(s, p)
+  const stockList = (Object.keys(p.stocks) as Sector[]).filter((k) => p.stocks[k] > 0)
+  return (
+    <Sheet title="내 정보" onClose={onClose}>
+      <div className="info-me">
+        <span className="person-face big" style={{ borderColor: p.color }}><Character outfit={p.outfit} size={48} age={age} crop="head" /></span>
+        <div>
+          <b className="jua">{p.name}</b> <span className="muted">{age}세</span>
+          <div className="muted">{job ? `${job.name} ${job.ranks[p.jobRank] ?? ''}` : p.biz ? p.biz.name : '직업 없음'}{salaryOf(p) ? ` · 월급 ${won(salaryOf(p))}` : ''}{p.college ? ' · 대졸' : ''}</div>
+          <div>돈 <b>{won(p.money)}</b> · 행복 <b>{p.happy}</b> · 지력 {p.stats.int} · 체력 {p.stats.str} · 매력 {p.stats.cha}</div>
+        </div>
+      </div>
+
+      <h3 className="jua">가족</h3>
+      <div className="info-list">
+        {sp ? (
+          <div className="info-row">
+            <b>💍 배우자 {sp.name}</b> <span>{stars(sp.grade)}</span>
+            <div className="muted">외모 {sp.looks} · 재력 {sp.wealth} · 명성 {sp.fame} · 성격 {sp.kindness}{sp.revealed ? ` · ${sp.trait}` : ' · 성격은 아직 몰라요'}</div>
+          </div>
+        ) : <div className="muted">아직 결혼 전이에요{p.suitors.length ? ` · 연애 중: ${p.suitors.map((x) => `${x.name} ${x.affinity}%`).join(', ')}` : ''}</div>}
+        {p.kids.map((k, i) => {
+          const kidAge = Math.max(0, age - k.bornAge)
+          return (
+            <div key={i} className="info-row">
+              <b>{k.adopted ? '🧸 입양 자녀' : '👶 자녀'} {i + 1}</b> <span className="muted">{kidAge}살</span>
+              <div className="muted">{k.result === null ? `교육 ${k.edu === null ? '아직 안 정함' : KIDS.eduNames[k.edu]}` : `어른이 됨 · ${KIDS.resultNames[k.result]}`}</div>
+            </div>
+          )
+        })}
+        {kidAllowance(p) > 0 && <div className="muted">자녀가 주는 용돈 매 턴 {won(kidAllowance(p))}</div>}
+        {p.pet?.alive && <div className="info-row"><b>🐶 반려동물</b></div>}
+      </div>
+
+      <h3 className="jua">재산</h3>
+      <div className="info-list">
+        <div className="info-row"><b>🏠 집</b> <span>{p.house ? `${HOUSES[p.house].name} · 시세 ${won(houseValue(s, p))}` : '없음'}</span></div>
+        <div className="info-row"><b>🚗 차</b> <span>{p.car ? `${CARS[p.car].name} · ${won(p.carValue)}${p.carCharges ? ` · ±1 남은 ${p.carCharges}번` : ''}` : '없음'}</span></div>
+        <div className="info-row"><b>📈 주식</b> <span>{stockList.length ? `${stockList.map((k) => `${k} ${p.stocks[k]}주`).join(' · ')} (${won(stocksValue(s, p))})` : '없음'}</span></div>
+        <div className="info-row"><b>💳 빚</b> <span>{debt || fDebt ? [debt ? `대출 ${won(debt)}` : '', fDebt ? `친구 ${won(fDebt)}` : ''].filter(Boolean).join(' · ') : '없음'}</span></div>
+      </div>
+
+      <h3 className="jua">카드·아이템</h3>
+      <div className="tags">
+        {p.chance && <span>찬스: {CHANCE_NAMES[p.chance]}</span>}
+        {p.sabotage && <span>방해: {SABOTAGE_NAMES[p.sabotage]}</span>}
+        {p.diceItems.map((k, i) => <span key={i}>{DICE_ITEMS[k].name}</span>)}
+        {p.medals.length > 0 && <span>메달 {p.medals.map((m) => MEDALS[m].name).join('·')}</span>}
+        {!p.chance && !p.sabotage && !p.diceItems.length && !p.medals.length && <span className="muted">없음</span>}
+      </div>
+    </Sheet>
+  )
+}

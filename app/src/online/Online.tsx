@@ -92,7 +92,8 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
     if (roomRef.current && (r.version ?? 0) < (roomRef.current.version ?? 0)) return // 늦게 온 옛 상태는 버림
     roomRef.current = r
     setRoom(r)
-    if (r.status === 'ended') setClosed(true)
+    // 끝남: 게임이 있으면 결과 화면을 그대로 보여 주고, 시작 전에 닫힌 방만 '방장이 방을 닫았어요'
+    if (r.status === 'ended' && !parse<LobbyState>(r.state, { settings: { startAdult: false, difficulty: 'normal' } }).game) setClosed(true)
   }, [])
   const isHost = isRoomOwner(room?.owner, me)
 
@@ -152,7 +153,8 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
     )
   }
   if (!room) return <Frame><p className="center muted">방에 들어가는 중…</p></Frame>
-  if (room.status === 'playing') return <OnlineGame me={me} room={room} isHost={isHost} renderPlay={renderPlay} onLeave={onLeave} />
+  const finished = room.status === 'ended' && !!parse<LobbyState>(room.state, { settings: { startAdult: false, difficulty: 'normal' } }).game
+  if (room.status === 'playing' || finished) return <OnlineGame me={me} room={room} isHost={isHost} renderPlay={renderPlay} onLeave={onLeave} />
 
   const seats = parse<Seat[]>(room.seats, [])
   const lobby = parse<LobbyState>(room.state, { settings: { startAdult: false, difficulty: 'normal' } })
