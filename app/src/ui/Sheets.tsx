@@ -3,7 +3,7 @@ import { Character } from '../art/Character'
 import { Trophy } from '../art/More'
 import { CARS, CHANCE_NAMES, DICE_ITEMS, HOUSE_RULES, HOUSES, INSURANCE, JOBS, KIDS, LOTTERY_PRICE, MEDALS, PERSONALITIES, SABOTAGE_NAMES, SECTORS } from '../engine/data'
 import {
-  ageOf, AWARD_POINTS, awardsOf, bankDebt, canBorrowFrom, fortuneName, friendDebt, houseValue, isAdultStage, jobOf, kidAllowance, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
+  ageOf, moodLevel, moodOf, MOOD_FACES, MOOD_HELP, MOOD_NAMES, MOOD_TURNS, AWARD_POINTS, awardsOf, bankDebt, canBorrowFrom, fortuneName, friendDebt, houseValue, isAdultStage, jobOf, kidAllowance, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
   stars, stocksValue,
 } from '../engine/game'
 import type { GameState, InsuranceKind, Player, Sector } from '../engine/types'
@@ -354,6 +354,10 @@ export function MyInfoSheet({ s, p, onClose }: { s: GameState; p: Player; onClos
           <div className="muted">{job ? `${job.name} ${job.ranks[p.jobRank] ?? ''}` : p.biz ? p.biz.name : '직업 없음'}{salaryOf(p) ? ` · 월급 ${won(salaryOf(p))}` : ''}{p.college ? ' · 대졸' : ''}</div>
           <div>돈 <b>{won(p.money)}</b> · 행복 <b>{p.happy}</b> · 지력 {p.stats.int} · 체력 {p.stats.str} · 매력 {p.stats.cha}</div>
         </div>
+      </div>
+      <div className="note">
+        기분 {MOOD_FACES[moodLevel(p)]} <b>{MOOD_NAMES[moodLevel(p)]}</b> (최근 {MOOD_TURNS}턴 행복 {moodOf(p) >= 0 ? '+' : ''}{moodOf(p)}) · {MOOD_HELP[moodLevel(p)]}
+        <div className="muted">행복이 최근에 많이 오르면 신남, 많이 떨어지면 지침이 돼요. 쌓인 행복은 마지막 점수에 들어가요.</div>
       </div>
 
       <h3 className="jua">가족</h3>

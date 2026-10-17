@@ -2,7 +2,7 @@ import { BUSINESSES, DICE_ITEMS, JOBS, SECTORS } from './data'
 import {
   aiDiceItem, aiWantsCar, passChance, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, loanLimit, loanTotal, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, rngOf, salaryOf, scoreOf, stageOf, startSabotage, takeLoan, toggleInsurance,
-  tradeStock, playChance,
+  tradeStock, playChance, moodLevel,
 } from './game'
 import type { GameState, Pending, Player } from './types'
 
@@ -63,6 +63,14 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
         }
         default: return 1
       }
+    }
+    case 'happyPick': {
+      // 기분이 나쁘면 크게 놀고, 돈이 모자라면 일하고, 아니면 소소하게 (성격 따라 조금씩)
+      const mood = moodLevel(p)
+      const cost = (pd.data as { cost: number }).cost
+      if (id === 'big') return (mood <= 1 ? 3 : 1) + (per === 'family' ? 1 : 0) - (p.money < cost * 4 ? 2 : 0) + rng.next()
+      if (id === 'work') return (p.money < 0 ? 3 : 0.5) + (per === 'investor' || per === 'elite' ? 1 : 0) - (mood <= 1 ? 1.5 : 0) + rng.next()
+      return 1.5 + rng.next()
     }
     case 'growPick': {
       const k = id as 'int' | 'str' | 'cha'

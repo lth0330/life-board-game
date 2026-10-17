@@ -23,6 +23,20 @@ export const scaleOf = (s: GameState) => STAGE_SCALE[stageOf(s).id]
 export const isAdultStage = (s: GameState) => s.stageIdx >= 2
 export const fortuneName = (f: number) => FORTUNES[f]
 const clampStat = (v: number) => Math.max(0, Math.min(10, v))
+
+// ───────── 기분 (2026-10-17 사용자): 최근 5턴 동안 행복이 얼마나 오르내렸나. 쌓인 행복은 마지막 점수, 기분은 지금 삶의 상태 ─────────
+export const MOOD_TURNS = 5
+export const moodOf = (p: Player) => p.happy - (p.happyHist?.[0] ?? p.happy)
+export type MoodLevel = 0 | 1 | 2 | 3 | 4 // 지침 · 우울 · 보통 · 좋음 · 신남
+export function moodLevel(p: Player): MoodLevel {
+  const m = moodOf(p)
+  // 행복은 원래 오르는 편이라 기준을 위로 (100판 분포로 맞춤: 대략 지침 10% · 우울 15% · 보통 50% · 좋음 15% · 신남 10%)
+  return m >= 22 ? 4 : m >= 12 ? 3 : m >= 0 ? 2 : m >= -3 ? 1 : 0
+}
+export const MOOD_NAMES = ['지침', '우울', '보통', '좋음', '신남']
+export const MOOD_FACES = ['😩', '😟', '😐', '🙂', '😄']
+export const MOOD_HELP = ['운세가 나빠질 확률 40%, 월급 -20%', '운세가 나빠질 확률 20%', '효과 없음', '운세가 좋아질 확률 15%', '운세가 좋아질 확률 30%, 연애 호감도 +20%']
+const MOOD_FORTUNE: [number, number][] = [[-1, 0.4], [-1, 0.2], [0, 0], [1, 0.15], [1, 0.3]] // [운세 방향, 확률]
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}만`
 const STATS: StatKey[] = ['int', 'str', 'cha']
 
@@ -206,6 +220,8 @@ function drawFortune(s: GameState, p: Player) {
   if (p.goodDeeds > 0 && rng.chance(0.4)) { f++; p.goodDeeds-- }
   if (p.spouse?.revealed && p.spouse.trait === '대운' && rng.chance(0.3)) f++
   if (p.charmTurns > 0) { f++; p.charmTurns-- }
+  const [dir, chance] = MOOD_FORTUNE[moodLevel(p)]
+  if (dir && rng.chance(chance)) f += dir
   f += p.fortuneMod
   p.fortuneMod = 0
   p.fortune = Math.max(0, Math.min(4, f))
@@ -223,6 +239,7 @@ function beginTurn(s: GameState) {
   s.mini = null
   s.meetCheck = false
   s.phase = 'roll'
+  p.happyHist = [...(p.happyHist ?? []), p.happy].slice(-MOOD_TURNS)
   drawFortune(s, p)
   if (p.agency && !canDate(s, p) && stageOf(s).id === 'middle') {
     p.agency = null
@@ -307,7 +324,7 @@ function economyTick(s: GameState, p: Player) {
   if (job?.id === 'ceo' && (st.id !== 'old' || p.bizKeep)) bizTick(s, p, st.id === 'old' ? BIZ.oldMult : 1)
   if (st.id !== 'old' && job) p.jobTenure++
   if (st.id !== 'old' && job && job.id !== 'ceo') {
-    const sal = salaryOf(p)
+    const sal = Math.round(salaryOf(p) * (moodLevel(p) === 0 ? 0.8 : 1)) // 지침이면 월급 -20%
     const tax = Math.round(sal * TAX_RATE(sal))
     p.money += sal - tax
     p.jobTurns++
@@ -339,7 +356,7 @@ function economyTick(s: GameState, p: Player) {
     if (p.retire === 'city') {
       if (rng.chance(0.5)) p.money += 80
       else p.money -= 50
-    } else if (p.retire === 'country') p.happy += 2
+    } else if (p.retire === 'country') p.happy += 1 // 노년 몰림 줄이기 (+2 → +1, 2026-10-17)
   }
   let upkeep = 0
   for (const k of Object.keys(p.insurance) as InsuranceKind[]) if (p.insurance[k]) upkeep += INSURANCE[k].premium
@@ -1153,7 +1170,23 @@ function land(s: GameState) {
     }
     case 'happy': {
       const sc2 = happyScene(s, p)
-      const h = rng.int(3, 6) + (road === 'country' || road === 'play' ? 2 : 0) + sc2.bonus
+      const h = rng.int(3, 6) + (road === 'country' || road === 'play' ? 1 : 0) + sc2.bonus
+      // 절반은 고르는 칸: 크게 놀기(돈 쓰고 +7) / 소소하게(+3) / 일하기(돈 벌고 -1)
+      if (rng.chance(0.5)) {
+        const cost = sc * 2
+        s.pending = {
+          type: 'happyPick', playerId: p.id, title: `행복 칸: ${sc2.title}`, text: `${sc2.text.replace(/!$/, '')}… 어떻게 보낼까요? (기분 ${MOOD_FACES[moodLevel(p)]} ${MOOD_NAMES[moodLevel(p)]})`,
+          options: [
+            { id: 'big', label: '🎉 크게 놀기', desc: `-${won(cost)} · 행복 +7`, disabled: p.money < cost },
+            { id: 'small', label: '☕ 소소하게', desc: '돈 안 듦 · 행복 +3' },
+            { id: 'work', label: '💼 쉬지 않고 일하기', desc: `+${won(cost)} · 행복 -1` },
+          ],
+          data: { cost, art: sc2.art },
+        }
+        popArt = sc2.art
+        popTitle = sc2.title
+        break
+      }
       p.happy += h
       log(s, p.id, `${sc2.text} 행복 +${h}`, 'good')
       popArt = sc2.art
@@ -1481,7 +1514,8 @@ export function finishMini(s: GameState, value: number) {
 // 데이트로 오르는 호감도: 등급이 낮을수록, 내 매력이 높을수록 많이 오름
 export function affinityGain(s: GameState, p: Player, x: Suitor) {
   const [lo, hi] = ([[30, 40], [25, 33], [20, 27], [15, 22], [12, 18]] as const)[Math.max(0, Math.min(4, x.grade - 1))]
-  return rngOf(s).int(lo, hi) + Math.max(0, p.stats.cha - 4)
+  const base = rngOf(s).int(lo, hi) + Math.max(0, p.stats.cha - 4)
+  return moodLevel(p) === 4 ? Math.round(base * 1.2) : base // 신나면 호감도 +20%
 }
 
 // 축제 거리: 호감도가 아니라 새 사람을 만나는 곳. 대성공이면 높은 등급이 잘 나옴
@@ -2155,6 +2189,13 @@ export function choose(s: GameState, optionId: string) {
         }
       }
       break
+    case 'happyPick': {
+      const cost = (pd.data as { cost: number }).cost
+      if (optionId === 'big') { spend(p, cost); p.happy += 7; log(s, p.id, `크게 놀았다! -${won(cost)}, 행복 +7`, 'good') }
+      else if (optionId === 'work') { p.money += cost; p.happy -= 1; log(s, p.id, `쉬지 않고 일했다. +${won(cost)}, 행복 -1`, 'info') }
+      else { p.happy += 3; log(s, p.id, '소소하게 즐겼다. 행복 +3', 'good') }
+      break
+    }
     case 'growPick': {
       if (optionId === 'rest') { p.happy += 2; log(s, p.id, '능력치가 모두 최고라 푹 쉬었다. 행복 +2', 'good'); break }
       const k = optionId as StatKey

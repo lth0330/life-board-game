@@ -123,6 +123,7 @@ export interface Biz { name: string; stat: StatKey; sector: Sector | null; maxRa
 
 export interface Player {
   id: number
+  happyHist?: number[] // 최근 내 차례 시작 때 행복 (기분 = 지금 행복 - 5턴 전 행복)
   name: string
   human: boolean
   personality: Personality

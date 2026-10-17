@@ -4,7 +4,7 @@ import { Character, type Expr } from './art/Character'
 import { aiStep } from './engine/ai'
 import { CARS, DICE_ITEMS, MINI_PRACTICE_LIMIT } from './engine/data'
 import {
-  ageOf, turnIncome, canAct, canUseCar, createGame, cur, fortuneName, miniGuide, canSeekJob, stageOf,
+  ageOf, turnIncome, moodLevel, MOOD_FACES, MOOD_HELP, MOOD_NAMES, canAct, canUseCar, createGame, cur, fortuneName, miniGuide, canSeekJob, stageOf,
 } from './engine/game'
 import { applyOp, type Op } from './engine/ops'
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
@@ -401,6 +401,14 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
     aiQueue.forEach(([pid, e]) => showEmote(pid, e))
     setAiQueue([])
   }, [aiQueue, walking, diceShow, popShow, showEmote])
+  // AI: 차례가 오면 기분이 아주 좋거나 지쳤을 때 표정
+  useEffect(() => {
+    const q = game.players[game.current]
+    if (q.human) return
+    const lv = moodLevel(q)
+    if (lv === 4) showEmote(q.id, 'happy')
+    else if (lv === 0) showEmote(q.id, 'sad')
+  }, [game.current]) // eslint-disable-line react-hooks/exhaustive-deps
   // 다른 기기에서 온 표정
   const incomingId = online?.incoming?.id
   useEffect(() => {
@@ -475,6 +483,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
               {st.rolls ? ` · 남은 주사위 ${shown.rollsLeft}/${st.rolls}` : ' · 골까지 경주'}
             </span>
           </div>
+          <span className="hud-mood">기분 <span className="mood" title={`기분 ${MOOD_NAMES[moodLevel(shown)]}: ${MOOD_HELP[moodLevel(shown)]}`} aria-label={`기분 ${MOOD_NAMES[moodLevel(shown)]}`}>{MOOD_FACES[moodLevel(shown)]}</span></span>
           <button className="gear" aria-label="설정" onClick={() => setMenu(true)}>
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" /></svg>
           </button>
