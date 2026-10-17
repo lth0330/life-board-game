@@ -1,6 +1,5 @@
 // 표정 말풍선: 판 위 캐릭터는 등 뒤라 얼굴이 안 보여서 머리 위에 표정 얼굴을 잠깐 띄움 (docs/12-art.md)
 // AI는 좋은 일·나쁜 일에 자동, 플레이어는 직접 골라서
-import { useEffect, useState } from 'react'
 import { Character, type Expr } from '../art/Character'
 import type { LogEntry } from '../engine/types'
 import type { Outfit } from '../engine/outfit'
@@ -20,14 +19,8 @@ export function autoEmote(l: LogEntry): Expr | null {
 }
 
 export function EmoteBubble({ outfit, expr, age, size = 64 }: { outfit: Outfit; expr: Expr; age?: number; size?: number }) {
-  // 다른 기기에서 온 표정은 기울어진 판 안에 새로 생기면 브라우저가 안 그릴 때가 있어서, 한 박자 뒤 스타일을 바꿔 다시 그리게 함
-  const [ready, setReady] = useState(false)
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setReady(true))
-    return () => cancelAnimationFrame(id)
-  }, [])
   return (
-    <div className={`emote-bubble${ready ? ' ready' : ''}`} aria-label={EMOTE_NAMES[expr]} role="img">
+    <div className="emote-bubble" aria-label={EMOTE_NAMES[expr]} role="img">
       <Character outfit={outfit} expr={expr} age={age} size={size} crop="head" />
     </div>
   )
