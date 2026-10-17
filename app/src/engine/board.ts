@@ -108,7 +108,7 @@ const ROAD_WEIGHTS: Partial<Record<RoadId, [TileKind, number][]>> = {
   startup: [['money', 45], ['risk', 40], ['card', 15]],
   company: [['money', 40], ['happy', 30], ['card', 20], ['risk', 10]],
   city: [['money', 50], ['risk', 30], ['card', 20]],
-  country: [['happy', 60], ['grow', 20], ['card', 20]],
+  country: [['happy', 80], ['card', 20]], // 노년은 능력치가 안 바뀌게 성장 칸 없음 (2026-10-17 사용자)
 }
 
 export function buildStage(d: StageDef, rng: Rng): Stage {
