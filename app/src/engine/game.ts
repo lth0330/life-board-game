@@ -6,6 +6,7 @@ import {
 } from './data'
 import { DEFAULT_OUTFIT, randomOutfit, type Outfit } from './outfit'
 import { makeRng, type Rng } from './rng'
+import { SPECIALS, specialDesc, type SpecialEvent, type SpecialOption } from './special'
 import { speechLine, type SpeechKey } from './speech'
 import type {
   ChanceCard, ChoiceOption, DiceItem, DuelId, GameState, InsuranceKind, JobDef, MiniId, Personality, Player,
@@ -1113,8 +1114,8 @@ function uniTile(s: GameState, p: Player, ev: string) {
   void rng
 }
 
-const POP_ART: Record<string, string> = { money: 'money', risk: 'warn', card: 'card', happy: 'rest', date: 'heart', mini: 'medal' }
-const POP_TITLE: Record<string, string> = { money: '돈 칸', risk: '위기 칸', card: '랜덤이벤트', happy: '행복 칸', date: '연애 칸', mini: '미니게임' }
+const POP_ART: Record<string, string> = { special: 'card', money: 'money', risk: 'warn', card: 'card', happy: 'rest', date: 'heart', mini: 'medal' }
+const POP_TITLE: Record<string, string> = { special: '특별 이벤트', money: '돈 칸', risk: '위기 칸', card: '랜덤이벤트', happy: '행복 칸', date: '연애 칸', mini: '미니게임' }
 
 // 사건 팝업: start 이후 남은 기록(내 것 + 모두에게 일어난 것)을 그림과 함께. 고를 게 있으면 선택 창이 대신 뜸
 function showPop(s: GameState, p: Player, start: number, art: string, title: string) {
@@ -1126,9 +1127,11 @@ function showPop(s: GameState, p: Player, start: number, art: string, title: str
 }
 
 // 좋은 일 칸에서 나올 것: 청년 전에는 행복·능력치, 청년·중년은 돈·능력치·행복, 노년은 돈·행복
-function pickGood(s: GameState): 'money' | 'grow' | 'happy' {
+// 좋은 일 칸: 성장 몫의 절반은 특별 이벤트 (2026-10-17 사용자, 노년은 능력치가 안 바뀌어서 없음)
+type GoodKind = 'money' | 'grow' | 'happy' | 'special'
+function pickGood(s: GameState): GoodKind {
   const id = stageOf(s).id
-  const list: ('money' | 'grow' | 'happy')[] = id === 'child' || id === 'student' ? ['grow', 'happy'] : id === 'old' ? ['money', 'happy'] : ['money', 'grow', 'happy']
+  const list: GoodKind[] = id === 'child' || id === 'student' ? ['grow', 'special', 'happy', 'happy'] : id === 'old' ? ['money', 'happy'] : ['money', 'money', 'grow', 'special', 'happy', 'happy']
   return rngOf(s).pick(list)
 }
 
@@ -1193,6 +1196,7 @@ function land(s: GameState) {
       popTitle = sc2.title
       break
     }
+    case 'special': specialTile(s, p); break
     case 'risk': riskTile(s, p, road === 'startup' ? 2 : 1); break
     case 'card': drawCard(s, p); break
     case 'date': dateTile(s, p); break
@@ -1257,6 +1261,51 @@ function giveSabotage(s: GameState, p: Player, card: SabotageCard) {
 }
 
 const randomChance = (rng: Rng) => rng.pick(['reroll', 'block', 'charm', 'coupon', 'shortcut'] as ChanceCard[])
+
+// 특별 이벤트: 단계별 사건 중 하나를 골라 물어봄 (special.ts)
+function specialTile(s: GameState, p: Player) {
+  const list = SPECIALS[stageOf(s).id]
+  if (!list?.length) { p.happy += 2; log(s, p.id, '좋은 하루였다. 행복 +2', 'good'); return }
+  const ev = rngOf(s).pick(list)
+  const sc = scaleOf(s)
+  // 올리는 능력치가 모두 10이고 다른 좋은 점이 없으면 못 고름
+  const maxed = (o: SpecialOption) => !!o.stats && !o.happy && Object.values(o.stats).some((v) => v! > 0) && Object.entries(o.stats).every(([k, v]) => v! <= 0 || p.stats[k as StatKey] >= 10)
+  s.pending = {
+    type: 'special', playerId: p.id, title: `특별 이벤트: ${ev.title}`, text: ev.text,
+    options: ev.options.map((o) => ({ id: o.id, label: o.label, desc: specialDesc(o, sc, won), disabled: (o.cost ?? 0) * sc > p.money || maxed(o) })),
+    data: { ev: ev.id },
+  }
+}
+const statLine = (st?: Partial<Record<StatKey, number>>) => Object.entries(st ?? {}).map(([k, v]) => `${STAT_NAMES[k as StatKey]} ${v! > 0 ? '+' : ''}${v}`).join(', ')
+function applySpecial(s: GameState, p: Player, ev: SpecialEvent, o: SpecialOption) {
+  const rng = rngOf(s)
+  const sc = scaleOf(s)
+  const addStats = (st?: Partial<Record<StatKey, number>>) => { for (const [k, v] of Object.entries(st ?? {})) p.stats[k as StatKey] = clampStat(p.stats[k as StatKey] + v!) }
+  const parts: string[] = []
+  if (o.cost) { spend(p, o.cost * sc); parts.push(`-${won(o.cost * sc)}`) }
+  if (o.gain) { p.money += o.gain * sc; parts.push(`+${won(o.gain * sc)}`) }
+  addStats(o.stats)
+  if (o.stats) parts.push(statLine(o.stats))
+  if (o.happy) { p.happy += o.happy; parts.push(`행복 ${o.happy > 0 ? '+' : ''}${o.happy}`) }
+  let good = (o.happy ?? 0) >= 0
+  if (o.check) {
+    const roll = rng.int(1, 6)
+    const ok = p.stats[o.check.stat] + roll >= o.check.need
+    const r = ok ? o.check.win : o.check.lose
+    const before = p.stats[o.check.stat]
+    addStats(r.stats)
+    if (r.happy) p.happy += r.happy
+    parts.push(`${STAT_NAMES[o.check.stat]} ${before} + 주사위 ${roll} → ${ok ? '성공!' : '실패'}${r.stats ? ` ${statLine(r.stats)}` : ''}${r.happy ? ` 행복 ${r.happy > 0 ? '+' : ''}${r.happy}` : ''}`)
+    good = ok
+  }
+  if (o.risk && rng.chance(o.risk.chance)) {
+    addStats(o.risk.stats)
+    if (o.risk.happy) p.happy += o.risk.happy
+    parts.push(`(${[statLine(o.risk.stats), o.risk.happy ? `행복 ${o.risk.happy}` : ''].filter(Boolean).join(', ')})`)
+    if ((o.risk.happy ?? 0) < 0 || Object.values(o.risk.stats ?? {}).some((v) => v! < 0)) good = false
+  }
+  log(s, p.id, `[${ev.title}] ${o.label.replace(/^\S+ /, '')}${parts.length ? ` · ${parts.join(' · ')}` : ''}`, good ? 'good' : 'bad')
+}
 
 function drawCard(s: GameState, p: Player) {
   const rng = rngOf(s)
@@ -2189,6 +2238,12 @@ export function choose(s: GameState, optionId: string) {
         }
       }
       break
+    case 'special': {
+      const ev = (SPECIALS[stageOf(s).id] ?? []).find((e) => e.id === (pd.data as { ev: string }).ev)
+      const o = ev?.options.find((x) => x.id === optionId)
+      if (ev && o) applySpecial(s, p, ev, o)
+      break
+    }
     case 'happyPick': {
       const cost = (pd.data as { cost: number }).cost
       if (optionId === 'big') { spend(p, cost); p.happy += 7; log(s, p.id, `크게 놀았다! -${won(cost)}, 행복 +7`, 'good') }

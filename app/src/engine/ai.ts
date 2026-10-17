@@ -1,8 +1,9 @@
 import { BUSINESSES, DICE_ITEMS, JOBS, SECTORS } from './data'
+import { SPECIALS, specialValue } from './special'
 import {
   aiDiceItem, aiWantsCar, passChance, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, loanLimit, loanTotal, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, rngOf, salaryOf, scoreOf, stageOf, startSabotage, takeLoan, toggleInsurance,
-  tradeStock, playChance, moodLevel,
+  tradeStock, playChance, moodLevel, scaleOf,
 } from './game'
 import type { GameState, Pending, Player } from './types'
 
@@ -63,6 +64,12 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
         }
         default: return 1
       }
+    }
+    case 'special': {
+      const ev = (SPECIALS[stageOf(s).id] ?? []).find((e) => e.id === (pd.data as { ev: string }).ev)
+      const o = ev?.options.find((x) => x.id === id)
+      if (!o) return 0
+      return specialValue(o, scaleOf(s), (k) => p.stats[k]) + (moodLevel(p) <= 1 ? (o.happy ?? 0) * 0.5 : 0) + rng.next() * 0.5 // 기분이 나쁘면 행복을 더 챙김
     }
     case 'happyPick': {
       // 기분이 나쁘면 크게 놀고, 돈이 모자라면 일하고, 아니면 소소하게 (성격 따라 조금씩)
