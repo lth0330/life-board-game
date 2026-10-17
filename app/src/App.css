@@ -443,6 +443,14 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
   20%, 100% { transform: scale(1); }
 }
 @media (prefers-reduced-motion: reduce) { .emote-bubble { animation: none; } }
+/* 결정 창 '고르는 중…' 줄 + 표정 버튼. 리듬 미니게임의 .note(음표)와 이름이 겹쳐서 여기서 되돌림 */
+.note-row { display: flex; align-items: center; gap: 8px; }
+.note-row .note { position: static; transform: none; flex: 1; font-size: 13px; color: inherit; }
+.emote-btn-inline {
+  flex: none; width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--ink); background: #fff;
+  padding: 0; display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.emote-btn-inline:disabled { opacity: 0.45; }
 .side-buttons .emote-btn { padding: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .side-buttons .emote-btn:disabled { opacity: 0.45; }
 .emote-picker-backdrop { position: fixed; inset: 0; z-index: 12; }

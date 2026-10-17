@@ -423,7 +423,17 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
             <EventArt type={pending.type} />
             <h2 className="jua">{pending.title}</h2>
             <p>{pending.text}</p>
-            {!isMine(pending.playerId) && <p className="note">{game.players[pending.playerId].name}{game.players[pending.playerId].human ? '님' : '(AI)'}이 고르는 중…</p>}
+            {!isMine(pending.playerId) && (
+              <div className="note-row">
+                <p className="note">{game.players[pending.playerId].name}{game.players[pending.playerId].human ? '님' : '(AI)'}이 고르는 중…</p>
+                {/* 기다리는 동안에도 표정 보내기 (오른쪽 표정 버튼은 결정 창에 가려서) */}
+                {emoteId !== undefined && (
+                  <button className="emote-btn-inline" aria-label="표정" disabled={cooling} onClick={() => setPicker(true)}>
+                    <Character outfit={game.players[emoteId].outfit} age={ageOf(game, game.players[emoteId])} expr="happy" size={40} crop="head" />
+                  </button>
+                )}
+              </div>
+            )}
             {pending.type === 'shop' && !shopCat && (
               <div className="shop-cats">
                 {SHOP_CATS.filter((c) => pending.options.some((o) => c.match(o.id))).map((c) => (
