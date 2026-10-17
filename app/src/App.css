@@ -659,3 +659,37 @@ button.wide:not(:disabled):active, .decision .options button:not(:disabled):acti
 }
 .dice-btn:not(:disabled):active { transform: translateY(3px); box-shadow: 0 3px 0 var(--ink); }
 @media (prefers-reduced-motion: reduce) { button:active { transform: none !important; } }
+
+/* 춤 미니게임: 캐릭터 동작 */
+.dance-stage { display: flex; justify-content: center; min-height: 150px; align-items: flex-end; animation: dance-pop 0.25s ease-out; }
+@keyframes dance-pop { from { transform: translateY(8px) scale(0.92); } }
+@media (prefers-reduced-motion: reduce) { .dance-stage { animation: none; } }
+.dance-seq span { display: inline-flex; align-items: flex-end; justify-content: center; }
+.dance-btns button { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 4px 2px; }
+.dance-btns button small { font-size: 12px; }
+
+/* 걷기: 다리가 번갈아 들림 (2026-10-17) */
+.char.walking .leg-l, .char.walking .leg-r { animation: leg-step 0.46s ease-in-out infinite; }
+.char.walking .leg-r { animation-delay: -0.23s; }
+@keyframes leg-step { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .char.walking .leg-l, .char.walking .leg-r { animation: none; } }
+/* 주사위 연출 (2026-10-17): 던지면 날아와 판 위에서 통통 튀며 구르고, 멈추면 떨어져 두 번 튀고 자리 잡음 */
+.dice-flight { top: 58%; animation: dice-fly 0.6s cubic-bezier(.3,.7,.4,1) both, dice-hop 0.42s ease-in-out 0.6s infinite; }
+.dice-flight .dice-shadow { animation: dice-shadow-hop 0.42s ease-in-out 0.6s infinite; }
+.dice-flight.landed { animation: dice-land 0.45s cubic-bezier(.3,.6,.4,1) both; }
+.dice-flight.landed .dice-shadow { animation: none; }
+@keyframes dice-hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-34px); } }
+@keyframes dice-shadow-hop { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.6); opacity: 0.5; } }
+@keyframes dice-land {
+  0% { transform: translateY(-40px); }
+  45% { transform: translateY(0); }
+  65% { transform: translateY(-12px); }
+  85% { transform: translateY(0); }
+  93% { transform: translateY(-3px); }
+  100% { transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) { .dice-flight, .dice-flight .dice-shadow, .dice-flight.landed { animation: none; } }
+/* 이벤트 장면 (결혼·아기·집·합격 등) 더 크게 + 살짝 흔들리며 등장 (2026-10-17) */
+.banner .scene-art { width: min(300px, 70vw); height: auto; animation: scene-in 0.6s cubic-bezier(.3,1.4,.5,1) both; }
+@keyframes scene-in { 0% { transform: scale(0.6) rotate(-4deg); opacity: 0; } 60% { transform: scale(1.05) rotate(1deg); opacity: 1; } 100% { transform: scale(1) rotate(0); } }
+@media (prefers-reduced-motion: reduce) { .banner .scene-art { animation: none; } }

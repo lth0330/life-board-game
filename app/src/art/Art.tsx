@@ -1,19 +1,33 @@
 // 기본 그림 모음 (칸 아이콘, 건물, 로고, 주사위 면). 기본 버전 — 아트 단계에서 다시 그린다 (docs/12-art.md)
 import type { ReactElement } from 'react'
 
-// ───── 칸 아이콘 (viewBox 0 0 48 48, 흰색 위주) ─────
+// ───── 칸 아이콘 (viewBox 0 0 48 48). 2026-10-17 다시 그림: 잉크 테두리 + 밝은 색, 캐릭터·종이 보드게임 UI와 같은 느낌 ─────
+const K = '#2A2118'
+const L = { stroke: K, strokeWidth: 2.4, strokeLinejoin: 'round' as const, strokeLinecap: 'round' as const }
+const hi = (d: string) => <path d={d} stroke="#fff" strokeWidth="2.4" strokeLinecap="round" fill="none" opacity="0.7" />
 const ICONS: Record<string, ReactElement> = {
-  good: <g><rect x="11" y="21" width="26" height="18" rx="2" fill="#FFD45C" stroke="#fff" strokeWidth="2.5" /><rect x="9" y="15" width="30" height="8" rx="2" fill="#FFE58A" stroke="#fff" strokeWidth="2.5" /><path d="M24 15v24" stroke="#E2553B" strokeWidth="4" /><path d="M24 15c-3-6-10-6-9-1 1 3 6 2 9 1zM24 15c3-6 10-6 9-1-1 3-6 2-9 1z" fill="#E2553B" /></g>,
-  money: <g><circle cx="24" cy="24" r="15" fill="#F2C230" stroke="#fff" strokeWidth="3" /><text x="24" y="30" textAnchor="middle" fontSize="16" fontWeight="700" fill="#7A5232">₩</text></g>,
-  grow: <g fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round"><path d="M24 40V22" /><path d="M24 26c-10 0-13-8-13-12 8 0 13 4 13 12zM24 22c0-9 5-13 14-13 0 6-4 13-14 13z" fill="#7FE0A8" /></g>,
-  happy: <g><circle cx="24" cy="24" r="15" fill="#fff" /><circle cx="19" cy="21" r="2.4" fill="#2A2118" /><circle cx="29" cy="21" r="2.4" fill="#2A2118" /><path d="M17 28q7 7 14 0" stroke="#2A2118" strokeWidth="2.6" fill="none" strokeLinecap="round" /></g>,
-  risk: <g><path d="M24 8l18 32H6z" fill="#fff" /><path d="M24 20v10" stroke="#C2452D" strokeWidth="4" strokeLinecap="round" /><circle cx="24" cy="35" r="2.4" fill="#C2452D" /></g>,
-  card: <g><rect x="12" y="8" width="24" height="32" rx="4" fill="#fff" /><path d="M24 16l2.6 5.4 5.8.8-4.2 4 1 5.8-5.2-2.8-5.2 2.8 1-5.8-4.2-4 5.8-.8z" fill="#6F45BD" /></g>,
-  stop: <g><path d="M17 6h14l10 10v14L31 40H17L7 30V16z" fill="#fff" /><text x="24" y="28" textAnchor="middle" fontSize="11" fontWeight="700" fill="#2A2118">STOP</text></g>,
-  date: <path d="M24 40S8 30 8 18a8 8 0 0 1 16-2 8 8 0 0 1 16 2c0 12-16 22-16 22z" fill="#fff" />,
-  mini: <g><rect x="6" y="15" width="36" height="20" rx="10" fill="#fff" /><path d="M15 21v8M11 25h8" stroke="#E8742C" strokeWidth="3" strokeLinecap="round" /><circle cx="31" cy="23" r="2.4" fill="#E8742C" /><circle cx="35" cy="28" r="2.4" fill="#E8742C" /></g>,
-  rest: <g fill="#7A5232"><rect x="8" y="20" width="32" height="6" rx="2" /><rect x="8" y="29" width="32" height="5" rx="2" /><rect x="11" y="34" width="4" height="8" /><rect x="33" y="34" width="4" height="8" /></g>,
-  goal: <g><path d="M14 42V8" stroke="#2A2118" strokeWidth="3.5" strokeLinecap="round" /><path d="M14 9h22l-5 7 5 7H14z" fill="#C2452D" /></g>,
+  // 선물 상자
+  good: <g><rect x="10" y="21" width="28" height="19" rx="3" fill="#FFD45C" {...L} /><rect x="8" y="14" width="32" height="9" rx="3" fill="#FFE58A" {...L} /><path d="M24 14v26" stroke="#E2553B" strokeWidth="5" /><path d="M24 14v26" {...L} fill="none" strokeWidth="1.2" /><path d="M24 14c-3-7-11-7-10-2 1 3 7 3 10 2zM24 14c3-7 11-7 10-2-1 3-7 3-10 2z" fill="#E2553B" {...L} />{hi('M13 26v8')}</g>,
+  // 동전
+  money: <g><circle cx="24" cy="25" r="15" fill="#E2A92C" {...L} /><circle cx="24" cy="23" r="15" fill="#F7CD45" {...L} /><circle cx="24" cy="23" r="10.5" fill="none" stroke="#C99418" strokeWidth="1.6" /><text x="24" y="28.5" textAnchor="middle" fontSize="15" fontWeight="800" fill="#7A5232" fontFamily="sans-serif">₩</text>{hi('M14 17q3-5 8-6')}</g>,
+  // 새싹
+  grow: <g><path d="M24 41V23" stroke={K} strokeWidth="5" strokeLinecap="round" /><path d="M24 41V23" stroke="#5DBB72" strokeWidth="2.4" strokeLinecap="round" /><path d="M24 27c-11 0-14-9-14-13 9 0 14 4 14 13z" fill="#7FE0A8" {...L} /><path d="M24 23c0-10 6-14 15-14 0 7-5 14-15 14z" fill="#9BEBB9" {...L} /><ellipse cx="24" cy="41" rx="9" ry="2.6" fill="#8A6A55" {...L} /></g>,
+  // 웃는 얼굴
+  happy: <g><circle cx="24" cy="24" r="15" fill="#FFE07A" {...L} /><ellipse cx="18.5" cy="21" rx="2" ry="2.6" fill={K} /><ellipse cx="29.5" cy="21" rx="2" ry="2.6" fill={K} /><path d="M16.5 27q7.5 8 15 0z" fill="#D9604B" {...L} strokeWidth={2} /><circle cx="14.5" cy="27" r="2.6" fill="#F09A8A" opacity="0.8" /><circle cx="33.5" cy="27" r="2.6" fill="#F09A8A" opacity="0.8" /></g>,
+  // 경고 삼각형
+  risk: <g><path d="M24 7l18 32H6z" fill="#FFD45C" {...L} strokeWidth={2.8} /><path d="M24 18v11" stroke={K} strokeWidth="4.2" strokeLinecap="round" /><circle cx="24" cy="34" r="2.6" fill={K} /></g>,
+  // 별 카드 (뒤에 한 장 더)
+  card: <g><rect x="15" y="9" width="22" height="30" rx="4" fill="#C9B6F0" {...L} transform="rotate(10 26 24)" /><rect x="11" y="9" width="22" height="30" rx="4" fill="#fff" {...L} /><path d="M22 15l2.4 5 5.4.7-4 3.7 1 5.4-4.8-2.6-4.8 2.6 1-5.4-4-3.7 5.4-.7z" fill="#8B5CF6" {...L} strokeWidth={1.6} /></g>,
+  // 멈춤 표지판
+  stop: <g><path d="M17 5h14l10 10v14L31 39H17L7 29V15z" fill="#E2553B" {...L} /><path d="M18 8h12l8 8v12l-8 8H18l-8-8V16z" fill="none" stroke="#fff" strokeWidth="1.6" /><text x="24" y="26.5" textAnchor="middle" fontSize="9.5" fontWeight="800" fill="#fff" fontFamily="sans-serif">STOP</text><path d="M24 39v6" {...L} fill="none" /></g>,
+  // 하트
+  date: <g><path d="M24 40S7 30 7 18a8.5 8.5 0 0 1 17-2 8.5 8.5 0 0 1 17 2c0 12-17 22-17 22z" fill="#FF7AA2" {...L} strokeWidth={2.6} />{hi('M13 15q2-3 6-3')}</g>,
+  // 게임기
+  mini: <g><rect x="5" y="14" width="38" height="22" rx="11" fill="#fff" {...L} /><path d="M15 20v10M10 25h10" stroke="#E8742C" strokeWidth="3.4" strokeLinecap="round" /><circle cx="31" cy="22.5" r="2.8" fill="#E8742C" {...L} strokeWidth={1.4} /><circle cx="36" cy="27.5" r="2.8" fill="#4CB0E0" {...L} strokeWidth={1.4} /></g>,
+  // 벤치
+  rest: <g><rect x="7" y="16" width="34" height="7" rx="2.5" fill="#B47A48" {...L} /><rect x="7" y="26" width="34" height="6" rx="2.5" fill="#C98F5B" {...L} /><path d="M12 32v9M36 32v9" {...L} fill="none" strokeWidth={3.4} /></g>,
+  // 골 깃발
+  goal: <g><path d="M14 43V7" {...L} strokeWidth={3.6} fill="none" /><path d="M15 8h21l-5 7 5 7H15z" fill="#E2553B" {...L} /><path d="M20 8v14M25 8v14M30 8v14" stroke="#fff" strokeWidth="1.4" opacity="0.6" /></g>,
 }
 
 export function TileIcon({ kind, size = 44 }: { kind: string; size?: number }) {

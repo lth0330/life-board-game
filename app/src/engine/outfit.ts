@@ -1,4 +1,4 @@
-// 캐릭터 꾸미기 목록. 2026-10-17 새 그림체와 함께 머리 3·옷 6·액세서리 3 추가 (docs/12-art.md)
+// 캐릭터 꾸미기 목록. 2026-10-17 새 그림체와 함께 머리 3·옷 6·액세서리 3 추가, 이어서 모자 3·경찰복·가운·우비·마스크 (docs/12-art.md)
 import type { Rng } from './rng'
 
 export type Slot = 'hair' | 'hat' | 'top' | 'outer' | 'bottom' | 'shoes' | 'acc'
@@ -35,15 +35,16 @@ export const ITEMS: Record<Slot, { id: string; name: string }[]> = {
   hat: [
     { id: 'none', name: '없음' }, { id: 'cap', name: '야구 모자' }, { id: 'beanie', name: '비니' },
     { id: 'bucket', name: '벙거지' }, { id: 'ribbon', name: '리본' }, { id: 'crown', name: '왕관' },
+    { id: 'chef', name: '요리사 모자' }, { id: 'santa', name: '산타 모자' }, { id: 'police', name: '경찰 모자' },
   ],
   top: [
     { id: 'tee', name: '티셔츠' }, { id: 'stripe', name: '줄무늬 티' }, { id: 'hoodie', name: '후드티' },
     { id: 'shirt', name: '셔츠' }, { id: 'dress', name: '원피스' },
-    { id: 'tie', name: '셔츠+넥타이' }, { id: 'sport', name: '운동복' }, { id: 'hanbok', name: '한복' },
+    { id: 'tie', name: '셔츠+넥타이' }, { id: 'sport', name: '운동복' }, { id: 'hanbok', name: '한복' }, { id: 'police', name: '경찰복' },
   ],
   outer: [
     { id: 'none', name: '없음' }, { id: 'jacket', name: '자켓' }, { id: 'coat', name: '코트' },
-    { id: 'cardigan', name: '가디건' }, { id: 'vest', name: '조끼' }, { id: 'padding', name: '패딩' },
+    { id: 'cardigan', name: '가디건' }, { id: 'vest', name: '조끼' }, { id: 'padding', name: '패딩' }, { id: 'gown', name: '가운' }, { id: 'raincoat', name: '우비' },
   ],
   bottom: [
     { id: 'pants', name: '바지' }, { id: 'jeans', name: '청바지' }, { id: 'shorts', name: '반바지' }, { id: 'skirt', name: '치마' },
@@ -55,7 +56,7 @@ export const ITEMS: Record<Slot, { id: string; name: string }[]> = {
   acc: [
     { id: 'none', name: '없음' }, { id: 'glasses', name: '안경' }, { id: 'sunglasses', name: '선글라스' },
     { id: 'bag', name: '가방' }, { id: 'scarf', name: '목도리' }, { id: 'necklace', name: '목걸이' }, { id: 'headphones', name: '헤드폰' },
-    { id: 'earrings', name: '귀걸이' }, { id: 'hairpin', name: '머리핀' }, { id: 'watch', name: '손목시계' },
+    { id: 'earrings', name: '귀걸이' }, { id: 'hairpin', name: '머리핀' }, { id: 'watch', name: '손목시계' }, { id: 'mask', name: '마스크' },
   ],
 }
 

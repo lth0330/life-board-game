@@ -3,7 +3,9 @@ import { useId, type ReactNode } from 'react'
 import type { Outfit } from '../engine/outfit'
 
 export type Expr = 'normal' | 'happy' | 'sad' | 'surprised' | 'angry' | 'love' | 'tease' | 'clap'
-interface Props { outfit: Outfit; view?: 'front' | 'back'; size?: number; title?: string; age?: number; expr?: Expr; crop?: 'head' }
+// pose: 춤 동작 (left·right = 화면 기준 그쪽 팔 위로, up = 두 팔 위로, out = 두 팔 옆으로)
+export type Pose = 'idle' | 'left' | 'right' | 'up' | 'out'
+interface Props { outfit: Outfit; view?: 'front' | 'back'; size?: number; title?: string; age?: number; expr?: Expr; crop?: 'head'; pose?: Pose }
 
 const INK = '#2A2118'
 const SW = 2.2 // 테두리 굵기
@@ -31,47 +33,62 @@ function aged(o: Outfit, age?: number): { o: Outfit; scale: number; cane: boolea
 }
 
 // 팔·다리: 굵은 선 두 겹(테두리 + 색)
-function Limb({ d, w, fill }: { d: string; w: number; fill: string }) {
-  return <g fill="none" strokeLinecap="round" strokeLinejoin="round"><path d={d} stroke={INK} strokeWidth={w + SW * 2} /><path d={d} stroke={fill} strokeWidth={w} /></g>
+function Limb({ d, w, fill, cls }: { d: string; w: number; fill: string; cls?: string }) {
+  return <g className={cls} fill="none" strokeLinecap="round" strokeLinejoin="round"><path d={d} stroke={INK} strokeWidth={w + SW * 2} /><path d={d} stroke={fill} strokeWidth={w} /></g>
 }
 
-const ARM_L = 'M33 78 Q26 96 25 112'
-const ARM_R = 'M67 78 Q74 96 75 112'
-const SLEEVE_L = 'M33 78 Q29.5 86 28.5 91'
-const SLEEVE_R = 'M67 78 Q70.5 86 71.5 91'
+// 팔: d = 팔 전체, sleeve = 반팔 소매, hand = 손 위치
+interface Arm { d: string; sleeve: string; hand: [number, number] }
+const ARM_DOWN: [Arm, Arm] = [
+  { d: 'M33 78 Q26 96 25 112', sleeve: 'M33 78 Q29.5 86 28.5 91', hand: [25, 114] },
+  { d: 'M67 78 Q74 96 75 112', sleeve: 'M67 78 Q70.5 86 71.5 91', hand: [75, 114] },
+]
+const ARM_UP: [Arm, Arm] = [
+  { d: 'M33 78 Q17 62 14 26', sleeve: 'M33 78 Q27 72 24 66', hand: [14, 23] },
+  { d: 'M67 78 Q83 62 86 26', sleeve: 'M67 78 Q73 72 76 66', hand: [86, 23] },
+]
+const ARM_OUT: [Arm, Arm] = [
+  { d: 'M33 78 Q22 79 12 79', sleeve: 'M33 78 Q29 78.5 25 79', hand: [10, 79] },
+  { d: 'M67 78 Q78 79 88 79', sleeve: 'M67 78 Q71 78.5 75 79', hand: [90, 79] },
+]
+const armsOf = (pose: Pose): [Arm, Arm] =>
+  pose === 'left' ? [ARM_UP[0], ARM_DOWN[1]] : pose === 'right' ? [ARM_DOWN[0], ARM_UP[1]] : pose === 'up' ? ARM_UP : pose === 'out' ? ARM_OUT : ARM_DOWN
 const TORSO = 'M33 72 Q50 66 67 72 Q71 94 70 118 Q50 122 30 118 Q29 94 33 72Z'
 const TORSO_SHADE = 'M62 72.5 Q69 92 68.5 117 Q64 119 59 119.5 Q64 96 62 72.5Z'
+// 길이가 긴 겉옷 (코트 모양)
+const LONG_OUTER = ['coat', 'gown', 'raincoat']
 const DRESS = 'M33 72 Q50 66 67 72 Q70 92 71 104 L79 148 Q50 156 21 148 L29 104 Q30 92 33 72Z'
 
-export function Character({ outfit, view = 'front', size = 100, title, age, expr = 'normal', crop }: Props) {
+export function Character({ outfit, view = 'front', size = 100, title, age, expr = 'normal', crop, pose = 'idle' }: Props) {
+  const [aL, aR] = armsOf(pose)
   const uid = useId().replace(/:/g, '')
   const a = aged(outfit, age)
   const { o, cane, extra } = a
   const scale = crop ? 1 : a.scale // 얼굴만 그릴 땐 아기도 크게
   const back = view === 'back'
   const dress = o.top === 'dress'
-  const longSleeve = ['hoodie', 'shirt', 'tie', 'sport', 'hanbok'].includes(o.top)
+  const longSleeve = ['hoodie', 'shirt', 'tie', 'sport', 'hanbok', 'police'].includes(o.top)
   const bareLegs = o.bottom === 'shorts' || o.bottom === 'skirt' || dress
   const pantsLike = !dress && (o.bottom === 'pants' || o.bottom === 'jeans' || o.bottom === 'track')
   const outerOn = o.outer !== 'none'
-  const outerLong = o.outer === 'coat'
+  const outerLong = LONG_OUTER.includes(o.outer)
   const vb = crop === 'head' ? '14 2 72 72' : '0 0 100 200'
   const h = crop === 'head' ? size : size * 2
   const torsoClip = `t${uid}`
   return (
     <svg viewBox={vb} width={size} height={h} role={title ? 'img' : undefined} aria-label={title} aria-hidden={title ? undefined : true}>
-      <defs><clipPath id={torsoClip}><path d={dress ? DRESS : TORSO} /></clipPath></defs>
+      <defs><clipPath id={torsoClip}><path d={dress ? DRESS : TORSO} /></clipPath><clipPath id={`${torsoClip}L`}><rect x="0" y="0" width="50" height="200" /></clipPath><clipPath id={`${torsoClip}R`}><rect x="50" y="0" width="50" height="200" /></clipPath></defs>
       {!crop && <ellipse cx="50" cy="191" rx={24 * scale} ry="4" fill="rgba(42,33,24,0.16)" />}
       <g transform={`translate(${50 - 50 * scale} ${200 - 200 * scale}) scale(${scale})`} strokeLinejoin="round">
         {/* 뒤로 넘어간 머리 (앞모습일 때 몸 뒤) */}
         {!back && <HairBehind o={o} />}
 
         {/* 다리 */}
-        {bareLegs && <><Limb d="M42 116 L41.5 178" w={9} fill={o.skin} /><Limb d="M58 116 L58.5 178" w={9} fill={o.skin} /></>}
+        {bareLegs && <><Limb cls="leg-l" d="M42 116 L41.5 178" w={9} fill={o.skin} /><Limb cls="leg-r" d="M58 116 L58.5 178" w={9} fill={o.skin} /></>}
         {pantsLike && (
           <>
-            <Limb d="M42 114 L41 179" w={13} fill={o.bottomColor} />
-            <Limb d="M58 114 L59 179" w={13} fill={o.bottomColor} />
+            <Limb cls="leg-l" d="M42 114 L41 179" w={13} fill={o.bottomColor} />
+            <Limb cls="leg-r" d="M58 114 L59 179" w={13} fill={o.bottomColor} />
             <path d="M30 110 h40 v10 q-20 5 -40 0z" fill={o.bottomColor} stroke={INK} strokeWidth={SW} />
             {o.bottom === 'jeans' && <path d="M41.5 122v52M58.5 122v52" stroke={shade(o.bottomColor, 0.45)} strokeWidth="1.3" strokeDasharray="2.5 2.5" />}
             {o.bottom === 'jeans' && <path d="M35 175h13M52 175h13" stroke={shade(o.bottomColor, 0.3)} strokeWidth="3" />}
@@ -80,8 +97,8 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
         )}
         {!dress && o.bottom === 'shorts' && (
           <>
-            <Limb d="M42 114 L41.5 134" w={14} fill={o.bottomColor} />
-            <Limb d="M58 114 L58.5 134" w={14} fill={o.bottomColor} />
+            <Limb cls="leg-l" d="M42 114 L41.5 134" w={14} fill={o.bottomColor} />
+            <Limb cls="leg-r" d="M58 114 L58.5 134" w={14} fill={o.bottomColor} />
             <path d="M30 110 h40 v10 q-20 5 -40 0z" fill={o.bottomColor} stroke={INK} strokeWidth={SW} />
           </>
         )}
@@ -91,20 +108,21 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
         {!dress && o.bottom === 'longskirt' && <path d="M45 112 l-4 62 M55 112 l4 62" stroke={shade(o.bottomColor, -0.18)} strokeWidth="1.5" fill="none" />}
 
         {/* 신발 */}
-        <Shoes o={o} />
+        <g className="leg-l" clipPath={`url(#${torsoClip}L)`}><Shoes o={o} /></g>
+        <g className="leg-r" clipPath={`url(#${torsoClip}R)`}><Shoes o={o} /></g>
 
         {/* 코트 자락 (몸 뒤) */}
         {outerOn && outerLong && !back && <path d="M29 100 L25 150 Q50 156 75 150 L71 100Z" fill={o.outerColor} stroke={INK} strokeWidth={SW} />}
 
         {/* 팔 */}
-        <Limb d={ARM_L} w={9} fill={longSleeve ? o.topColor : o.skin} />
-        <Limb d={ARM_R} w={9} fill={longSleeve ? o.topColor : o.skin} />
-        {!longSleeve && !dress && <><Limb d={SLEEVE_L} w={12} fill={o.topColor} /><Limb d={SLEEVE_R} w={12} fill={o.topColor} /></>}
-        {dress && <><Limb d={SLEEVE_L} w={11} fill={o.topColor} /><Limb d={SLEEVE_R} w={11} fill={o.topColor} /></>}
-        {longSleeve && <path d="M22 109 l7 1.5 M78 109 l-7 1.5" stroke={shade(o.topColor, -0.25)} strokeWidth="2.5" strokeLinecap="round" />}
-        {o.top === 'sport' && <path d="M29 82 Q25 96 24 106 M71 82 Q75 96 76 106" stroke="#fff" strokeWidth="1.8" fill="none" />}
-        <g fill={o.skin} stroke={INK} strokeWidth={SW}><circle cx="25" cy="114" r="5.5" /><circle cx="75" cy="114" r="5.5" /></g>
-        {o.acc === 'watch' && <rect x="20" y="106.5" width="10" height="4" rx="1.5" fill={o.accColor} stroke={INK} strokeWidth="1.5" />}
+        <Limb d={aL.d} w={9} fill={longSleeve ? o.topColor : o.skin} />
+        <Limb d={aR.d} w={9} fill={longSleeve ? o.topColor : o.skin} />
+        {!longSleeve && !dress && <><Limb d={aL.sleeve} w={12} fill={o.topColor} /><Limb d={aR.sleeve} w={12} fill={o.topColor} /></>}
+        {dress && <><Limb d={aL.sleeve} w={11} fill={o.topColor} /><Limb d={aR.sleeve} w={11} fill={o.topColor} /></>}
+        {longSleeve && pose === 'idle' && <path d="M22 109 l7 1.5 M78 109 l-7 1.5" stroke={shade(o.topColor, -0.25)} strokeWidth="2.5" strokeLinecap="round" />}
+        {o.top === 'sport' && pose === 'idle' && <path d="M29 82 Q25 96 24 106 M71 82 Q75 96 76 106" stroke="#fff" strokeWidth="1.8" fill="none" />}
+        <g fill={o.skin} stroke={INK} strokeWidth={SW}><circle cx={aL.hand[0]} cy={aL.hand[1]} r="5.5" /><circle cx={aR.hand[0]} cy={aR.hand[1]} r="5.5" /></g>
+        {o.acc === 'watch' && pose === 'idle' && <rect x="20" y="106.5" width="10" height="4" rx="1.5" fill={o.accColor} stroke={INK} strokeWidth="1.5" />}
 
         {/* 상의 */}
         <path d={dress ? DRESS : TORSO} fill={o.topColor} stroke={INK} strokeWidth={SW} />
@@ -117,7 +135,7 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
         {back && o.top === 'hoodie' && <path d="M36 70 Q50 92 64 70 Q50 76 36 70Z" fill={shade(o.topColor, -0.12)} stroke={INK} strokeWidth={SW} />}
 
         {/* 겉옷 */}
-        {outerOn && <Outer o={o} back={back} />}
+        {outerOn && <Outer o={o} back={back} arms={[aL, aR]} />}
 
         {/* 목 */}
         <path d="M45 62 v10 q5 3 10 0 v-10z" fill={o.skin} stroke={INK} strokeWidth={SW} />
@@ -140,6 +158,7 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
         {/* 액세서리 */}
         {!back && o.acc === 'glasses' && <g stroke={INK} strokeWidth="2" fill="rgba(255,255,255,0.25)"><circle cx="40" cy="47" r="7" /><circle cx="60" cy="47" r="7" /><path d="M47 46 q3 -2 6 0" fill="none" /></g>}
         {!back && o.acc === 'sunglasses' && <g fill={INK}><path d="M30 42 h17 v5 q0 6 -8 6 q-9 0 -9 -6z" /><path d="M53 42 h17 v5 q0 6 -9 6 q-8 0 -8 -6z" /><rect x="46" y="42" width="8" height="2" /><path d="M33 44.5 h5" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" /></g>}
+        {!back && o.acc === 'mask' && <g><path d="M24 50 Q30 52 37 53 M76 50 Q70 52 63 53" stroke="#ddd" strokeWidth="1.4" fill="none" /><rect x="37" y="50" width="26" height="13" rx="5" fill={o.accColor} stroke={INK} strokeWidth="1.6" /><path d="M40 55 h20 M40 58.5 h20" stroke={shade(o.accColor, -0.2)} strokeWidth="1" /></g>}
         {!back && o.acc === 'necklace' && <g><path d="M42 72 Q50 82 58 72" stroke="#E2B85C" strokeWidth="2" fill="none" /><circle cx="50" cy="79" r="2.6" fill="#E2B85C" stroke={INK} strokeWidth="1.2" /></g>}
         {o.acc === 'bag' && (back
           ? <g><rect x="31" y="74" width="38" height="40" rx="10" fill={o.accColor} stroke={INK} strokeWidth={SW} /><rect x="37" y="92" width="26" height="14" rx="4" fill={shade(o.accColor, -0.12)} stroke={INK} strokeWidth="1.5" /></g>
@@ -333,32 +352,36 @@ function TopFront({ o }: { o: Outfit }) {
     case 'tie': return <g><path d="M42 69 l8 7 l-6 4z M58 69 l-8 7 l6 4z" fill="#fff" stroke={INK} strokeWidth="1.5" /><path d="M48 76 h4 l2 4 l-2 24 l-2 3 l-2 -3 l-2 -24z" fill="#C2452D" stroke={INK} strokeWidth="1.5" /></g>
     case 'sport': return <g><path d="M50 70 v48" stroke={INK} strokeWidth="1.5" /><path d="M47 70 h6 v4 h-6z" fill="#fff" stroke={INK} strokeWidth="1.2" /><path d="M34 80 v34 M66 80 v34" stroke="#fff" strokeWidth="2" /></g>
     case 'hanbok': return <g><path d="M38 70 L58 98 M62 70 L44 94" stroke="#fff" strokeWidth="4" fill="none" /><path d="M38 70 L58 98 M62 70 L44 94" stroke={INK} strokeWidth="1" fill="none" opacity="0.4" /><path d="M54 94 q8 4 4 22 M54 94 q2 8 -4 20" stroke={o.accColor === o.topColor ? '#C2452D' : o.accColor} strokeWidth="3" fill="none" strokeLinecap="round" /></g>
+    case 'police': return <g><path d="M42 69 l8 7 l-6 4z M58 69 l-8 7 l6 4z" fill={shade(o.topColor, -0.15)} stroke={INK} strokeWidth="1.5" /><path d="M50 76 v40" stroke={shade(o.topColor, -0.3)} strokeWidth="1.4" /><path d="M36 86 h9 v6 h-9z M55 86 h9 v6 h-9z" fill={shade(o.topColor, -0.12)} stroke={INK} strokeWidth="1.2" /><path d="M59.5 80 l1.4 2.8 3 .4-2.2 2.1.5 3-2.7-1.4-2.7 1.4.5-3-2.2-2.1 3-.4z" fill="#E8C060" stroke={INK} strokeWidth="0.8" /></g>
     case 'dress': return <g><path d="M43 70 q7 6 14 0" fill="none" stroke={d} strokeWidth="2" /><path d="M30 102 Q50 106 70 102" stroke={shade(o.topColor, 0.5)} strokeWidth="4" fill="none" /><circle cx="50" cy="104" r="3" fill={shade(o.topColor, 0.5)} stroke={INK} strokeWidth="1.2" /></g>
     default: return null
   }
 }
 
-function Outer({ o, back }: { o: Outfit; back: boolean }) {
+function Outer({ o, back, arms }: { o: Outfit; back: boolean; arms: [Arm, Arm] }) {
   const c = o.outerColor
   const p = { fill: c, stroke: INK, strokeWidth: SW }
   const sleeves = o.outer !== 'vest'
-  const len = o.outer === 'coat' ? 150 : o.outer === 'padding' ? 120 : 118
+  const len = LONG_OUTER.includes(o.outer) ? 150 : o.outer === 'padding' ? 120 : 118
   return (
     <g>
-      {sleeves && <><Limb d={ARM_L} w={o.outer === 'padding' ? 13 : 11} fill={c} /><Limb d={ARM_R} w={o.outer === 'padding' ? 13 : 11} fill={c} /></>}
+      {sleeves && <><Limb d={arms[0].d} w={o.outer === 'padding' ? 13 : 11} fill={c} /><Limb d={arms[1].d} w={o.outer === 'padding' ? 13 : 11} fill={c} /></>}
       {back ? (
-        <path d={`M32 71 Q50 64 68 71 Q72 96 ${o.outer === 'coat' ? '75 150 Q50 156 25 150' : '71 ' + len + ' Q50 ' + (len + 5) + ' 29 ' + len} Q28 96 32 71Z`} {...p} />
+        <path d={`M32 71 Q50 64 68 71 Q72 96 ${LONG_OUTER.includes(o.outer) ? '75 150 Q50 156 25 150' : '71 ' + len + ' Q50 ' + (len + 5) + ' 29 ' + len} Q28 96 32 71Z`} {...p} />
       ) : (
         <>
           <path d={`M32 71 Q38 68 44 69 L46 ${len} Q38 ${len + 2} 29 ${len - 1} Q28 96 32 71Z`} {...p} />
           <path d={`M68 71 Q62 68 56 69 L54 ${len} Q62 ${len + 2} 71 ${len - 1} Q72 96 68 71Z`} {...p} />
-          {(o.outer === 'jacket' || o.outer === 'coat') && <path d="M44 69 L40 84 L46 88 M56 69 L60 84 L54 88" fill="none" stroke={INK} strokeWidth="1.6" />}
+          {(o.outer === 'jacket' || o.outer === 'coat' || o.outer === 'gown') && <path d="M44 69 L40 84 L46 88 M56 69 L60 84 L54 88" fill="none" stroke={INK} strokeWidth="1.6" />}
           {o.outer === 'cardigan' && <g fill="#F4EBD6" stroke={INK} strokeWidth="1"><circle cx="43" cy="84" r="1.8" /><circle cx="43" cy="96" r="1.8" /><circle cx="43" cy="108" r="1.8" /></g>}
+          {o.outer === 'gown' && <g fill="none" stroke={shade(c, -0.25)} strokeWidth="1.5"><path d="M33 104 h8 v7 h-8z" /><path d="M36 102 v-6" stroke="#1B4DDB" strokeWidth="2" /></g>}
+          {o.outer === 'raincoat' && <g fill={shade(c, -0.25)}><circle cx="42" cy="92" r="2" /><circle cx="42" cy="108" r="2" /><circle cx="42" cy="124" r="2" /></g>}
           {o.outer === 'coat' && <g fill={shade(c, -0.3)}><circle cx="42" cy="100" r="1.8" /><circle cx="42" cy="116" r="1.8" /><circle cx="58" cy="100" r="1.8" /><circle cx="58" cy="116" r="1.8" /></g>}
         </>
       )}
       {o.outer === 'padding' && <g stroke={shade(c, -0.25)} strokeWidth="1.6" fill="none"><path d="M30 84 h14 M56 84 h14 M30 97 h14 M56 97 h14 M30 110 h14 M56 110 h14" />{back && <path d="M30 84 h40 M30 97 h40 M30 110 h40" />}</g>}
       {o.outer === 'padding' && !back && <path d="M36 66 Q50 74 64 66 v6 Q50 80 36 72z" {...p} />}
+      {o.outer === 'raincoat' && (back ? <path d="M34 66 Q50 92 66 66 Q50 74 34 66Z" {...p} /> : <path d="M36 67 Q50 80 64 67 Q50 72 36 67Z" {...p} />)}
       {!back && o.outer !== 'vest' && <path d="M58 76 q6 6 10 22" stroke="rgba(42,33,24,0.15)" strokeWidth="4" fill="none" />}
     </g>
   )
@@ -402,6 +425,9 @@ function Hat({ o, back }: { o: Outfit; back: boolean }) {
     case 'beanie': return <g><path d="M24 34 Q24 9 50 9 Q76 9 76 34z" {...p} /><path d="M23 29 h54 v8 q-27 3 -54 0z" fill={shade(c, -0.15)} stroke={INK} strokeWidth={SW} /><path d="M32 29 v8 M40 29 v8.5 M48 29 v9 M56 29 v9 M64 29 v8.5 M72 29 v8" stroke={shade(c, -0.3)} strokeWidth="1.2" /><circle cx="50" cy="8" r="5.5" {...p} /></g>
     case 'bucket': return <g><path d="M30 30 Q32 12 50 12 Q68 12 70 30z" {...p} /><ellipse cx="50" cy="31" rx="33" ry="6" {...p} /><path d="M31 27 h38" stroke={shade(c, -0.25)} strokeWidth="2.5" /></g>
     case 'ribbon': return <g {...p}><path d="M62 22 l14 -9 v18z" /><path d="M62 22 l-12 -8 v17z" /><circle cx="62" cy="22" r="4" /></g>
+    case 'chef': return <g><path d="M31 30 v-5 q-9-2-7-10 q2-7 10-5 q2-8 16-8 q14 0 16 8 q8-2 10 5 q2 8-7 10 v5z" {...p} fill="#fff" /><rect x="30" y="26" width="40" height="9" rx="3" {...p} fill="#f2f2f2" /></g>
+    case 'santa': return <g><path d="M25 32 Q28 8 54 8 Q72 10 82 30 L74 28 Q64 18 52 20 Q36 22 32 32z" {...p} fill="#D6342B" /><rect x="22" y="27" width="56" height="9" rx="4.5" {...p} fill="#fff" /><circle cx="81" cy="30" r="5.5" {...p} fill="#fff" /></g>
+    case 'police': return <g>{!back && <path d="M26 33 Q50 42 74 33 L74 37 Q50 46 26 37z" fill="#1d2433" stroke={INK} strokeWidth={SW} />}<path d="M24 32 Q22 12 50 11 Q78 12 76 32z" {...p} /><rect x="23" y="27" width="54" height="7" rx="3" fill="#1d2433" stroke={INK} strokeWidth="1.6" />{!back && <circle cx="50" cy="20" r="4" fill="#E8C060" stroke={INK} strokeWidth="1.2" />}</g>
     case 'crown': return <g><path d="M30 28 l5 -18 l9 10 l6 -14 l6 14 l9 -10 l5 18z" fill="#E8C060" stroke={INK} strokeWidth={SW} /><g fill="#C2452D" stroke={INK} strokeWidth="1"><circle cx="50" cy="22" r="2.4" /><circle cx="38" cy="23" r="1.8" /><circle cx="62" cy="23" r="1.8" /></g></g>
     default: return null
   }

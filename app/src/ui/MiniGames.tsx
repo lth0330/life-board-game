@@ -3,6 +3,8 @@ import { MINI_NAMES } from '../engine/game'
 import { sfx } from '../sound'
 import { EventArt, Landmark } from '../art/More'
 import type { MiniState } from '../engine/types'
+import { Character, type Pose } from '../art/Character'
+import { DEFAULT_OUTFIT, type Outfit } from '../engine/outfit'
 
 // 미니게임 화면. 결과: 0 실패, 1 성공, 2 대성공 (대결 timing은 0~100점)
 // level 0 쉬움 ~ 2 어려움 (능력치가 높을수록 쉬움)
@@ -12,6 +14,7 @@ interface Props {
   onFinish: (value: number) => void
   guide: { stat: string; reward: string } // 설명서: 무엇이 쉽게 해 주나, 보상
   practiceLimit: number // 연습 횟수 (혼자 무제한, 온라인 3번)
+  outfit?: Outfit // 이 미니게임을 하는 사람 옷차림 (춤 동작 그림)
 }
 
 // 설명서: 게임 방법
@@ -52,7 +55,7 @@ const MINI_THEME: Record<string, string> = {
 }
 const THEME_LANDMARK: Record<string, string> = { sport: '운동회', brain: '두뇌 올림피아드', fest: '축제 거리', casino: '카지노', travel: '세계일주' }
 
-export function MiniGame({ mini, onFinish, guide, practiceLimit }: Props) {
+export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAULT_OUTFIT }: Props) {
   // 시작 화면(설명서·연습·시작) → 연습이면 결과를 보여 주고 다시 시작 화면, 시작이면 진짜 결과
   const [mode, setMode] = useState<'intro' | 'help' | 'practice' | 'real'>('intro')
   const [practiced, setPracticed] = useState(0)
@@ -88,7 +91,7 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit }: Props) {
       case 'throw': return <Throw level={mini.level} onDone={done} />
       case 'confess': return <Confess level={mini.level} onDone={done} />
       case 'rhythm': return <Rhythm level={mini.level} onDone={done} />
-      case 'dance': return <Dance level={mini.level} onDone={done} />
+      case 'dance': return <Dance level={mini.level} outfit={outfit} onDone={done} />
       case 'race': return <Mash level={mini.level} onDone={done} />
       case 'memory': return <Memory level={mini.level} symbols={['●', '■', '▲', '★', '♥', '◆']} onDone={done} />
       case 'photo': return <Memory level={mini.level} symbols={['파리', '도쿄', '뉴욕', '로마', '카이로', '시드니']} onDone={done} />
@@ -378,7 +381,10 @@ function Rhythm({ level, onDone }: { level: number; onDone: (v: number) => void 
 
 // 댄스 따라 하기: 화살표 순서를 보고 그대로 누르기 (매력이 높을수록 짧음)
 const ARROWS = ['↑', '↓', '←', '→']
-function Dance({ level, onDone }: { level: number; onDone: (v: number) => void }) {
+// 춤: 화살표 대신 내 캐릭터가 춤 동작을 보여 줌 (2026-10-17 사용자). ← 왼팔 · ↑ 두 팔 · → 오른팔 · ↓ 팔 벌리기
+const POSE_OF: Record<string, Pose> = { '←': 'left', '↑': 'up', '→': 'right', '↓': 'out' }
+const POSE_NAME: Record<string, string> = { '←': '왼팔', '↑': '만세', '→': '오른팔', '↓': '팔 벌리기' }
+function Dance({ level, outfit, onDone }: { level: number; outfit: Outfit; onDone: (v: number) => void }) {
   const len = [4, 5, 6][level]
   const seq = useMemo(() => Array.from({ length: len }, () => ARROWS[rand(4)]), [len])
   const [shown, setShown] = useState(0) // 지금까지 보여 준 개수 (len이면 내 차례)
@@ -401,9 +407,13 @@ function Dance({ level, onDone }: { level: number; onDone: (v: number) => void }
   return (
     <div className="mini-body">
       <p>{showing ? '춤 동작을 잘 보세요' : '본 순서대로 따라 하세요!'}</p>
-      <div className="mini-big jua dance-show" key={shown}>{showing ? seq[shown] : picked.length < len ? '?' : '끝!'}</div>
-      <div className="mini-seq">{Array.from({ length: len }, (_, i) => <span key={i}>{picked[i] ?? ''}</span>)}</div>
-      <div className="mini-grid dance-btns">{ARROWS.map((a) => <button key={a} disabled={showing} onClick={() => pick(a)}>{a}</button>)}</div>
+      <div className="dance-stage" key={shown}>
+        {showing
+          ? <Character outfit={outfit} pose={POSE_OF[seq[shown]]} expr="happy" size={70} title={POSE_NAME[seq[shown]]} />
+          : picked.length < len ? <Character outfit={outfit} pose="idle" size={70} title="따라 할 차례" /> : <b className="jua mini-big">끝!</b>}
+      </div>
+      <div className="mini-seq dance-seq">{Array.from({ length: len }, (_, i) => <span key={i}>{picked[i] ? <Character outfit={outfit} pose={POSE_OF[picked[i]]} size={14} /> : ''}</span>)}</div>
+      <div className="mini-grid dance-btns">{ARROWS.map((a) => <button key={a} disabled={showing} onClick={() => pick(a)} aria-label={POSE_NAME[a]}><Character outfit={outfit} pose={POSE_OF[a]} size={20} /><small>{POSE_NAME[a]}</small></button>)}</div>
     </div>
   )
 }
