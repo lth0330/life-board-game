@@ -15,13 +15,15 @@
 - `docs/12-art.md` 그림·연출·로그인 **기본 버전** — 나중에 다시 그리거나 고칠 목록
 - `docs/01-structure.md` 구조 / `02-character.md` 능력치·직업 / `03-money.md` 돈·재테크 / `04-luck.md` 운세 / `05-marriage.md` 결혼 / `06-players.md` 플레이어끼리 / `07-cards.md` 카드 / `08-ai.md` AI / `reference.md` 참고 게임
 
-## 이어서 할 일 (2026-10-16 기준)
+## 이어서 할 일 (2026-10-17 기준)
 1. 기획 완료 + 시험판(`app/`) 동작. 전체 점검과 사용자 결정 기록은 `docs/13-review.md`
 2. 끝난 것: ① 시험 플레이 반영 ② 밸런스 1차 ③ 콘텐츠(랜덤이벤트 사건·AI 대사·미니게임·미니게임 시작 화면)
-3. 지금: ④ **온라인을 전부 AWS로** (Amplify Gen 2 → Cognito·DynamoDB·AppSync·Amplify Hosting, 서울). 계정 433889138774 무료 플랜(크레딧 100달러, 2027-04-16까지), 요금 알림 `lifegame-monthly` 1달러. 순서: 1 요금 알림 ✅ → 2 백엔드 ✅ (`app/amplify/`, 시험 환경 sandbox) → 3 로그인·방·대기실 화면 ✅ (`app/src/online/`, 구글 로그인은 아직) → 4 방장 기기가 진행 ✅ → 5 배포 ✅ (https://main.d16edqa9h9pqgu.amplifyapp.com, GitHub main에 올리면 자동 배포) → 6 같은 칸 대결 각자 기기로 ✅ (연습 3번 ✅). '미니게임 모두 같이 해서 보상'(13-review 6-19)은 규칙 결정이 필요해 남음
+3. ④ **온라인을 전부 AWS로** (거의 끝) (Amplify Gen 2 → Cognito·DynamoDB·AppSync·Amplify Hosting, 서울). 계정 433889138774 무료 플랜(크레딧 100달러, 2027-04-16까지), 요금 알림 `lifegame-monthly` 1달러. 순서: 1 요금 알림 ✅ → 2 백엔드 ✅ (`app/amplify/`, 시험 환경 sandbox) → 3 로그인·방·대기실 화면 ✅ (`app/src/online/`, 구글 로그인은 아직) → 4 방장 기기가 진행 ✅ → 5 배포 ✅ (https://main.d16edqa9h9pqgu.amplifyapp.com, GitHub main에 올리면 자동 배포) → 6 같은 칸 대결 각자 기기로 ✅ (연습 3번 ✅). '미니게임 모두 같이 해서 보상'(13-review 6-19)은 규칙 결정이 필요해 남음
    - 같이 하기는 각자 기기 온라인으로. 한 기기 여럿 문제(대결 자동 점수 등)는 고치지 않음
    - 계정 정보 `aws.txt`는 `.gitignore`로 제외. 절대 커밋하지 않기
-4. 그 뒤: ⑤ 그림·연출 (`docs/12-art.md`). AI 성격별 행동·남은 밸런스 숫자는 사용자가 나중에 보기로 함
+   - 남은 온라인: 구글 로그인(사용자가 Google Cloud 설정), 미니게임 모두 같이 보상(규칙 결정), 방장 연결 끊김 알아채기 A(15초 신호, 시험이 줄면). 지금은 방장이 나가기 누를 때만 안내(B)
+4. 지금: ⑤ 그림·연출 (`docs/12-art.md`). 캐릭터·꾸미기 새 그림체 + 표정 말풍선 ✅ (2026-10-17). 나머지(UI·칸 아이콘·건물·로고·연출)는 코드·AI 그림·무료 그림을 섞어 사용자가 시도. AI 성격별 행동·남은 밸런스 숫자는 사용자가 나중에 보기로 함
+   - 시험 브라우저(agent-browser)는 그리기를 멈출 때가 있음 → `--disable-renderer-backgrounding,--disable-backgrounding-occluded-windows`. 배포본 시험 뒤 시험 계정·방·행동은 지우기
 5. **코드를 고치기 전에 바꿀 내용을 먼저 보여 주고 확인받기** (사용자 요청). 서버는 사용자가 켜 달라고 할 때만
 
 ## 사용자
