@@ -758,3 +758,50 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .spouse-help > div { padding: 2px 0 2px 12px; }
 /* 판정 주사위 안내 (굴러가는 동안) */
 .check-hint { position: absolute; left: 16px; right: 16px; bottom: 140px; z-index: 6; display: flex; flex-direction: column; gap: 2px; align-items: center; text-align: center; background: var(--paper); border: var(--line); border-radius: 14px; padding: 8px 12px; box-shadow: var(--pop); font-size: 14px; }
+/* 설명서 (2026-10-21 밤 다시 정리): 주제 9개를 3×3 큰 버튼으로, 쪽마다 한 줄 요약 */
+.manual-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.manual-tabs button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; padding: 4px; border-radius: 12px; border: 2px solid var(--ink); background: #fff; font-family: 'Jua', sans-serif; font-size: 13px; box-shadow: var(--pop-sm); }
+.manual-tabs button span { font-size: 20px; line-height: 1; }
+.manual-tabs button.on { background: var(--ink); color: var(--paper); box-shadow: none; transform: translateY(2px); }
+.manual-sum { background: #FFF4C9; border: 2px solid var(--ink); border-radius: 12px; padding: 8px 10px; }
+.manual-body h4 { margin: 6px 0 0; font-family: 'Jua', sans-serif; font-size: 16px; }
+.manual-body ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+
+/* ───── 판 그림 다듬기 (2026-10-21 밤) ───── */
+/* 흙길 */
+.road-seg { position: absolute; height: 76px; transform-origin: 0 50%; border-radius: 38px; background: #E8C98F; box-shadow: inset 0 0 0 5px #C9A26A; }
+.road-seg::after { content: ''; position: absolute; left: 40px; right: 40px; top: 35px; border-top: 6px dashed rgba(255, 255, 255, 0.55); }
+.road-seg.road-event { background: #F3D7A8; box-shadow: inset 0 0 0 5px #E39B5C; }
+.road-seg.road-side { background: #EBD3A2; }
+/* 길가 꽃·풀·돌 (바닥에 납작하게) */
+.ground-bit { position: absolute; width: 26px; height: 26px; border-radius: 50%; }
+.ground-bit.gb-0 { background: radial-gradient(circle, #FFD45C 0 28%, #fff 30% 60%, transparent 62%); }
+.ground-bit.gb-1 { background: radial-gradient(circle, #FFD45C 0 28%, #F3A3C0 30% 60%, transparent 62%); }
+.ground-bit.gb-2 { width: 40px; height: 22px; border-radius: 50% 50% 40% 40%; background: #A9A79A; box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.15); }
+.ground-bit.gb-3 { width: 34px; height: 18px; border-radius: 50%; background: #5E9E4C; box-shadow: 12px -6px 0 -3px #6FB25A; }
+.ground-bit.gb-4 { background: radial-gradient(circle, #fff 0 25%, #8FB8E8 27% 60%, transparent 62%); }
+/* 칸: 진한 테두리 + 두께 + 윗면 반짝임 */
+.tile { border: 5px solid var(--ink); box-shadow: inset 0 0 0 5px rgba(255, 255, 255, 0.45), inset 0 -10px 0 rgba(0, 0, 0, 0.14), 0 12px 0 rgba(42, 33, 24, 0.55); }
+.tile::before { content: ''; position: absolute; left: 12px; right: 12px; top: 9px; height: 14px; border-radius: 10px; background: rgba(255, 255, 255, 0.28); pointer-events: none; }
+/* 갈림길 표지판: 화살표 나무판 */
+.sign-post { height: 180px; }
+.sign-boards { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.sign-arrow { position: relative; background: #8B5E3C; color: #fbf5e8; font-family: 'Jua', sans-serif; font-size: 20px; padding: 6px 16px; white-space: nowrap; border: 4px solid var(--ink); border-radius: 6px; box-shadow: 0 5px 0 rgba(42, 33, 24, 0.5); }
+.sign-arrow.sa-event { background: #D9573B; }
+.sign-arrow.sa-r { padding-right: 34px; clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 50%, calc(100% - 22px) 100%, 0 100%); border-right: none; }
+.sign-arrow.sa-l { padding-left: 34px; clip-path: polygon(22px 0, 100% 0, 100% 100%, 22px 100%, 0 50%); border-left: none; }
+.sign-pole { width: 14px; border-radius: 4px; background: #5a3a21; border: 3px solid var(--ink); }
+/* 하늘: 해, 구름 하나 더, 단계마다 하늘색 */
+.sky-deco .sun { position: absolute; right: 10%; top: 4%; width: 46px; height: 46px; border-radius: 50%; background: #FFD45C; box-shadow: 0 0 0 8px rgba(255, 212, 92, 0.35), 0 0 0 16px rgba(255, 212, 92, 0.15); }
+.sky-deco .cloud.c { left: 34%; top: 8%; width: 64px; height: 20px; }
+.world.stage-child { background: linear-gradient(#9FD9F5, #CDEBF7 22%); }
+.world.stage-student { background: linear-gradient(#8CCFF0, #C6E7F5 22%); }
+.world.stage-young { background: linear-gradient(#7FC2EC, #BFE2F4 22%); }
+.world.stage-middle { background: linear-gradient(#F7C59A, #FBE3C4 22%); }
+.world.stage-middle .sky-deco .sun { background: #FFB85C; }
+.world.stage-old { background: linear-gradient(#E9A3A0, #F7D4B8 22%); }
+.world.stage-old .sky-deco .sun { top: 11%; background: #FF9A6B; }
+/* 표지판은 오른쪽 끝(기둥)을 기준으로 왼쪽으로 펼쳐서 갈림길 칸을 가리지 않게 */
+.sign-post { align-items: flex-end; width: 230px; }
+.sign-boards { align-items: flex-end; }
+.sign-pole { margin-right: 30px; }

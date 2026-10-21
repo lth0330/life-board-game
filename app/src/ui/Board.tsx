@@ -83,6 +83,26 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
   const sideBusy = (d: number, side: number) => st.tiles.some((x) => x.lane === side && Math.abs(x.d - d) < 2.5)
   const decorX = (t: Tile, side: number, near: number, far: number) => xAt(t) + side * (sideBusy(t.d, side) ? far : near) + (side < 0 ? -110 : 0)
 
+  // 흙길: 칸과 다음 칸을 잇는 길 (칸 밑에 깔림) + 길가 꽃·풀·돌 (2026-10-21 사용자: 판 그림을 더 세세하게)
+  const ground: ReactElement[] = []
+  st.tiles.forEach((t, i) => {
+    if (!visible(t)) return
+    const ax = xAt(t) + 60, ay = yAt(t) + 60
+    for (const n of t.next) {
+      const b = st.tiles[n]
+      const bx = xAt(b) + 60, by = yAt(b) + 60
+      const len = Math.hypot(bx - ax, by - ay)
+      const ang = (Math.atan2(by - ay, bx - ax) * 180) / Math.PI
+      ground.push(<div key={`road${i}-${n}`} className={`road-seg road-${b.road === 'main' ? 'main' : b.road === 'event' ? 'event' : 'side'}`} style={{ left: ax, top: ay - 38, width: len, transform: `rotate(${ang}deg)` }} />)
+    }
+    if (t.road === 'main') {
+      for (const [k, side] of [[0, -1], [1, 1]] as const) {
+        const seed = (i * 7 + k * 13) % 5
+        ground.push(<div key={`gb${i}-${k}`} className={`ground-bit gb-${seed}`} style={{ left: xAt(t) + 60 + side * (110 + ((i * 37 + k * 53) % 70)), top: yAt(t) + 20 + ((i * 23 + k * 31) % 80) }} />)
+      }
+    }
+  })
+
   st.tiles.forEach((t, i) => {
     if (!visible(t)) return
     const look = tileLook(t)
@@ -103,15 +123,15 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
         </div>,
       )
     }
-    // 갈림길 표지판
+    // 갈림길 표지판: 가리키는 쪽으로 뾰족한 나무판 (이벤트 길은 색깔)
     if (t.fork) {
       items.push(
-        <div key={`f${i}`} className="sign-post" style={{ ...stand, left: xAt(t) - 330, top: yAt(t) - 60 }}>
-          <div className="sign-board">
+        <div key={`f${i}`} className="sign-post" style={{ ...stand, left: xAt(t) - 350, top: yAt(t) - 110 }}>
+          <div className="sign-boards">
             {t.fork.options.map((o) => {
               const target = st.tiles[o.to]
-              const dir = target.lane < t.lane ? '◀' : target.lane > t.lane ? '▶' : '▲'
-              return <div key={o.to}>{dir} {o.label}</div>
+              const dir = target.lane < t.lane ? 'l' : target.lane > t.lane ? 'r' : 'u'
+              return <div key={o.to} className={`sign-arrow sa-${dir}${o.road === 'event' ? ' sa-event' : ''}`}>{dir === 'u' ? '▲ ' : ''}{o.label}</div>
             })}
           </div>
           <div className="sign-pole" />
@@ -207,15 +227,15 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
   }
   const panned = Math.abs(pan.x) > 20 || Math.abs(pan.y) > 40
   return (
-    <div className={`world${canPan ? ' can-pan' : ''}`} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onDragStart={(e) => e.preventDefault()}>
+    <div className={`world stage-${st.id}${canPan ? ' can-pan' : ''}`} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onDragStart={(e) => e.preventDefault()}>
       <div className="sky-deco">
-        <div className="hill a" /><div className="hill b" />
+        <div className="sun" /><div className="hill a" /><div className="hill b" />
         <div className="ground" />
-        <div className="cloud a" /><div className="cloud b" />
+        <div className="cloud a" /><div className="cloud b" /><div className="cloud c" />
       </div>
       <div className="camera">
         <div className="plane" style={{ transform: `rotateX(${TILT}deg)` }}>
-          <div key={s.stageIdx} className={`track${dragging ? ' dragging' : ''}`} style={{ transform: `translate(${-st.tiles[focusPos].lane * LANE + pan.x}px, ${fd * 150 + pan.y}px)` }}>{items}</div>
+          <div key={s.stageIdx} className={`track${dragging ? ' dragging' : ''}`} style={{ transform: `translate(${-st.tiles[focusPos].lane * LANE + pan.x}px, ${fd * 150 + pan.y}px)` }}>{ground}{items}</div>
         </div>
       </div>
       {panned && <button className="pan-home" onClick={(e) => { e.stopPropagation(); setPan({ x: 0, y: 0 }) }} onPointerDown={(e) => e.stopPropagation()}>내 위치로</button>}
