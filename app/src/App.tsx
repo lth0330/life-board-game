@@ -226,6 +226,9 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
   const [sheet, setSheet] = useState<SheetKind>(null)
   const [rolling, setRolling] = useState(false)
   const [menu, setMenu] = useState(false)
+  // 위쪽 정보 칸 접기 (폰에서 판을 넓게). 이 기기에 기억
+  const [hudMini, setHudMini] = useState(() => { try { return localStorage.getItem('dgl:hudMini') === '1' } catch { return false } })
+  const toggleHud = () => { const v = !hudMini; setHudMini(v); try { localStorage.setItem('dgl:hudMini', v ? '1' : '0') } catch { /* 무시 */ } }
   const [sound, setSound] = useState(soundPrefs())
   const [carMode, setCarMode] = useState(false)
   const [itemMode, setItemMode] = useState<DiceItem | null>(null)
@@ -471,6 +474,11 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
 
   // 화면을 위로 밀어서 주사위 던지기
   const swipeY = useRef<{ y: number; t: number } | null>(null)
+  const gear = (
+    <button className="gear" aria-label="설정" onClick={() => setMenu(true)}>
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" /></svg>
+    </button>
+  )
   return (
     <div
       className="play"
@@ -479,7 +487,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
     >
       <Board s={game} focus={shown} posOf={posOf} walkingId={walking ? game.pathPlayer : null} canPan={myTurn} emotes={emotes} hands={hands} showSteps={myTurn || (!p.human && game.phase === 'roll' && !busy)} />
 
-      <header className="hud">
+      <header className={`hud${hudMini ? ' mini' : ''}`}>
         <div className="hud-row">
           <div className="hud-who">
             <span className="hud-face" style={{ borderColor: shown.color }}><Character outfit={shown.outfit} size={22} age={ageOf(game, shown)} /></span>
@@ -487,6 +495,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
           </div>
           <div className="hud-money"><span aria-label="돈">💰</span><b>{won(shown.money)}</b>{turnIncome(game, shown) ? <span className={turnIncome(game, shown) > 0 ? 'inc-up' : 'inc-down'} title="매 턴 들어오고 나가는 돈"> ({turnIncome(game, shown) > 0 ? '+' : ''}{won(turnIncome(game, shown))})</span> : null} · 행복 <b>{shown.happy}</b></div>
           <div className={`fortune f${shown.fortune}`} title="오늘의 운세">{fortuneName(shown.fortune)}</div>
+          {hudMini && gear}
         </div>
         <div className="hud-row">
           <div className="order">
@@ -497,11 +506,10 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
             </span>
           </div>
           <span className="hud-mood">기분 <span className="mood" title={`기분 ${MOOD_NAMES[moodLevel(shown)]}: ${MOOD_HELP[moodLevel(shown)]}`} aria-label={`기분 ${MOOD_NAMES[moodLevel(shown)]}`}>{MOOD_FACES[moodLevel(shown)]}</span></span>
-          <button className="gear" aria-label="설정" onClick={() => setMenu(true)}>
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" /></svg>
-          </button>
+          {gear}
         </div>
         <div className="hud-sub muted">{playerLine(game, shown)} · <b className="hud-stats">지력 {shown.stats.int} · 체력 {shown.stats.str} · 매력 {shown.stats.cha}</b></div>
+        <button className="hud-fold" aria-label={hudMini ? '정보 펼치기' : '정보 접기'} aria-expanded={!hudMini} onClick={toggleHud}>{hudMini ? '▼' : '▲'}</button>
       </header>
 
       <div className="side-buttons">

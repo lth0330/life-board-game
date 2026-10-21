@@ -693,3 +693,18 @@ button.wide:not(:disabled):active, .decision .options button:not(:disabled):acti
 .banner .scene-art { width: min(300px, 70vw); height: auto; animation: scene-in 0.6s cubic-bezier(.3,1.4,.5,1) both; }
 @keyframes scene-in { 0% { transform: scale(0.6) rotate(-4deg); opacity: 0; } 60% { transform: scale(1.05) rotate(1deg); opacity: 1; } 100% { transform: scale(1) rotate(0); } }
 @media (prefers-reduced-motion: reduce) { .banner .scene-art { animation: none; } }
+
+/* ───── 위쪽 정보 칸 접기 (2026-10-21) ─────
+   접으면 첫 줄(얼굴·나이·돈·행복)과 설정만. 아래 가운데 손잡이로 접고 펼침 */
+.hud { padding-bottom: 12px; }
+.hud-fold {
+  position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%);
+  width: 52px; height: 22px; padding: 0; font-size: 11px; line-height: 1;
+  border-radius: 0 0 12px 12px; border: var(--line); border-top: none; background: var(--paper); color: var(--ink);
+}
+.hud-fold::before { content: ''; position: absolute; inset: -12px -6px -10px; } /* 누르는 곳을 44px쯤으로 */
+.hud.mini { padding-bottom: 8px; }
+.hud.mini .hud-row + .hud-row, .hud.mini .hud-sub, .hud.mini .fortune { display: none; }
+.hud.mini .hud-row:first-child { padding-right: 0; }
+.hud.mini .gear { margin-left: 4px; }
+.hud.mini ~ .side-buttons { top: 88px; } /* 접으면 오른쪽 버튼도 위로 */
