@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { MINI_NAMES } from '../engine/game'
 import { sfx } from '../sound'
 import { EventArt, Landmark } from '../art/More'
@@ -154,6 +154,33 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
 }
 
 // 바늘을 가운데에 멈추기. 쉬울수록 판정 범위가 넓고 바늘이 느림
+// 노트북·컴퓨터(마우스)면 키보드로도 (2026-10-21 사용자: 마우스로 연타하기 힘듦). 폰은 그대로 버튼
+const finePointer = () => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: fine)').matches
+function useKeys(map: Record<string, () => void>, up?: Record<string, () => void>) {
+  const ref = useRef(map)
+  ref.current = map
+  const upRef = useRef(up)
+  upRef.current = up
+  useEffect(() => {
+    const typing = (e: KeyboardEvent) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement // 채팅 쓰는 중엔 안 받음
+    const on = (e: KeyboardEvent) => {
+      if (e.repeat || typing(e)) return // 꾹 누르기는 한 번만
+      const f = ref.current[e.code] ?? ref.current[e.key]
+      if (f) { e.preventDefault(); f() }
+    }
+    const off = (e: KeyboardEvent) => {
+      if (typing(e)) return
+      const f = upRef.current?.[e.code] ?? upRef.current?.[e.key]
+      if (f) { e.preventDefault(); f() }
+    }
+    window.addEventListener('keydown', on)
+    window.addEventListener('keyup', off)
+    return () => { window.removeEventListener('keydown', on); window.removeEventListener('keyup', off) }
+  }, [])
+}
+// 키보드 안내 한 줄 (마우스 기기에서만)
+const KeyHint = ({ children }: { children: ReactNode }) => (finePointer() ? <p className="muted center">⌨️ 키보드로: {children}</p> : null)
+
 function Timing({ level, rounds, duel, onDone }: { level: number; rounds: number; duel: boolean; onDone: (v: number) => void }) {
   const zone = [25, 17, 10][level]
   const speed = [1.0, 1.4, 1.8][level]
@@ -200,26 +227,29 @@ function Timing({ level, rounds, duel, onDone }: { level: number; rounds: number
         <div className={`gauge-needle${frozen ? ' frozen' : ''}`} style={{ left: `${pos}%` }} />
       </div>
       {frozen && <p className="jua">{scores[scores.length - 1]}점</p>}
-      <button className="wide big" onPointerDown={(e) => { e.preventDefault(); stop() }} onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); stop() } }}>멈춰!</button>
+      <button className="wide big" onPointerDown={(e) => { e.preventDefault(); stop() }}>멈춰!</button>
+      <TimingKeys stop={stop} />
     </div>
   )
 }
 
 // 줄다리기: 왼쪽·오른쪽을 번갈아 눌러 줄을 당김. 상대는 계속 당김 (체력이 높을수록 상대가 약함)
-// 노트북·컴퓨터(마우스)면 키보드로도 (2026-10-21 사용자: 마우스로 연타하기 힘듦). 폰은 그대로 버튼
-const finePointer = () => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: fine)').matches
-function useKeys(map: Record<string, () => void>) {
-  const ref = useRef(map)
-  ref.current = map
-  useEffect(() => {
-    const on = (e: KeyboardEvent) => {
-      if (e.repeat) return // 꾹 누르기는 한 번만
-      const f = ref.current[e.code] ?? ref.current[e.key]
-      if (f) { e.preventDefault(); f() }
-    }
-    window.addEventListener('keydown', on)
-    return () => window.removeEventListener('keydown', on)
-  }, [])
+// 미니게임마다 키보드 연결 (2026-10-21 밤: 줄다리기처럼 다른 미니게임도)
+function SpaceKey({ run }: { run: () => void }) {
+  useKeys({ Space: run, Enter: run })
+  return <KeyHint>스페이스바</KeyHint>
+}
+function TimingKeys({ stop }: { stop: () => void }) {
+  useKeys({ Space: stop, Enter: stop })
+  return <KeyHint>스페이스바로 멈춰요</KeyHint>
+}
+function HoldKeys({ down, up }: { down: () => void; up: () => void }) {
+  useKeys({ Space: down }, { Space: up })
+  return <KeyHint>스페이스바를 꾹 누르고 있다가 떼요</KeyHint>
+}
+function ArrowKeys({ pick }: { pick: (a: string) => void }) {
+  useKeys({ ArrowUp: () => pick('↑'), ArrowDown: () => pick('↓'), ArrowLeft: () => pick('←'), ArrowRight: () => pick('→') })
+  return <KeyHint>방향키 ↑ ↓ ← →</KeyHint>
 }
 
 function Tug({ level, onDone }: { level: number; onDone: (v: number) => void }) {
@@ -306,6 +336,7 @@ function Throw({ level, onDone }: { level: number; onDone: (v: number) => void }
       <button className="wide big" onPointerDown={(e) => { e.preventDefault(); down() }} onPointerUp={up} onPointerLeave={up} onPointerCancel={up}>
         {state === 'ready' ? '꾹 누르기' : state === 'hold' ? '…지금 떼기!' : '던졌다!'}
       </button>
+      <HoldKeys down={down} up={up} />
     </div>
   )
 }
@@ -338,6 +369,7 @@ function Confess({ level, onDone }: { level: number; onDone: (v: number) => void
       <p>하트가 <b>가장 커졌을 때</b> 고백하세요</p>
       <div className="heart-box"><span className="heart" style={{ transform: `scale(${0.5 + beat * 0.7})` }}>💗</span></div>
       <button className="wide big" onPointerDown={(e) => { e.preventDefault(); press() }}>고백!</button>
+      <SpaceKey run={press} />
     </div>
   )
 }
@@ -396,6 +428,7 @@ function Rhythm({ level, onDone }: { level: number; onDone: (v: number) => void 
       </div>
       <div className="mini-seq">{marks.map((x, i) => <span key={i}>{x === null ? '·' : ['놓침', '좋아', '딱!'][x]}</span>)}</div>
       <button className="wide big" onPointerDown={(e) => { e.preventDefault(); press() }}>♪ 지금!</button>
+      <SpaceKey run={press} />
     </div>
   )
 }
@@ -435,6 +468,7 @@ function Dance({ level, outfit, onDone }: { level: number; outfit: Outfit; onDon
       </div>
       <div className="mini-seq dance-seq">{Array.from({ length: len }, (_, i) => <span key={i}>{picked[i] ? <Character outfit={outfit} pose={POSE_OF[picked[i]]} size={14} /> : ''}</span>)}</div>
       <div className="mini-grid dance-btns">{ARROWS.map((a) => <button key={a} disabled={showing} onClick={() => pick(a)} aria-label={POSE_NAME[a]}><Character outfit={outfit} pose={POSE_OF[a]} size={20} /><small>{POSE_NAME[a]}</small></button>)}</div>
+      <ArrowKeys pick={(a) => { if (!showing) pick(a) }} />
     </div>
   )
 }
@@ -485,9 +519,14 @@ function Memory({ level, symbols, onDone }: { level: number; symbols: string[]; 
   // 잘못 누르면 하나 지우기, 다 고르면 '확인'으로 끝 (2026-10-21 사용자)
   const pick = (x: string) => { if (picked.length < len) setPicked([...picked, x]) }
   const confirm = () => {
+    if (picked.length < len) return
     const right = picked.filter((v, i) => v === seq[i]).length
     onDone(right === len ? 2 : right >= Math.ceil(len / 2) ? 1 : 0)
   }
+  // 키보드: 숫자 1~6으로 고르기, 백스페이스로 지우기, 엔터로 확인
+  const keys: Record<string, () => void> = { Backspace: () => { if (!show) setPicked((x) => x.slice(0, -1)) }, Enter: () => { if (!show) confirm() } }
+  symbols.forEach((x, k) => { keys[`Digit${k + 1}`] = () => { if (!show) pick(x) }; keys[`Numpad${k + 1}`] = keys[`Digit${k + 1}`] })
+  useKeys(keys)
   return (
     <div className="mini-body">
       <p>{show ? '순서를 기억하세요!' : `순서대로 고르세요 (${picked.length}/${len})`}</p>
@@ -495,12 +534,13 @@ function Memory({ level, symbols, onDone }: { level: number; symbols: string[]; 
       {!show && (
         <>
           <div className="mini-grid">
-            {symbols.map((x) => <button key={x} disabled={picked.length >= len} onClick={() => pick(x)}>{x}</button>)}
+            {symbols.map((x, k) => <button key={x} disabled={picked.length >= len} onClick={() => pick(x)}>{x}{finePointer() && <small className="key-hint">{k + 1}</small>}</button>)}
           </div>
           <div className="row">
             <button className="grow" disabled={!picked.length} onClick={() => setPicked(picked.slice(0, -1))}>⌫ 하나 지우기</button>
             <button className="grow" disabled={picked.length < len} onClick={confirm}>✅ 확인</button>
           </div>
+          <KeyHint>숫자 1~{symbols.length}로 고르고, 백스페이스로 지우고, 엔터로 확인</KeyHint>
         </>
       )}
     </div>
@@ -568,13 +608,16 @@ function QuickMath({ level, onDone }: { level: number; onDone: (v: number) => vo
     if (i >= qs.length || left <= 0) { doneRef.current = true; onDone(right >= 5 ? 2 : right >= 3 ? 1 : 0) }
   }, [i, left, right, qs.length, onDone])
   const q = qs[Math.min(i, qs.length - 1)]
+  const answer = (o: number) => { if (doneRef.current) return; if (o === q.ans) setRight((r) => r + 1); setI((x) => x + 1) }
+  useKeys({ Digit1: () => answer(q.opts[0]), Digit2: () => answer(q.opts[1]), Digit3: () => answer(q.opts[2]), Numpad1: () => answer(q.opts[0]), Numpad2: () => answer(q.opts[1]), Numpad3: () => answer(q.opts[2]) })
   return (
     <div className="mini-body">
       <p>{Math.min(i + 1, 5)}/5 · 남은 시간 {Math.max(0, left)}초 · 맞힌 수 {right}</p>
       <div className="mini-big jua">{q.a} + {q.b} = ?</div>
       <div className="mini-grid">
-        {q.opts.map((o, k) => <button key={k} onClick={() => { if (o === q.ans) setRight((r) => r + 1); setI((x) => x + 1) }}>{o}</button>)}
+        {q.opts.map((o, k) => <button key={k} onClick={() => answer(o)}>{o}{finePointer() && <small className="key-hint">{k + 1}</small>}</button>)}
       </div>
+      <KeyHint>숫자 1·2·3으로 골라요</KeyHint>
     </div>
   )
 }
@@ -679,12 +722,14 @@ function Slot({ level, onDone }: { level: number; onDone: (v: number) => void })
     setReels((rs) => rs.map((x, k) => (k === i ? plan.out[i] : x)))
     if (next.every(Boolean)) { if (timer.current) clearInterval(timer.current); setTimeout(() => onDone(plan.grade), 700) }
   }
+  useKeys({ Space: () => { if (!plan) start(); else { const k = stopped.findIndex((v) => !v); if (k >= 0) stop(k) } } })
   return (
     <div className="mini-body">
       <p>세 개가 같으면 대박, 두 개면 조금 따요. 버튼을 눌러 하나씩 멈춰요</p>
+      <KeyHint>스페이스바로 시작하고, 한 번 누를 때마다 하나씩 멈춰요</KeyHint>
       <div className="mini-seq slot">{reels.map((x, i) => <span key={i} className={stopped[i] ? 'stopped' : ''}>{x}</span>)}</div>
       {!plan
-        ? <button className="wide big" onClick={start}>시작</button>
+        ? <button className="wide big" onPointerDown={(e) => e.preventDefault()} onClick={start}>시작</button>
         : <div className="mini-grid three">{[0, 1, 2].map((i) => <button key={i} disabled={stopped[i]} onClick={() => stop(i)}>멈춤 {i + 1}</button>)}</div>}
     </div>
   )

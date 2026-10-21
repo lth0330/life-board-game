@@ -128,6 +128,11 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
         if (p.money < DICE_ITEMS[k].price * 5) return 0
         return k === 'twin' ? (per === 'gambler' ? 2.6 : 1.3) : k === 'even' ? 1.4 : 0.9
       }
+      if (id.startsWith('old_')) { // 노년 상점: 돈이 넉넉하면 쓰기
+        const cost = { old_cruise: 1000, old_gift: 500, old_donate: 2000 }[id] ?? 0
+        if (p.money - cost < 1500) return 0
+        return id === 'old_donate' ? (per === 'family' || per === 'safe' ? 2.8 : 1.2) : id === 'old_gift' ? (per === 'family' ? 2.6 : 1.6) : 2.2
+      }
       if (id.startsWith('agency')) {
         const want = !p.spouse && p.suitors.every((x) => x.affinity < 50)
         if (!want) return 0

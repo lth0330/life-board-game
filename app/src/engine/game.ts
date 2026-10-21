@@ -436,9 +436,10 @@ function economyTick(s: GameState, p: Player) {
     const interest = Math.round(p.savings * SAVINGS_RATE)
     p.savings += interest
   }
-  if (!p.human && st.id === 'old' && p.money > 500) { // AI: 노년엔 남는 돈을 적금에
-    p.savings = (p.savings ?? 0) + p.money - 500
-    p.money = 500
+  const aiKeep = st.id === 'old' ? 500 : st.id === 'middle' ? 5000 : 3000 // AI: 이만큼 남기고 적금에 (상점에서 꺼내 씀)
+  if (!p.human && p.money > aiKeep && (st.id === 'old' || p.personality !== 'gambler')) {
+    p.savings = (p.savings ?? 0) + p.money - aiKeep
+    p.money = aiKeep
   }
   if (p.house) p.happy += HOUSE_HAPPY[p.house] // 내 집: 매 턴 행복 (2026-10-21)
   if (st.id !== 'old' && !job) p.happy += 1 // 백수: 월급은 없지만 여유
@@ -1246,7 +1247,7 @@ type GoodKind = 'money' | 'grow' | 'happy' | 'special' | 'dilemma'
 function pickGood(s: GameState): GoodKind {
   const id = stageOf(s).id
   // 양심 선택(운세): 2026-10-21 추가. 노년에도 나옴
-  const list: GoodKind[] = id === 'child' || id === 'student' ? ['grow', 'special', 'dilemma', 'happy', 'happy'] : id === 'old' ? ['money', 'happy', 'dilemma'] : ['money', 'money', 'grow', 'special', 'dilemma', 'dilemma', 'happy', 'happy']
+  const list: GoodKind[] = id === 'child' || id === 'student' ? ['grow', 'special', 'dilemma', 'dilemma', 'happy', 'happy'] : id === 'old' ? ['money', 'happy', 'dilemma', 'dilemma'] : ['money', 'money', 'grow', 'special', 'dilemma', 'dilemma', 'happy', 'happy']
   return rngOf(s).pick(list)
 }
 
@@ -2007,8 +2008,16 @@ function agencyTurn(s: GameState, p: Player) {
 
 const ATTR_NAMES: Record<Attr, string> = { looks: '외모', wealth: '재력', fame: '명성', kindness: '성격' }
 
+const OLD_SHOP = [
+  { id: 'old_cruise', label: '🛳️ 크루즈 세계 여행', cost: 1000, happy: 8, luck: 0 },
+  { id: 'old_gift', label: '🎁 자녀·손주에게 큰 선물', cost: 500, happy: 4, luck: 0 },
+  { id: 'old_donate', label: '💝 장학 재단에 큰 기부', cost: 2000, happy: 10, luck: 1 },
+]
+
 function triggerPoint(s: GameState, p: Player, kind: 'shop' | 'marriage') {
   if (kind === 'shop') {
+    // AI: 적금에 넣어 둔 돈은 상점에서 꺼내 씀
+    if (!p.human && p.savings) { p.money += p.savings; log(s, p.id, `적금에서 ${won(p.savings)} 꺼냈다`, 'info'); p.savings = 0 }
     const coupon = p.chance === 'coupon' ? 0.7 : 1
     const opts: ChoiceOption[] = []
     HOUSES.forEach((h, i) => {
@@ -2037,6 +2046,11 @@ function triggerPoint(s: GameState, p: Player, kind: 'shop' | 'marriage') {
     for (const k of Object.keys(DICE_ITEMS) as DiceItem[]) {
       const d = DICE_ITEMS[k]
       opts.push({ id: `dice_${k}`, label: `${d.name} 사기`, desc: `${won(d.price)} · ${d.desc} · 1번 쓰면 끝${full ? ` (이미 ${MAX_DICE_ITEMS}개)` : ''}`, disabled: full || p.money < d.price })
+    }
+    // 노년: 쌓인 돈을 쓸 곳 (2026-10-21 밤)
+    if (stageOf(s).id === 'old') for (const it of OLD_SHOP) {
+      if (it.id === 'old_gift' && !p.kids.length) continue
+      opts.push({ id: it.id, label: it.label, desc: `${won(it.cost)} · 행복 +${it.happy}${it.luck ? ' · 운세 ↑' : ''}`, disabled: p.money < it.cost })
     }
     // 돈이 모자라면 여기서 바로 은행 대출 (2026-10-21 사용자)
     if (isAdultStage(s) && p.creditBad <= 0) for (const a of [500, 1000, 3000]) {
@@ -2381,6 +2395,15 @@ export function choose(s: GameState, optionId: string) {
         p.money += a
         log(s, p.id, `은행에서 ${won(a)} 빌렸다 (8턴 안에 갚기)`, 'info')
         triggerPoint(s, p, 'shop')
+        break
+      }
+      const oldItem = OLD_SHOP.find((x) => x.id === optionId)
+      if (oldItem) {
+        p.record.shopBuys++
+        spend(p, oldItem.cost)
+        p.happy += oldItem.happy
+        log(s, p.id, `${oldItem.label.replace(/^\S+ /, '')}! -${won(oldItem.cost)}, 행복 +${oldItem.happy}`, 'good')
+        if (oldItem.luck) { p.record.deeds++; changeFortune(s, p, oldItem.luck, '큰 기부') }
         break
       }
       if (optionId !== 'pass') p.record.shopBuys++

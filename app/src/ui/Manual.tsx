@@ -66,6 +66,7 @@ const PAGES: { icon: string; title: string; body: ReactNode }[] = [
         <ul>
           <li>능력치가 높을수록 쉬워져요</li>
           <li>시작 전에 방법·보상을 보거나 <b>연습</b>해 볼 수 있어요 (연습은 보상 없음)</li>
+          <li>노트북·컴퓨터에서는 <b>키보드</b>로도 해요: 스페이스바(멈추기·연타·꾹 누르기·고백·리듬·슬롯), ←→(줄다리기), 방향키(춤), 숫자(기억·계산)</li>
         </ul>
       </>
     ),
@@ -92,6 +93,7 @@ const PAGES: { icon: string; title: string; body: ReactNode }[] = [
     body: (
       <>
         <Sum>집은 상점에서 사요. 돈이 모자라면 <b>계약금 30%</b>만 내고 나머지는 대출로.</Sum>
+        <p className="muted">노년 상점에서는 크루즈 여행·자녀 선물·큰 기부로 모은 돈을 행복으로 바꿀 수 있어요.</p>
         <h4>집이 있으면</h4>
         <ul>
           <li>월세가 없어요 (없으면 매 턴 15만)</li>

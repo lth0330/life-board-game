@@ -43,6 +43,7 @@ const SHOP_CATS = [
   { id: 'pet', icon: '🐶', name: '반려동물', match: (id: string) => id === 'pet' },
   { id: 'item', icon: '🎲', name: '카드·주사위', match: (id: string) => id === 'chance' || id.startsWith('dice_') },
   { id: 'loan', icon: '💳', name: '은행 대출', match: (id: string) => id.startsWith('loan') },
+  { id: 'old', icon: '🌴', name: '노년 즐기기', match: (id: string) => id.startsWith('old_') },
 ]
 const CELEBRATE = ['결혼!', '복권 1등!', '복권 2등!', '아기 탄생', '수능 상위권!', '게임 끝!', '회사 성장!', '감독 도전 성공!', '자녀 대성공!', '금메달!', '은메달!', '동메달!', '육순 잔치', '칠순 잔치']
 
