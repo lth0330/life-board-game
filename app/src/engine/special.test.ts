@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { SPECIALS, specialDesc, specialValue } from './special'
+import { DILEMMAS, SPECIALS, specialDesc, specialValue } from './special'
 import { aiStep } from './ai'
 import { createGame } from './game'
 
 describe('특별 이벤트', () => {
   it('모든 선택지에 설명이 있고, 공짜 선택지가 하나씩 있음 (돈이 없어도 고를 수 있게)', () => {
-    for (const list of Object.values(SPECIALS)) for (const ev of list!) {
+    for (const list of [...Object.values(SPECIALS), ...Object.values(DILEMMAS)]) for (const ev of list!) {
       for (const o of ev.options) expect(specialDesc(o, 60, (n) => `${n}만`).length).toBeGreaterThan(0)
       expect(ev.options.some((o) => !o.cost)).toBe(true)
     }

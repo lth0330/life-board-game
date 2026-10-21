@@ -1,13 +1,13 @@
 import { buildStages, isEnd, maxDepth, walkAhead } from './board'
 import {
-  AI_NAMES, BIZ, BUSINESSES, CARS, CHANCE_NAMES, DICE_ITEMS, FORTUNES, FORTUNE_WEIGHTS, HOUSES, CAR_CRASH_LOSS, CAR_RESALE, HOUSE_RULES, INSURANCE, CAFE, JOBS, KIDS, LOTTERY_PRICE, MAX_DICE_ITEMS, MEDALS, PENSION, SEVERANCE_RATE,
+  AI_NAMES, BIZ, BUSINESSES, CARS, CHANCE_NAMES, DICE_ITEMS, FORTUNES, HOUSES, CAR_CRASH_LOSS, CAR_RESALE, HOUSE_RULES, INSURANCE, CAFE, JOBS, KIDS, LOTTERY_PRICE, MAX_DICE_ITEMS, MEDALS, PENSION, SEVERANCE_RATE,
   ADULT_BONUS_MULT, PERF_BONUS, SAVINGS_RATE, SCORE_PER_POINT,
   PERSONALITIES, PLAYER_COLORS, PRESTIGE_JOBS, SABOTAGE_NAMES, SECTORS, SPOUSE_NAMES, STAGE_SCALE, STAT_NAMES,
   TAX_RATE, TRAITS, JOB_PROS_CONS,
 } from './data'
 import { DEFAULT_OUTFIT, randomOutfit, type Outfit } from './outfit'
 import { makeRng, type Rng } from './rng'
-import { SPECIALS, specialDesc, type SpecialEvent, type SpecialOption } from './special'
+import { DILEMMAS, findEvent, SPECIALS, specialDesc, type SpecialEvent, type SpecialOption } from './special'
 import { speechLine, type SpeechKey } from './speech'
 import type {
   ChanceCard, ChoiceOption, DiceItem, DuelId, GameState, InsuranceKind, JobDef, MiniId, Personality, Player,
@@ -37,8 +37,7 @@ export function moodLevel(p: Player): MoodLevel {
 }
 export const MOOD_NAMES = ['지침', '우울', '보통', '좋음', '신남']
 export const MOOD_FACES = ['😩', '😟', '😐', '🙂', '😄']
-export const MOOD_HELP = ['운세가 나빠질 확률 40%, 월급 -20%', '운세가 나빠질 확률 20%', '효과 없음', '운세가 좋아질 확률 15%', '운세가 좋아질 확률 30%, 연애 호감도 +20%']
-const MOOD_FORTUNE: [number, number][] = [[-1, 0.4], [-1, 0.2], [0, 0], [1, 0.15], [1, 0.3]] // [운세 방향, 확률]
+export const MOOD_HELP = ['월급 -20%', '효과 없음', '효과 없음', '효과 없음', '연애 호감도 +20%'] // 2026-10-21 운세와는 따로 (운세는 내 행동으로)
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}만`
 const STATS: StatKey[] = ['int', 'str', 'cha']
 const SCHOOL_GIFT = 10 // 학생 단계 시작 때 모두에게 (만 원)
@@ -218,18 +217,21 @@ export function createGame(o: NewGameOptions): GameState {
 
 // ───────── 차례 시작 ─────────
 
-function drawFortune(s: GameState, p: Player) {
-  const rng = rngOf(s)
-  let f = rng.weighted(FORTUNE_WEIGHTS.map((w, i) => [i, w] as const))
-  if (p.goodDeeds > 0 && rng.chance(0.4)) { f++; p.goodDeeds-- }
-  if (p.spouse?.revealed && p.spouse.trait === '대운' && rng.chance(0.3)) f++
-  if (p.charmTurns > 0) { f++; p.charmTurns-- }
-  const [dir, chance] = MOOD_FORTUNE[moodLevel(p)]
-  if (dir && rng.chance(chance)) f += dir
-  f += p.fortuneMod
-  p.fortuneMod = 0
-  p.fortune = Math.max(0, Math.min(4, f))
+// 운세 (2026-10-21 사용자): 모두 '평'에서 시작해 내 행동으로만 오르내림. 착한 일 ↑, 이기적인 선택 ↓
+// 운세가 바뀐 뒤 FORTUNE_DRIFT턴 동안 그대로면 평 쪽으로 한 칸 돌아옴
+export const FORTUNE_DRIFT = 6
+export function changeFortune(s: GameState, p: Player, delta: number, reason: string) {
+  const before = p.fortune
+  p.fortune = Math.max(0, Math.min(4, p.fortune + delta))
+  p.fortuneTurns = 0
+  if (p.fortune === before) return
+  log(s, p.id, `운세 ${p.fortune > before ? '↑' : '↓'} ${fortuneName(before)} → ${fortuneName(p.fortune)} (${reason})`, p.fortune > before ? 'good' : 'bad')
   if (p.fortune === 4) say(s, p, 'greatFortune')
+}
+function tickFortune(s: GameState, p: Player) {
+  if (p.charmTurns > 0 && --p.charmTurns === 0) changeFortune(s, p, -1, '행운 부적이 끝남')
+  p.fortuneTurns = (p.fortuneTurns ?? 0) + 1
+  if (p.fortune !== 2 && p.fortuneTurns >= FORTUNE_DRIFT) changeFortune(s, p, p.fortune > 2 ? -1 : 1, '시간이 지나 평 쪽으로')
 }
 
 function beginTurn(s: GameState) {
@@ -244,7 +246,7 @@ function beginTurn(s: GameState) {
   s.meetCheck = false
   s.phase = 'roll'
   p.happyHist = [...(p.happyHist ?? []), p.happy].slice(-MOOD_TURNS)
-  drawFortune(s, p)
+  tickFortune(s, p)
   if (p.agency && !canDate(s, p) && stageOf(s).id === 'middle') {
     p.agency = null
     log(s, p.id, '중년 결혼식장을 지나 소개팅 회사가 자동 해지됐다', 'info')
@@ -290,7 +292,11 @@ function beginTurn(s: GameState) {
   }
   const sid = stageOf(s).id
   const lastStudentTurn = sid === 'student' && p.rollsLeft === 1
-  if (!p.collegeDecided && (lastStudentTurn || sid === 'young')) {
+  const careerJob = p.careerDue ? jobOf(p) : null
+  p.careerDue = false
+  if (careerJob?.boom && careerJob.id !== 'ceo') {
+    diceCheck(s, p, '커리어 주사위', `${careerJob.name} ${careerJob.ranks[p.jobRank]} · 주사위${luckBonusText(p)} → 5 이상이면 한 단계 위, 2 이하면 한 단계 아래`, { kind: 'career' })
+  } else if (!p.collegeDecided && (lastStudentTurn || sid === 'young')) {
     s.pending = {
       type: 'career', playerId: p.id,
       title: sid === 'student' ? '고등학교 졸업! 진로를 정해요' : '스무 살까지 어떻게 살았나요?',
@@ -1048,6 +1054,22 @@ function applyForkChoice(s: GameState, p: Player, to: number) {
   applyRoadStart(s, p, opt.road)
 }
 
+// 판정 주사위: 사람은 직접 굴림 (2026-10-21 사용자). 굴리면 choose('diceCheck')에서 결과
+const luckBonus = (p: Player) => (p.fortune >= 4 ? 1 : p.fortune <= 1 ? -1 : 0)
+const luckBonusText = (p: Player) => (luckBonus(p) ? ` ${luckBonus(p) > 0 ? '+' : ''}${luckBonus(p)}(운세 ${fortuneName(p.fortune)})` : '')
+function diceCheck(s: GameState, p: Player, title: string, text: string, data: Record<string, unknown>) {
+  s.pending = { type: 'diceCheck', playerId: p.id, title: `🎲 ${title}`, text, options: [{ id: 'roll', label: '🎲 주사위 굴리기' }], data }
+}
+function showDice(s: GameState, v: number) { s.dice = { value: v, id: (s.dice?.id ?? 0) + 1 } }
+function suneung(s: GameState, p: Player, dice: number) {
+  const score = p.stats.int + dice + luckBonus(p)
+  const loan = score >= 12 ? 300 : score >= 8 ? 800 : 1200
+  const grade = score >= 12 ? '상위권! 장학금을 받았다' : score >= 8 ? '중간' : '하위권… 등록금 비싼 대학'
+  log(s, p.id, `수능: 지력 ${p.stats.int} + 주사위 ${dice} → ${grade} (학자금 대출 ${won(loan)})`, score >= 12 ? 'good' : score >= 8 ? 'info' : 'bad')
+  p.loans.push({ amount: loan, dueTurn: p.turnsPlayed + 99, kind: '학자금' }) // 기한은 졸업할 때 정함 (졸업 + 8턴)
+  s.banner = score >= 12 ? { title: '수능 상위권!', text: `${p.name}: 장학금`, tone: 'good' } : p.human ? { title: `수능 ${score >= 8 ? '중간' : '하위권'}`, text: `학자금 대출 ${won(loan)}`, tone: score >= 8 ? 'info' : 'bad' } : s.banner
+}
+
 function applyRoadStart(s: GameState, p: Player, road: string) {
   const rng = rngOf(s)
   switch (road) {
@@ -1055,14 +1077,9 @@ function applyRoadStart(s: GameState, p: Player, road: string) {
       p.college = true
       p.collegeDecided = true
       p.campusTurns = CAMPUS_TURNS
-      // 수능: 문제 없이 지력 + 주사위 + 운세
-      const dice = rng.int(1, 6)
-      const score = p.stats.int + dice + (p.fortune >= 4 ? 1 : p.fortune <= 1 ? -1 : 0)
-      const loan = score >= 12 ? 300 : score >= 8 ? 800 : 1200
-      const grade = score >= 12 ? '상위권! 장학금을 받았다' : score >= 8 ? '중간' : '하위권… 등록금 비싼 대학'
-      log(s, p.id, `수능: 지력 ${p.stats.int} + 주사위 ${dice} → ${grade} (학자금 대출 ${won(loan)})`, score >= 12 ? 'good' : score >= 8 ? 'info' : 'bad')
-      p.loans.push({ amount: loan, dueTurn: p.turnsPlayed + 99, kind: '학자금' }) // 기한은 졸업할 때 정함 (졸업 + 8턴)
-      if (score >= 12) s.banner = { title: '수능 상위권!', text: `${p.name}: 장학금`, tone: 'good' }
+      // 수능: 문제 없이 지력 + 주사위 + 운세. 사람은 주사위를 직접 굴림
+      if (p.human) diceCheck(s, p, '수능', `지력 ${p.stats.int} + 주사위${luckBonusText(p)} → 12 이상이면 장학금, 8 이상이면 중간, 아니면 등록금 비싼 대학`, { kind: 'suneung' })
+      else suneung(s, p, rng.int(1, 6))
       // 성인부터 시작한 판이면 지금 바로 대학교로
       if (stageOf(s).id === 'young') p.pos = campusIdx(s)
       break
@@ -1138,8 +1155,8 @@ function uniTile(s: GameState, p: Player, ev: string) {
   void rng
 }
 
-const POP_ART: Record<string, string> = { special: 'card', money: 'money', risk: 'warn', card: 'card', happy: 'rest', date: 'heart', mini: 'medal' }
-const POP_TITLE: Record<string, string> = { special: '특별 이벤트', money: '돈 칸', risk: '위기 칸', card: '랜덤이벤트', happy: '행복 칸', date: '연애 칸', mini: '미니게임' }
+const POP_ART: Record<string, string> = { special: 'card', dilemma: 'card', money: 'money', risk: 'warn', card: 'card', happy: 'rest', date: 'heart', mini: 'medal' }
+const POP_TITLE: Record<string, string> = { special: '특별 이벤트', dilemma: '양심 선택', money: '돈 칸', risk: '위기 칸', card: '랜덤이벤트', happy: '행복 칸', date: '연애 칸', mini: '미니게임' }
 
 // 사건 팝업: start 이후 남은 기록(내 것 + 모두에게 일어난 것)을 그림과 함께. 고를 게 있으면 선택 창이 대신 뜸
 function showPop(s: GameState, p: Player, start: number, art: string, title: string) {
@@ -1152,10 +1169,11 @@ function showPop(s: GameState, p: Player, start: number, art: string, title: str
 
 // 좋은 일 칸에서 나올 것: 청년 전에는 행복·능력치, 청년·중년은 돈·능력치·행복, 노년은 돈·행복
 // 좋은 일 칸: 성장 몫의 절반은 특별 이벤트 (2026-10-17 사용자, 노년은 능력치가 안 바뀌어서 없음)
-type GoodKind = 'money' | 'grow' | 'happy' | 'special'
+type GoodKind = 'money' | 'grow' | 'happy' | 'special' | 'dilemma'
 function pickGood(s: GameState): GoodKind {
   const id = stageOf(s).id
-  const list: GoodKind[] = id === 'child' || id === 'student' ? ['grow', 'special', 'happy', 'happy'] : id === 'old' ? ['money', 'happy'] : ['money', 'money', 'grow', 'special', 'happy', 'happy']
+  // 양심 선택(운세): 2026-10-21 추가. 노년에도 나옴
+  const list: GoodKind[] = id === 'child' || id === 'student' ? ['grow', 'special', 'dilemma', 'happy', 'happy'] : id === 'old' ? ['money', 'happy', 'dilemma'] : ['money', 'money', 'grow', 'special', 'dilemma', 'dilemma', 'happy', 'happy']
   return rngOf(s).pick(list)
 }
 
@@ -1220,7 +1238,8 @@ function land(s: GameState) {
       popTitle = sc2.title
       break
     }
-    case 'special': specialTile(s, p); break
+    case 'special': specialTile(s, p, SPECIALS, '특별 이벤트'); break
+    case 'dilemma': specialTile(s, p, DILEMMAS, '양심 선택'); break
     case 'risk': riskTile(s, p, road === 'startup' ? 2 : 1); break
     case 'card': drawCard(s, p); break
     case 'date': dateTile(s, p); break
@@ -1287,21 +1306,21 @@ function giveSabotage(s: GameState, p: Player, card: SabotageCard) {
 const randomChance = (rng: Rng) => rng.pick(['reroll', 'block', 'charm', 'coupon', 'shortcut'] as ChanceCard[])
 
 // 특별 이벤트: 단계별 사건 중 하나를 골라 물어봄 (special.ts)
-function specialTile(s: GameState, p: Player) {
-  const list = SPECIALS[stageOf(s).id]
+function specialTile(s: GameState, p: Player, pool: typeof SPECIALS, kind: string) {
+  const list = pool[stageOf(s).id]
   if (!list?.length) { p.happy += 2; log(s, p.id, '좋은 하루였다. 행복 +2', 'good'); return }
   const ev = rngOf(s).pick(list)
   const sc = scaleOf(s)
   // 올리는 능력치가 모두 10이고 다른 좋은 점이 없으면 못 고름
   const maxed = (o: SpecialOption) => !!o.stats && !o.happy && Object.values(o.stats).some((v) => v! > 0) && Object.entries(o.stats).every(([k, v]) => v! <= 0 || p.stats[k as StatKey] >= 10)
   s.pending = {
-    type: 'special', playerId: p.id, title: `특별 이벤트: ${ev.title}`, text: ev.text,
-    options: ev.options.map((o) => ({ id: o.id, label: o.label, desc: specialDesc(o, sc, won), disabled: (o.cost ?? 0) * sc > p.money || maxed(o) })),
+    type: 'special', playerId: p.id, title: `${kind}: ${ev.title}`, text: ev.text,
+    options: ev.options.map((o) => ({ id: o.id, label: o.label, desc: specialDesc(o, sc, won), disabled: (!!o.cost && o.cost * sc > p.money) || maxed(o) })),
     data: { ev: ev.id },
   }
 }
 const statLine = (st?: Partial<Record<StatKey, number>>) => Object.entries(st ?? {}).map(([k, v]) => `${STAT_NAMES[k as StatKey]} ${v! > 0 ? '+' : ''}${v}`).join(', ')
-function applySpecial(s: GameState, p: Player, ev: SpecialEvent, o: SpecialOption) {
+function applySpecial(s: GameState, p: Player, ev: SpecialEvent, o: SpecialOption, dice?: number): boolean {
   const rng = rngOf(s)
   const sc = scaleOf(s)
   const addStats = (st?: Partial<Record<StatKey, number>>) => { for (const [k, v] of Object.entries(st ?? {})) p.stats[k as StatKey] = clampStat(p.stats[k as StatKey] + v!) }
@@ -1313,7 +1332,7 @@ function applySpecial(s: GameState, p: Player, ev: SpecialEvent, o: SpecialOptio
   if (o.happy) { p.happy += o.happy; parts.push(`행복 ${o.happy > 0 ? '+' : ''}${o.happy}`) }
   let good = (o.happy ?? 0) >= 0
   if (o.check) {
-    const roll = rng.int(1, 6)
+    const roll = dice ?? rng.int(1, 6)
     const ok = p.stats[o.check.stat] + roll >= o.check.need
     const r = ok ? o.check.win : o.check.lose
     const before = p.stats[o.check.stat]
@@ -1322,6 +1341,7 @@ function applySpecial(s: GameState, p: Player, ev: SpecialEvent, o: SpecialOptio
     parts.push(`${STAT_NAMES[o.check.stat]} ${before} + 주사위 ${roll} → ${ok ? '성공!' : '실패'}${r.stats ? ` ${statLine(r.stats)}` : ''}${r.happy ? ` 행복 ${r.happy > 0 ? '+' : ''}${r.happy}` : ''}`)
     good = ok
   }
+  if (o.othersHappy) for (const q of s.players) if (q.id !== p.id) q.happy += o.othersHappy
   if (o.risk && rng.chance(o.risk.chance)) {
     addStats(o.risk.stats)
     if (o.risk.happy) p.happy += o.risk.happy
@@ -1329,6 +1349,22 @@ function applySpecial(s: GameState, p: Player, ev: SpecialEvent, o: SpecialOptio
     if ((o.risk.happy ?? 0) < 0 || Object.values(o.risk.stats ?? {}).some((v) => v! < 0)) good = false
   }
   log(s, p.id, `[${ev.title}] ${o.label.replace(/^\S+ /, '')}${parts.length ? ` · ${parts.join(' · ')}` : ''}`, good ? 'good' : 'bad')
+  if (o.othersHappy) log(s, null, `${p.name} 덕분에 모두 행복 +${o.othersHappy}`, 'good')
+  if (o.luck) changeFortune(s, p, o.luck, ev.title)
+  return good
+}
+
+// 지갑 줍기: 돌려주면 사례금·운세↑, 가지면 돈 더·운세↓ (2026-10-21)
+function walletPick(s: GameState, p: Player) {
+  const sc = scaleOf(s)
+  s.pending = {
+    type: 'wallet', playerId: p.id, title: '지갑을 주웠다', text: '길에서 두툼한 지갑을 주웠어요.',
+    options: [
+      { id: 'return', label: '👮 주인 찾아주기', desc: `사례금 +${won(sc * 2)} · 운세 ↑` },
+      { id: 'keep', label: '🤫 내가 갖기', desc: `+${won(sc * 5)} · 운세 ↓` },
+    ],
+    data: { sc },
+  }
 }
 
 function drawCard(s: GameState, p: Player) {
@@ -1339,8 +1375,8 @@ function drawCard(s: GameState, p: Player) {
   if (r < 0.12) return giveChance(s, p, randomChance(rng))
   if (adult && r < 0.2) return giveSabotage(s, p, rng.pick(['rumor', 'stockRumor', 'love', 'lawsuit'] as SabotageCard[]))
   const deck: (() => void)[] = [
-    () => { p.money += sc * 2; p.goodDeeds++; p.record.deeds++; log(s, p.id, `지갑 주인을 찾아줬다. 사례금 +${won(sc * 2)} (선행)`, 'good') },
-    () => { p.happy += 3; p.goodDeeds += 2; p.record.deeds++; log(s, p.id, '봉사활동을 했다. 행복 +3 (선행)', 'good') },
+    () => walletPick(s, p),
+    () => { p.happy += 3; p.record.deeds++; log(s, p.id, '봉사활동을 했다. 행복 +3 (선행)', 'good'); changeFortune(s, p, 1, '봉사활동') },
     // 노년에는 랜덤이벤트로 능력치가 오르내리지 않음 (2026-10-17 사용자)
     ...(stageOf(s).id === 'old' ? [] : [
       () => { p.stats.int = clampStat(p.stats.int + 1); log(s, p.id, '책을 많이 읽었다. 지력 +1', 'good') },
@@ -1350,6 +1386,7 @@ function drawCard(s: GameState, p: Player) {
     () => badEvent(s, p, { text: '휴대폰 액정이 깨졌다', loss: sc * 2, happyLoss: 1 }),
     () => contest(s, p),
     () => everyoneDraw(s),
+    () => changeFortune(s, p, -1, rngOf(s).pick(['검은 고양이가 앞을 지나감', '거울을 깨뜨림', '불길한 꿈을 꿈'])), // 운이 좋아도 가끔 내려가는 일
   ]
   // 단계별 카드 (그 나이에 맞는 일)
   const id = stageOf(s).id
@@ -1750,9 +1787,9 @@ function resolveDuel(s: GameState, game: DuelId, ids: number[], res: Record<numb
   const winners = ids.filter((i) => res[i] === top).map((i) => s.players[i])
   const losers = ids.filter((i) => res[i] === low).map((i) => s.players[i])
   if (game === 'dice') {
-    for (const l of losers) l.fortuneMod -= 1
-    for (const w of winners) w.fortuneMod += 1
-    log(s, null, `${MINI_NAMES[game]}: ${winners.map((w) => w.name).join(', ')} 승! 다음 운세 ↑ / ${losers.map((l) => l.name).join(', ')} 다음 운세 ↓`, 'info')
+    for (const l of losers) l.happy -= 1
+    for (const w of winners) w.happy += 2
+    log(s, null, `${MINI_NAMES[game]}: ${winners.map((w) => w.name).join(', ')} 승! 행복 +2 / ${losers.map((l) => l.name).join(', ')} 행복 -1`, 'info')
   } else if (game === 'rps') {
     for (const l of losers) { const k = rng.pick(STATS); l.stats[k] = clampStat(l.stats[k] - 1); log(s, l.id, `가위바위보 패배: ${STAT_NAMES[k]} -1`, 'bad') }
     const k = rng.pick(STATS)
@@ -2263,9 +2300,26 @@ export function choose(s: GameState, optionId: string) {
       }
       break
     case 'special': {
-      const ev = (SPECIALS[stageOf(s).id] ?? []).find((e) => e.id === (pd.data as { ev: string }).ev)
+      const ev = findEvent(stageOf(s).id, (pd.data as { ev: string }).ev)
       const o = ev?.options.find((x) => x.id === optionId)
-      if (ev && o) applySpecial(s, p, ev, o)
+      if (ev && o?.check && p.human) diceCheck(s, p, ev.title, `${STAT_NAMES[o.check.stat]} ${p.stats[o.check.stat]} + 주사위 → ${o.check.need} 이상이면 성공!`, { kind: 'special', ev: ev.id, opt: o.id })
+      else if (ev && o) applySpecial(s, p, ev, o)
+      break
+    }
+    case 'diceCheck': {
+      const d = pd.data as { kind: 'special' | 'suneung' | 'career'; ev?: string; opt?: string }
+      const v = rng.int(1, 6)
+      showDice(s, v)
+      if (d.kind === 'suneung') suneung(s, p, v)
+      else if (d.kind === 'career') careerRoll(s, p, v)
+      else {
+        const ev = findEvent(stageOf(s).id, d.ev ?? '')
+        const o = ev?.options.find((x) => x.id === d.opt)
+        if (ev && o) {
+          const ok = applySpecial(s, p, ev, o, v)
+          s.banner = { title: ok ? `${ev.title} 성공!` : `${ev.title} 실패`, text: `주사위 ${v}`, tone: ok ? 'good' : 'bad' }
+        }
+      }
       break
     }
     case 'happyPick': {
@@ -2300,7 +2354,7 @@ export function choose(s: GameState, optionId: string) {
       break
     }
     case 'stray':
-      if (optionId === 'yes') { p.goodDeeds++; p.record.deeds++; adoptPet(s, p, '유기견을 가족으로 맞았다 (선행)') }
+      if (optionId === 'yes') { p.record.deeds++; adoptPet(s, p, '유기견을 가족으로 맞았다 (선행)'); changeFortune(s, p, 1, '유기견 입양') }
       else log(s, p.id, '유기견을 보호소에 데려다줬다', 'info')
       break
     case 'agencyAttr': {
@@ -2383,6 +2437,7 @@ export function choose(s: GameState, optionId: string) {
       const { affinity: _a, ...spouse } = x
       void _a
       p.spouse = { ...spouse, revealed: true }
+      if (spouse.trait === '대운') changeFortune(s, p, 1, '배우자의 대운')
       p.suitors = []
       p.agency = null // 결혼하면 소개팅 회사 자동 해지
       const happy = 8 + (x.looks - 5) * 2 + tier * 2
@@ -2396,7 +2451,6 @@ export function choose(s: GameState, optionId: string) {
         gifts += g
       }
       p.money += gifts
-      if (tier === 3 && rng.chance(0.5)) { p.goodDeeds += 2; log(s, p.id, '화려한 결혼식이 화제가 됐다 (운세↑)', 'good') }
       log(s, p.id, `${x.name}와 결혼! 행복 +${happy}, 지참금 +${won(x.wealth * 60)}, 축의금 +${won(gifts)}`, 'good')
       log(s, p.id, `결혼해 보니 ${x.name}의 숨은 특성: ${x.trait}`, x.traitGood ? 'good' : 'bad')
       s.banner = { title: '결혼!', text: `${p.name} ♥ ${x.name}`, tone: 'good' }
@@ -2436,6 +2490,7 @@ export function choose(s: GameState, optionId: string) {
         const safe = f >= 3 || (f === 2 && rng.chance(0.5))
         if (safe) { p.money += tax; log(s, p.id, `[운세 ${fortuneName(f)}] 세금을 안 내고 넘어갔다 +${won(tax)}`, 'good') }
         else { p.money -= tax * 2; p.happy -= 3; log(s, p.id, `[운세 ${fortuneName(f)}] 세무조사! 세금과 벌금 -${won(tax * 2)}`, 'bad'); s.banner = { title: '세무조사', text: p.name, tone: 'bad' } }
+        changeFortune(s, p, -1, '세금을 안 냄')
       } else log(s, p.id, '세금을 정직하게 냈다', 'info')
       break
     }
@@ -2453,6 +2508,12 @@ export function choose(s: GameState, optionId: string) {
     case 'sabotageTarget': {
       const target = s.players[+optionId]
       if (target) applySabotage(s, p, target)
+      break
+    }
+    case 'wallet': {
+      const wsc = (pd.data as { sc: number }).sc
+      if (optionId === 'return') { p.money += wsc * 2; p.record.deeds++; log(s, p.id, `지갑 주인을 찾아줬다. 사례금 +${won(wsc * 2)} (선행)`, 'good'); changeFortune(s, p, 1, '지갑을 돌려줌') }
+      else { p.money += wsc * 5; log(s, p.id, `주운 지갑의 돈을 가졌다 +${won(wsc * 5)}`, 'info'); changeFortune(s, p, -1, '지갑을 가짐') }
       break
     }
     case 'loanRequest': {
@@ -2639,7 +2700,7 @@ export function repayFriendLoan(s: GameState, idx: number) {
   const lender = s.players[l.lenderId]
   p.money -= l.owe
   lender.money += l.owe
-  lender.goodDeeds += 2 // 돈을 빌려줘서 돌려받으면 선행 → 운세↑
+  changeFortune(s, lender, 1, '친구를 도와줌') // 돈을 빌려줘서 돌려받으면 선행 → 운세↑
   s.friendLoans.splice(idx, 1)
   log(s, p.id, `${lender.name}에게 빌린 돈 ${won(l.owe)}을 갚았다`, 'good')
 }
@@ -2680,13 +2741,11 @@ function lawsuit(s: GameState, plaintiff: Player, defendant: Player, kind: 'loan
       defendant.money -= pay
       plaintiff.money += pay
       defendant.creditBad = 8
-      defendant.fortuneMod -= 1
       log(s, defendant.id, `소송에서 졌다. ${won(pay)}을 물어줬고 신용불량이 됐다`, 'bad')
       say(s, plaintiff, 'lawsuitWin'); say(s, defendant, 'lawsuitLose')
     } else {
-      defendant.fortuneMod -= 1
       defendant.creditBad = 8 // 소송에서 이겨도 돈을 안 갚은 사실은 남음
-      log(s, defendant.id, `소송에서 이겨 빚 ${won(owe)}을 안 갚아도 된다 (대신 신용불량, 운세↓)`, 'info')
+      log(s, defendant.id, `소송에서 이겨 빚 ${won(owe)}을 안 갚아도 된다 (대신 신용불량)`, 'info')
       log(s, plaintiff.id, `빌려준 돈을 떼였다…`, 'bad')
       say(s, defendant, 'lawsuitWin'); say(s, plaintiff, 'lawsuitLose')
     }
@@ -2710,8 +2769,8 @@ export function playChance(s: GameState) {
   if (p.chance === 'charm') {
     p.chance = null
     p.charmTurns = 3
-    p.fortune = Math.min(5, p.fortune + 1)
-    log(s, p.id, `행운 부적! 3턴 동안 운세 한 단계↑ (지금: ${fortuneName(p.fortune)})`, 'good')
+    log(s, p.id, '행운 부적! 3턴 동안 운세 한 단계↑', 'good')
+    changeFortune(s, p, 1, '행운 부적')
   } else if (p.chance === 'shortcut') {
     p.chance = null
     log(s, p.id, '지름길 카드: 이번 주사위 +2', 'good')
@@ -2735,6 +2794,7 @@ function applySabotage(s: GameState, p: Player, target: Player) {
   if (!card) return
   p.sabotage = null
   log(s, p.id, `${target.name}에게 ${SABOTAGE_NAMES[card]}!`, 'info')
+  changeFortune(s, p, -1, '방해 카드를 씀')
   say(s, p, 'sabotageUse')
   if (target.chance === 'block') {
     target.chance = null
@@ -2853,13 +2913,13 @@ function roundEnd(s: GameState) {
 }
 
 
-function careerRoll(s: GameState, p: Player) {
+function careerRoll(s: GameState, p: Player, dice?: number) {
   const job = jobOf(p)
   if (!job?.boom || job.id === 'ceo') return // 사업가는 매 턴 회사 크기가 바뀜
   const rng = rngOf(s)
   const below = p.stats[job.key] < (job.req[job.key] ?? 0) ? -1 : 0 // 능력치가 조건 밑이면 추락 확률↑
   const charm = job.id === 'youtuber' ? (p.stats.cha >= 7 ? 1 : p.stats.cha <= 3 ? -1 : 0) : 0 // 유튜버는 매력이 높을수록 구독자가 잘 늚
-  const v = rng.int(1, 6) + (p.fortune >= 4 ? 1 : p.fortune <= 1 ? -1 : 0) + below + charm
+  const v = (dice ?? rng.int(1, 6)) + luckBonus(p) + below + charm
   const sector = job.id === 'ceo' ? p.sector : null
   if (v >= 5 && p.jobRank < 2) {
     p.jobRank++
@@ -2886,7 +2946,7 @@ function nextStage(s: GameState) {
     p.rollsLeft = st.rolls ?? 0
     p.carCharges = CARS[p.car].charges[Math.max(0, s.stageIdx - 2)]
     if (st.id === 'middle' && p.jobId === 'athlete') { p.exAthlete = p.jobRank; log(s, p.id, `운동선수 은퇴!${p.medals.length ? ` (메달 ${p.medals.length}개)` : ''}`, 'info'); p.jobId = null; p.jobTenure = 0 }
-    if (st.id !== 'young') careerRoll(s, p)
+    if (st.id !== 'young') { if (p.human && jobOf(p)?.boom && p.jobId !== 'ceo') p.careerDue = true; else careerRoll(s, p) } // 사람은 첫 차례에 직접 굴림
     if (st.id === 'old') {
       if (p.jobId && p.jobId !== 'ceo') { paySeverance(s, p); log(s, p.id, `${jobOf(p)?.name} 은퇴${jobOf(p)?.pension ? ` (연금 매 턴 ${won(PENSION)})` : ''}`, 'info'); say(s, p, 'retire') }
       p.agency = null

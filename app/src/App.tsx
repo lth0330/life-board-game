@@ -494,7 +494,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
             <div className="jua hud-stage">{st.name} · {ageOf(game, shown)}세</div>
           </div>
           <div className="hud-money"><span aria-label="돈">💰</span><b>{won(shown.money)}</b>{turnIncome(game, shown) ? <span className={turnIncome(game, shown) > 0 ? 'inc-up' : 'inc-down'} title="매 턴 들어오고 나가는 돈"> ({turnIncome(game, shown) > 0 ? '+' : ''}{won(turnIncome(game, shown))})</span> : null} · 행복 <b>{shown.happy}</b></div>
-          <div className={`fortune f${shown.fortune}`} title="오늘의 운세">{fortuneName(shown.fortune)}</div>
+          <div className={`fortune f${shown.fortune}`} title="운세 (착한 일 ↑, 이기적인 일 ↓)">{fortuneName(shown.fortune)}</div>
           {hudMini && gear}
         </div>
         <div className="hud-row">

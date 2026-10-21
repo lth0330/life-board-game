@@ -3,7 +3,6 @@ import type { JobDef, Personality, Sector, StageId } from './types'
 export const SECTORS: Sector[] = ['생명', 'IT', '화학', '의료', '엔터']
 
 export const FORTUNES = ['대흉', '흉', '평', '길', '대길'] as const // 2026-10-16 5단계로
-export const FORTUNE_WEIGHTS = [6, 18, 42, 24, 10]
 
 export const STAT_NAMES = { int: '지력', str: '체력', cha: '매력' } as const
 

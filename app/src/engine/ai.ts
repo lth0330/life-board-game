@@ -1,5 +1,5 @@
 import { BUSINESSES, DICE_ITEMS, JOBS, SECTORS } from './data'
-import { SPECIALS, specialValue } from './special'
+import { findEvent, specialValue } from './special'
 import {
   aiDiceItem, aiWantsCar, passChance, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, loanLimit, loanTotal, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, rngOf, salaryOf, scoreOf, stageOf, startSabotage, takeLoan, toggleInsurance,
@@ -66,10 +66,12 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
       }
     }
     case 'special': {
-      const ev = (SPECIALS[stageOf(s).id] ?? []).find((e) => e.id === (pd.data as { ev: string }).ev)
+      const ev = findEvent(stageOf(s).id, (pd.data as { ev: string }).ev)
       const o = ev?.options.find((x) => x.id === id)
       if (!o) return 0
-      return specialValue(o, scaleOf(s), (k) => p.stats[k]) + (moodLevel(p) <= 1 ? (o.happy ?? 0) * 0.5 : 0) + rng.next() * 0.5 // 기분이 나쁘면 행복을 더 챙김
+      // 운세: 가족형·안전형은 더 챙기고, 도박꾼형·재테크형은 돈·재미 쪽으로 (2026-10-21)
+      const luckTaste = { family: 2, safe: 1.5, elite: 0, investor: -2, gambler: -2.5 }[per] * (o.luck ?? 0)
+      return specialValue(o, scaleOf(s), (k) => p.stats[k]) + luckTaste + (moodLevel(p) <= 1 ? (o.happy ?? 0) * 0.5 : 0) + rng.next() * 0.5 // 기분이 나쁘면 행복을 더 챙김
     }
     case 'happyPick': {
       // 기분이 나쁘면 크게 놀고, 돈이 모자라면 일하고, 아니면 소소하게 (성격 따라 조금씩)
@@ -170,6 +172,7 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
     case 'agencyMatch': return id === 'yes' ? (p.money > 600 ? 2 : 0.5) : 1
     case 'rps': return rng.next()
     case 'sector': return rng.next()
+    case 'wallet': return id === 'return' ? (per === 'family' || per === 'safe' ? 2 : 1.2) : per === 'gambler' ? 2 : 0.8
     case 'stray': return id === 'yes' ? (per === 'family' || per === 'safe' ? 2 : 0.8) : 1
     case 'loanRequest': return id === 'yes' ? 1 : 1.2
     case 'sabotageTarget': {

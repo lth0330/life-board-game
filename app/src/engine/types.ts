@@ -132,6 +132,8 @@ export interface Player {
   happy: number
   stats: Record<StatKey, number>
   fortune: number // 0 최악 ~ 5 대대길
+  fortuneTurns?: number // 운세가 마지막으로 바뀐 뒤 지난 차례 (6이면 평 쪽으로)
+  careerDue?: boolean // 새 단계 첫 차례에 커리어 주사위를 직접 굴림 (사람)
   savings?: number // 적금 (2026-10-21, 예전 저장엔 없음)
   charmTurns: number
   goodDeeds: number
