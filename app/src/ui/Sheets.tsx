@@ -353,6 +353,20 @@ export function GameOver({ s, onRestart }: { s: GameState; onRestart: () => void
 
 export const JOB_COUNT = JOBS.length
 
+// 배우자 능력치·특성 설명 (내 정보에서 눌러서 펼침, 2026-10-21 사용자). 숫자는 engine/game.ts familyTick·traitEvent와 같게
+const SPOUSE_ATTR_HELP: [string, 'looks' | 'wealth' | 'fame' | 'kindness', string, string][] = [
+  ['외모', 'looks', '결혼할 때 행복이 더 커요 (외모 1당 +2)', '7 이상이면 운동 마니아·명품 중독·바람기 같은 특성이 잘 붙어요'],
+  ['재력', 'wealth', '매 턴 재력 × 12만을 보태 줘요. 7 이상이면 가끔 집안에서 도와줘요', '없음'],
+  ['명성', 'fame', '7 이상이면 직업 조건이 1 쉬워지고, 가끔 방송·광고 수입과 주가 상승', '7 이상이면 가끔 스캔들(행복 -4, 주가 하락)'],
+  ['성격', 'kindness', '7 이상이면 매 턴 행복 +1', '3 이하면 매 턴 행복 -1, 가끔 부부 싸움, 이혼 위험이 커져요'],
+]
+const TRAIT_HELP: Record<string, string> = {
+  대운: '결혼할 때 운세 포인트 +2', 짠돌이: '매 턴 나가는 생활비 20% 줄임', 요리왕: '가끔 맛있는 요리로 행복 +2', '재테크 고수': '가끔 주식으로 돈을 벌어 와요',
+  '육아 천재': '아이가 있으면 가끔 행복 +3', '운동 마니아': '가끔 같이 운동해서 체력 +1', 인맥왕: '가끔 좋은 거래를 소개해 돈을 벌어요',
+  도박증: '가끔 도박으로 돈을 날려요', '명품 중독': '매 턴 생활비 15만 더', 까칠함: '가끔 다퉈서 행복 -3', 게으름: '가끔 집안일이 쌓여 행복 -2',
+  술고래: '가끔 술 마시다 다쳐 병원비', 바람기: '이혼 위험이 커져요',
+}
+
 // 내 정보: 나 · 가족(배우자·아이·반려동물) · 재산(집·차·주식·빚) · 카드 (2026-10-17 사용자)
 export function MyInfoSheet({ s, p, onClose }: { s: GameState; p: Player; onClose: () => void }) {
   const age = ageOf(s, p)
@@ -373,7 +387,7 @@ export function MyInfoSheet({ s, p, onClose }: { s: GameState; p: Player; onClos
       </div>
       <div className="note">
         기분 {MOOD_FACES[moodLevel(p)]} <b>{MOOD_NAMES[moodLevel(p)]}</b> (최근 {MOOD_TURNS}턴 행복 {moodOf(p) >= 0 ? '+' : ''}{moodOf(p)}) · {MOOD_HELP[moodLevel(p)]}
-        <div className="muted">행복이 최근에 많이 오르면 신남, 많이 떨어지면 지침이 돼요. 쌓인 행복은 마지막 점수에 들어가요.</div>
+        <div className="muted">최근 5턴 행복이 많이 오르면 기쁨, 내려가면 우울이 돼요. 쌓인 행복은 마지막 점수에 들어가요.</div>
       </div>
 
       <h3 className="jua">가족</h3>
@@ -381,7 +395,20 @@ export function MyInfoSheet({ s, p, onClose }: { s: GameState; p: Player; onClos
         {sp ? (
           <div className="info-row">
             <b>💍 배우자 {sp.name}</b> <span>{stars(sp.grade)}</span>
-            <div className="muted">외모 {sp.looks} · 재력 {sp.wealth} · 명성 {sp.fame} · 성격 {sp.kindness}{sp.revealed ? ` · ${sp.trait}` : ' · 성격은 아직 몰라요'}</div>
+            <div className="muted">외모 {sp.looks} · 재력 {sp.wealth} · 명성 {sp.fame} · 성격 {sp.kindness}{sp.revealed ? ` · ${sp.trait}` : ' · 특성은 아직 몰라요'}</div>
+            {SPOUSE_ATTR_HELP.map(([name, key, good, bad]) => (
+              <details key={key} className="spouse-help">
+                <summary>{name} {sp[key]} <span className="muted">▾ 좋은 점·나쁜 점</span></summary>
+                <div>👍 {good}</div>
+                <div>👎 {bad}</div>
+              </details>
+            ))}
+            {sp.revealed && (
+              <details className="spouse-help">
+                <summary>특성: {sp.trait} {sp.traitGood ? '😊' : '😣'} <span className="muted">▾ 설명</span></summary>
+                <div>{TRAIT_HELP[sp.trait] ?? ''}</div>
+              </details>
+            )}
           </div>
         ) : <div className="muted">아직 결혼 전이에요{p.suitors.length ? ` · 연애 중: ${p.suitors.map((x) => `${x.name} ${x.affinity}%`).join(', ')}` : ''}</div>}
         {p.kids.map((k, i) => {

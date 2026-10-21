@@ -40,6 +40,7 @@ const SHOP_CATS = [
   { id: 'love', icon: '💕', name: '연애', match: (id: string) => id.startsWith('agency') },
   { id: 'pet', icon: '🐶', name: '반려동물', match: (id: string) => id === 'pet' },
   { id: 'item', icon: '🎲', name: '카드·주사위', match: (id: string) => id === 'chance' || id.startsWith('dice_') },
+  { id: 'loan', icon: '💳', name: '은행 대출', match: (id: string) => id.startsWith('loan') },
 ]
 const CELEBRATE = ['결혼!', '복권 1등!', '복권 2등!', '아기 탄생', '수능 상위권!', '게임 끝!', '회사 성장!', '감독 도전 성공!', '자녀 대성공!', '금메달!', '은메달!', '동메달!', '육순 잔치', '칠순 잔치']
 
@@ -241,6 +242,8 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
   const [menu, setMenu] = useState(false)
   // 위쪽 정보 칸 접기 (폰에서 판을 넓게). 이 기기에 기억
   const [hudMini, setHudMini] = useState(() => { try { return localStorage.getItem('dgl:hudMini') === '1' } catch { return false } })
+  const [logOpen, setLogOpen] = useState(() => { try { return localStorage.getItem('dgl:logOpen') === '1' } catch { return false } })
+  const toggleLog = () => { const v = !logOpen; setLogOpen(v); try { localStorage.setItem('dgl:logOpen', v ? '1' : '0') } catch { /* 무시 */ } }
   const toggleHud = () => { const v = !hudMini; setHudMini(v); try { localStorage.setItem('dgl:hudMini', v ? '1' : '0') } catch { /* 무시 */ } }
   const [sound, setSound] = useState(soundPrefs())
   const [carMode, setCarMode] = useState(false)
@@ -465,11 +468,20 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
   const onCampus = p.campusTurns > 0 && stageOf(game).tiles[p.pos].kind === 'campus'
   // 주사위: 한 번 누르면 돌고, 한 번 더 누르면 멈춤 (결과는 운. 2026-10-17 사용자)
   const [spinning, setSpinning] = useState(false)
+  // 판정 주사위(능력치 + 주사위·수능·커리어): 고르면 바로 굴러가고 '멈추기!'로 멈춤 (2026-10-21 사용자)
+  const checkPending = game.pending?.type === 'diceCheck' && isMine(game.pending.playerId) ? game.pending : null
+  useEffect(() => {
+    if (!checkPending || spinning || walking || diceShow !== null || popShow !== null || hold !== null) return
+    sfx('dice')
+    setRolling(true)
+    setSpinning(true)
+  }, [checkPending, walking, diceShow, popShow, hold]) // eslint-disable-line react-hooks/exhaustive-deps
   const doRoll = () => {
     if (spinning) {
       setSpinning(false)
       setRolling(false)
-      run(['roll', 0, carMode, itemMode])
+      if (checkPending) run(['choose', 'roll'])
+      else run(['roll', 0, carMode, itemMode])
       return
     }
     if (!myTurn) return
@@ -481,15 +493,16 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
   const showCar = myTurn && canUseCar(p) && !onCampus
   const heldItems = myTurn && !onCampus ? [...new Set(p.diceItems)] : []
   const showSeek = myTurn && canSeekJob(game, p)
-  const recent = game.log.slice(-3)
   const sheetP = !myTurn && online ? game.players[online.mine[0]] : p // 온라인은 내 차례가 아닐 때 내 재테크·카드를 보여 줌
   const stageBanner = banner && !busy && banner.title.endsWith('단계')
 
   // 화면을 위로 밀어서 주사위 던지기
   const swipeY = useRef<{ y: number; t: number } | null>(null)
+  // 설정: 정보 칸 밖 오른쪽 버튼 줄에 (2026-10-21 사용자: 톱니 모양으로)
   const gear = (
-    <button className="gear" aria-label="설정" onClick={() => setMenu(true)}>
-      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" /></svg>
+    <button className="gear-btn" aria-label="설정" onClick={() => setMenu(true)}>
+      <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24"><path fill="currentColor" fillRule="evenodd" d="M10.3 1.5h3.4l.5 2.6a8 8 0 0 1 1.9.8l2.2-1.5 2.4 2.4-1.5 2.2c.3.6.6 1.2.8 1.9l2.6.5v3.4l-2.6.5a8 8 0 0 1-.8 1.9l1.5 2.2-2.4 2.4-2.2-1.5a8 8 0 0 1-1.9.8l-.5 2.6h-3.4l-.5-2.6a8 8 0 0 1-1.9-.8l-2.2 1.5-2.4-2.4 1.5-2.2a8 8 0 0 1-.8-1.9l-2.6-.5v-3.4l2.6-.5c.2-.7.5-1.3.8-1.9L3.3 5.8l2.4-2.4 2.2 1.5a8 8 0 0 1 1.9-.8zM12 8.3a3.7 3.7 0 1 0 0 7.4 3.7 3.7 0 0 0 0-7.4z" /></svg>
+      <small>설정</small>
     </button>
   )
   return (
@@ -498,7 +511,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
       onPointerDown={(e) => { unlockAudio(); if ((e.target as HTMLElement).closest('.world')) swipeY.current = { y: e.clientY, t: Date.now() } }}
       onPointerUp={(e) => { const sw = swipeY.current; if (sw && sw.y - e.clientY > 70 && Date.now() - sw.t < 300) doRoll(); swipeY.current = null }}
     >
-      <Board s={game} focus={shown} posOf={posOf} walkingId={walking ? game.pathPlayer : null} canPan={myTurn} emotes={emotes} hands={hands} showSteps={myTurn || (!p.human && game.phase === 'roll' && !busy)} />
+      <Board s={game} focus={shown} posOf={posOf} walkingId={walking ? game.pathPlayer : null} canPan={myTurn} emotes={emotes} hands={hands} say={speech} showSteps={myTurn || (!p.human && game.phase === 'roll' && !busy)} />
 
       <header className={`hud${hudMini ? ' mini' : ''}`}>
         <div className="hud-row">
@@ -508,7 +521,6 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
           </div>
           <div className="hud-money"><span aria-label="돈">💰</span><b>{won(shown.money)}</b>{turnIncome(game, shown) ? <span className={turnIncome(game, shown) > 0 ? 'inc-up' : 'inc-down'} title="매 턴 들어오고 나가는 돈"> ({turnIncome(game, shown) > 0 ? '+' : ''}{won(turnIncome(game, shown))})</span> : null} · 행복 <b>{shown.happy}</b></div>
           <div className={`fortune f${shown.fortune}`} title="운세 (착한 일 ↑, 이기적인 일 ↓)">{fortuneName(shown.fortune)}</div>
-          {hudMini && gear}
         </div>
         <div className="hud-row">
           <div className="order">
@@ -519,7 +531,6 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
             </span>
           </div>
           <span className="hud-mood">기분 <span className="mood" title={`기분 ${MOOD_NAMES[moodLevel(shown)]}: ${MOOD_HELP[moodLevel(shown)]}`} aria-label={`기분 ${MOOD_NAMES[moodLevel(shown)]}`}>{MOOD_FACES[moodLevel(shown)]}</span></span>
-          {gear}
         </div>
         <div className="hud-sub muted">{playerLine(game, shown)} · <b className="hud-stats">지력 {shown.stats.int} · 체력 {shown.stats.str} · 매력 {shown.stats.cha}</b></div>
         <button className="hud-fold" aria-label={hudMini ? '정보 펼치기' : '정보 접기'} aria-expanded={!hudMini} onClick={toggleHud}>{hudMini ? '▼' : '▲'}</button>
@@ -529,6 +540,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
         <button onClick={() => setSheet('map')}>지도</button>
         <button onClick={() => setSheet('people')}>사람들</button>
         <button onClick={() => setSheet('me')}>내 정보</button>
+        {gear}
         {emoteId !== undefined && (
           <button className="emote-btn" aria-label="표정" disabled={cooling} onClick={() => setPicker(true)}>
             <Character outfit={game.players[emoteId].outfit} age={ageOf(game, game.players[emoteId])} expr="happy" size={44} crop="head" />
@@ -537,13 +549,15 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
       </div>
       {picker && emoteId !== undefined && <EmotePicker outfit={game.players[emoteId].outfit} age={ageOf(game, game.players[emoteId])} onPick={pickEmote} onClose={() => setPicker(false)} />}
 
-      <div className="ticker" style={{ visibility: busy ? "hidden" : "visible" }}>
-        {recent.map((l, i) => (
-          <div key={game.log.length - 3 + i} className={`log-${l.tone}`}>
+      {/* 기록 창: 늘 보이고, 누르면 1줄 ↔ 5줄 (2026-10-21 사용자) */}
+      <button className={`ticker${logOpen ? ' open' : ''}`} onClick={toggleLog} aria-label={logOpen ? '기록 줄이기' : '기록 크게 보기'}>
+        {(logOpen ? game.log.slice(-5) : game.log.slice(-1)).map((l, i, arr) => (
+          <div key={game.log.length - arr.length + i} className={`log-${l.tone}`}>
             {l.playerId !== null && <b style={{ color: game.players[l.playerId].color }}>{game.players[l.playerId].name} </b>}{l.text}
           </div>
         ))}
-      </div>
+        <span className="ticker-toggle" aria-hidden="true">{logOpen ? '▼' : '▲'}</span>
+      </button>
 
       {(showCar || heldItems.length > 0 || showSeek) && (
         <div className="roll-mods">
@@ -569,6 +583,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
         <button className="mid" onClick={() => setSheet('finance')}>재테크</button>
       </div>
 
+      {spinning && checkPending && <div className="check-hint" role="status"><b className="jua">{checkPending.title}</b><span>{checkPending.text}</span></div>}
       {(rolling || diceShow !== null) && <DiceThrow value={rolling ? null : diceShow?.value ?? null} second={rolling ? (itemMode === 'twin' ? null : undefined) : diceShow?.second} />}
 
       {pending && (
@@ -648,11 +663,6 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
       {sheet === 'map' && <FullMap s={game} onClose={() => setSheet(null)} />}
       {sheet === 'manual' && <Manual onClose={() => setSheet(null)} />}
 
-      {speech && (
-        <div className="speech" style={{ borderColor: game.players[speech.playerId].color }} role="status">
-          <b style={{ color: game.players[speech.playerId].color }}>{game.players[speech.playerId].name}</b> {speech.text}
-        </div>
-      )}
 
       {stageBanner && <StageCard title={banner.title} text={banner.text} />}
       {banner && !busy && !stageBanner && (

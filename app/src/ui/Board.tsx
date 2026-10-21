@@ -59,10 +59,11 @@ interface Props {
   walkingId?: number | null // 지금 걷고 있는 사람 (통통 튀는 동작)
   canPan?: boolean // 끌어서 보기는 내 차례에만
   emotes?: Record<number, Expr> // 지금 머리 위에 띄울 표정 (플레이어 번호 → 표정)
+  say?: { playerId: number; text: string } | null // AI 말 (그 캐릭터 머리 위에, 2026-10-21)
   hands?: Record<number, number | null> // 가위바위보 손 (null = 고르는 중)
 }
 
-export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = null, canPan = false, emotes = {}, hands = {} }: Props) {
+export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = null, canPan = false, emotes = {}, hands = {}, say = null }: Props) {
   const st = s.stages[s.stageIdx]
   const focusPos = posOf(focus)
   const fd = st.tiles[focusPos].d
@@ -175,12 +176,13 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
         <div key={`s${p.id}`} className="shadow" style={{ left: xAt(t) + 20 + dx, top: yAt(t) + 70 }} />,
         <div key={`c${p.id}`} className={`char${p.id === walkingId ? ' walking' : ''}${ageOf(s, p) <= 2 ? ' baby' : ''}`} style={{ ...stand, left: xAt(t) + 20 + dx, top: yAt(t) - 90 }}>
           <div style={{ opacity: me ? 1 : 0.5 }}>
-            <Character outfit={p.outfit} view="back" size={80} age={ageOf(s, p)} />
+            <Character outfit={p.outfit} view={p.id === walkingId ? 'back' : 'front'} size={80} age={ageOf(s, p)} /> {/* 걸을 때만 뒷모습 */}
             <div className="name-tag" style={{ background: me ? p.color : 'rgba(42,33,24,0.6)', top: -40 - k * 34 }}>{p.name}</div>
           </div>
           {p.id in hands
             ? <div className="emote-on-board" style={{ top: -130 - k * 34 }}><RpsBubble value={hands[p.id]} /></div>
-            : emotes[p.id] && <div className="emote-on-board" style={{ top: -130 - k * 34 }}><EmoteBubble key={emotes[p.id]} outfit={p.outfit} age={ageOf(s, p)} expr={emotes[p.id]} /></div>}
+            : emotes[p.id] ? <div className="emote-on-board" style={{ top: -130 - k * 34 }}><EmoteBubble key={emotes[p.id]} outfit={p.outfit} age={ageOf(s, p)} expr={emotes[p.id]} /></div>
+            : say?.playerId === p.id && <div className="say-on-board" style={{ top: -100 - k * 34, borderColor: p.color }} key={say.text}>{say.text}</div>}
         </div>,
       )
     })

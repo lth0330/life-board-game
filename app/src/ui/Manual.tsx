@@ -149,10 +149,6 @@ export function Manual({ onClose }: { onClose: () => void }) {
         ))}
       </div>
       <div className="manual-body">{PAGES[i].body}</div>
-      <div className="row">
-        <button className="grow" disabled={i === 0} onClick={() => setI(i - 1)}>이전</button>
-        <button className="grow" disabled={i === PAGES.length - 1} onClick={() => setI(i + 1)}>다음</button>
-      </div>
     </Sheet>
   )
 }

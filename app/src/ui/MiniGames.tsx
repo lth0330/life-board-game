@@ -457,22 +457,26 @@ function Memory({ level, symbols, onDone }: { level: number; symbols: string[]; 
   const [show, setShow] = useState(true)
   const [picked, setPicked] = useState<string[]>([])
   useEffect(() => { const t = setTimeout(() => setShow(false), 1200 + len * 500); return () => clearTimeout(t) }, [len])
-  const pick = (x: string) => {
-    const next = [...picked, x]
-    setPicked(next)
-    if (next.length === len) {
-      const right = next.filter((v, i) => v === seq[i]).length
-      onDone(right === len ? 2 : right >= Math.ceil(len / 2) ? 1 : 0)
-    }
+  // 잘못 누르면 하나 지우기, 다 고르면 '확인'으로 끝 (2026-10-21 사용자)
+  const pick = (x: string) => { if (picked.length < len) setPicked([...picked, x]) }
+  const confirm = () => {
+    const right = picked.filter((v, i) => v === seq[i]).length
+    onDone(right === len ? 2 : right >= Math.ceil(len / 2) ? 1 : 0)
   }
   return (
     <div className="mini-body">
       <p>{show ? '순서를 기억하세요!' : `순서대로 고르세요 (${picked.length}/${len})`}</p>
       <div className="mini-seq">{(show ? seq : picked).map((x, i) => <span key={i}>{x}</span>)}</div>
       {!show && (
-        <div className="mini-grid">
-          {symbols.map((x) => <button key={x} onClick={() => pick(x)}>{x}</button>)}
-        </div>
+        <>
+          <div className="mini-grid">
+            {symbols.map((x) => <button key={x} disabled={picked.length >= len} onClick={() => pick(x)}>{x}</button>)}
+          </div>
+          <div className="row">
+            <button className="grow" disabled={!picked.length} onClick={() => setPicked(picked.slice(0, -1))}>⌫ 하나 지우기</button>
+            <button className="grow" disabled={picked.length < len} onClick={confirm}>✅ 확인</button>
+          </div>
+        </>
       )}
     </div>
   )
