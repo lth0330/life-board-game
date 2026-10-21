@@ -83,6 +83,10 @@ export const parse = <T,>(v: unknown, fallback: T): T => {
 export const isRoomOwner = (owner: string | null | undefined, me: Me) =>
   !!owner && (owner === me.loginId || owner === `${me.userId}::${me.loginId}`)
 
+// 자동으로 지울 시각 (초). 방은 바뀔 때마다 7일 뒤로 미룸, 행동은 1일
+const DAY = 24 * 60 * 60
+const expires = (days: number) => Math.floor(Date.now() / 1000) + days * DAY
+
 // 헷갈리는 글자(0·O·1·I·L)를 뺀 4자리 코드
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 const newCode = () => Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('')
@@ -98,7 +102,7 @@ export async function createRoom(me: Me, outfit: Outfit): Promise<Room | string>
     if ((await openRooms(code)).length) continue // 쓰고 있는 코드면 다시
     const seats: Seat[] = [{ kind: 'human', userId: me.userId, name: me.nick, outfit }, { kind: 'ai' }, { kind: 'open' }, { kind: 'open' }]
     const state: LobbyState = { settings: { startAdult: false, difficulty: 'normal' } }
-    const r = await client.models.Room.create({ code, hostName: me.nick, status: 'waiting', seats: JSON.stringify(seats), state: JSON.stringify(state), version: 0 })
+    const r = await client.models.Room.create({ code, hostName: me.nick, status: 'waiting', seats: JSON.stringify(seats), state: JSON.stringify(state), version: 0, expiresAt: expires(7) })
     if (r.data) return r.data
     return '방을 만들지 못했어요'
   }
@@ -113,6 +117,7 @@ export async function saveRoom(room: Room, patch: { seats?: Seat[]; state?: unkn
     ...(patch.state !== undefined ? { state: JSON.stringify(patch.state) } : {}),
     ...(patch.status ? { status: patch.status } : {}),
     version: patch.version ?? (room.version ?? 0) + 1,
+    expiresAt: expires(7),
   })
   return r.data
 }
@@ -121,5 +126,5 @@ export async function saveRoom(room: Room, patch: { seats?: Seat[]; state?: unkn
 export interface ActionPayload { userId: string; [k: string]: unknown }
 export async function sendAction(roomId: string, me: Me, kind: string, extra: Record<string, unknown> = {}) {
   const payload: ActionPayload = { userId: me.userId, ...extra }
-  await client.models.Action.create({ roomId, name: me.nick, kind, payload: JSON.stringify(payload) })
+  await client.models.Action.create({ roomId, name: me.nick, kind, payload: JSON.stringify(payload), expiresAt: expires(1) })
 }

@@ -4,6 +4,7 @@ import { a, defineData, type ClientSchema } from '@aws-amplify/backend'
 // - 방장 기기가 게임 엔진을 돌리고, 바뀐 상태(state)를 방에 올림. 방은 방장만 고칠 수 있음
 // - 다른 사람은 '행동'(들어가기·주사위·선택 등)만 만들고, 방장 기기가 받아서 적용
 // - 첫 버전: 로그인한 사람은 방 코드를 알면 방을 볼 수 있음 (게임 데이터라 민감하지 않음)
+// - expiresAt: 이 시각(초)이 지나면 AWS가 알아서 지움 (2026-10-21 TTL, backend.ts). 방 7일·행동 1일
 const schema = a.schema({
   Room: a
     .model({
@@ -13,6 +14,7 @@ const schema = a.schema({
       seats: a.json(), // [{ userId, name, ai }] 자리 목록
       state: a.json(), // 게임 상태 (GameState)
       version: a.integer(), // 상태가 바뀔 때마다 1씩 늘림 (늦게 온 옛 상태 버리기)
+      expiresAt: a.integer(), // 마지막으로 바뀐 뒤 7일
     })
     .secondaryIndexes((index) => [index('code')])
     .authorization((allow) => [allow.owner(), allow.authenticated().to(['read'])]),
@@ -31,6 +33,7 @@ const schema = a.schema({
       name: a.string(), // 보낸 사람 게임 안 이름
       kind: a.string().required(), // join, leave, roll, choose, mini …
       payload: a.json(),
+      expiresAt: a.integer(), // 만든 뒤 1일
     })
     .secondaryIndexes((index) => [index('roomId')])
     .authorization((allow) => [allow.owner(), allow.authenticated().to(['read'])]),

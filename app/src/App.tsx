@@ -9,7 +9,7 @@ import {
 import { applyOp, type Op } from './engine/ops'
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
 import type { DiceItem, GameState } from './engine/types'
-import { deleteLocalGame, dropOldProfiles, lastAccount, makeSlot, rememberAccount, saveLocalGame, type Profile, type SaveSlot } from './storage'
+import { deleteLocalGame, dropOldProfiles, lastAccount, lastWhere, makeSlot, rememberAccount, rememberWhere, saveLocalGame, type Profile, type SaveSlot } from './storage'
 import type { Me } from './online/client'
 import { BannerArt, EventArt, EventPopup, Roulette } from './art/More'
 import { setSoundPrefs, sfx, soundPrefs, unlockAudio } from './sound'
@@ -55,6 +55,7 @@ export default function App() {
   const [game, setGame] = useState<GameState | null>(null)
   const [speed, setSpeed] = useState<Speed>('fast')
   const [dress, setDress] = useState(false)
+  const [resumeRoom, setResumeRoom] = useState<string | null>(null) // 새로고침 전에 있던 온라인 방
   const outfit = profile?.outfit ?? DEFAULT_OUTFIT
   const profileRef = useRef(profile)
   profileRef.current = profile
@@ -64,10 +65,22 @@ export default function App() {
     dropOldProfiles()
     if (!lastAccount()) return
     account().then((a) => a.restoreAccount()).then((r) => {
-      if (r) { setProfile(r.profile); setSlot(r.slot) } else { rememberAccount(null); setScreen('title') }
+      if (!r) { rememberAccount(null); setScreen('title'); return }
+      setProfile(r.profile)
+      setSlot(r.slot)
+      // 새로고침이면 하던 화면으로 (혼자 하기는 저장된 게임, 온라인은 그 방)
+      const w = lastWhere()
+      if (w?.screen === 'play' && r.slot) { setGame(r.slot.state); setScreen('play') }
+      else if (w?.screen === 'online') { setResumeRoom(w.roomId); setScreen('online') }
     }).catch(() => { setScreen('title'); setNotice('계정을 불러오지 못했어요. 인터넷 연결을 확인해 주세요') })
       .finally(() => setBooting(false))
   }, [])
+
+  // 지금 화면 기억 (온라인 방은 Online이 기억함)
+  useEffect(() => {
+    if (booting || screen === 'online') return
+    rememberWhere(screen === 'play' && profile ? { screen: 'play' } : null)
+  }, [booting, screen, profile])
 
   // ── 자동 저장: 이 기기에는 매번, 계정에는 모아서 (창을 닫거나 숨길 때·메뉴로 나갈 때는 바로) ──
   const pending = useRef<SaveSlot | null | undefined>(undefined) // undefined: 보낼 것 없음, null: 저장 지우기
@@ -166,7 +179,7 @@ export default function App() {
   if (screen === 'online' && profile) {
     return (
       <Suspense fallback={<div className="setup"><p className="center muted">온라인 불러오는 중…</p></div>}>
-        <Online me={profile} outfit={outfit} onOutfit={changeOutfit} onBack={() => setScreen('menu')}
+        <Online me={profile} outfit={outfit} initialRoom={resumeRoom} onOutfit={changeOutfit} onBack={() => setScreen('menu')}
           renderPlay={(o) => <Play game={o.game} setGame={o.setGame} speed="fast" saving={false} onQuit={o.onQuit} online={o.online} />} />
       </Suspense>
     )

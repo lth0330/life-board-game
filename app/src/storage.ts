@@ -50,3 +50,13 @@ export function newerSave(a: SaveSlot | null | undefined, b: SaveSlot | null | u
   if (!y) return x
   return y.savedAt > x.savedAt ? y : x
 }
+
+// 새로고침해도 하던 화면으로 돌아가기 (2026-10-21). 탭을 닫으면 잊음 (sessionStorage)
+export type Where = { screen: 'play' } | { screen: 'online'; roomId: string }
+const WHERE = 'dgl:where'
+export function lastWhere(): Where | null {
+  try { const raw = sessionStorage.getItem(WHERE); return raw ? (JSON.parse(raw) as Where) : null } catch { return null }
+}
+export function rememberWhere(w: Where | null) {
+  try { if (w) sessionStorage.setItem(WHERE, JSON.stringify(w)); else sessionStorage.removeItem(WHERE) } catch { /* 무시 */ }
+}

@@ -11,6 +11,7 @@ import type { OnlinePlay } from '../App'
 import { Character } from '../art/Character'
 import { cleanOutfit, type Outfit } from '../engine/outfit'
 import { Dresser } from '../ui/Dresser'
+import { rememberWhere } from '../storage'
 import {
   client, createRoom, isRoomOwner, openRooms, parse, saveRoom, sendAction,
   type ActionPayload, type LobbyState, type Me, type Room, type Seat,
@@ -23,10 +24,12 @@ export interface PlayProps {
 }
 type RenderPlay = (p: PlayProps) => ReactNode
 
-export function Online({ me, outfit, onOutfit, onBack, renderPlay }: {
-  me: Me; outfit: Outfit; onOutfit: (o: Outfit) => void; onBack: () => void; renderPlay: RenderPlay
+export function Online({ me, outfit, onOutfit, onBack, renderPlay, initialRoom = null }: {
+  me: Me; outfit: Outfit; onOutfit: (o: Outfit) => void; onBack: () => void; renderPlay: RenderPlay; initialRoom?: string | null
 }) {
-  const [roomId, setRoomId] = useState<string | null>(null)
+  const [roomId, setRoomId] = useState<string | null>(initialRoom)
+  // 새로고침해도 이 방으로 돌아오게
+  useEffect(() => { rememberWhere(roomId ? { screen: 'online', roomId } : null) }, [roomId])
   if (roomId) return <Lobby me={me} outfit={outfit} roomId={roomId} renderPlay={renderPlay} onLeave={() => setRoomId(null)} />
   return <OnlineHome me={me} outfit={outfit} onOutfit={onOutfit} onRoom={setRoomId} onBack={onBack} />
 }
@@ -86,6 +89,7 @@ const DIFF: [LobbyState['settings']['difficulty'], string][] = [['easy', '쉬움
 function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Outfit; roomId: string; onLeave: () => void; renderPlay: RenderPlay }) {
   const [room, setRoom] = useState<Room | null>(null)
   const [closed, setClosed] = useState(false)
+  const [missing, setMissing] = useState(false) // 방이 지워짐 (새로고침으로 돌아왔는데 오래된 방)
   const roomRef = useRef<Room | null>(null)
   const apply = useCallback((r: Room | null) => {
     if (!r) return
@@ -99,7 +103,7 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
 
   // 방 불러오기 + 바뀔 때마다 받기
   useEffect(() => {
-    void client.models.Room.get({ id: roomId }).then((r) => apply(r.data))
+    void client.models.Room.get({ id: roomId }).then((r) => { if (r.data) apply(r.data); else setMissing(true) }).catch(() => setMissing(true))
     const sub = client.models.Room.onUpdate({ filter: { id: { eq: roomId } } }).subscribe({ next: apply })
     return () => sub.unsubscribe()
   }, [roomId, apply])
@@ -144,10 +148,10 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
     onLeave()
   }
 
-  if (closed && !isHost) {
+  if ((closed && !isHost) || missing) {
     return (
       <Frame>
-        <p className="center">방장이 방을 닫았어요</p>
+        <p className="center">{missing ? '방이 없어졌어요' : '방장이 방을 닫았어요'}</p>
         <button className="wide big" onClick={onLeave}>돌아가기</button>
       </Frame>
     )

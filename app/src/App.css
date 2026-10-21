@@ -396,7 +396,7 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
 .dresser-preview { display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--sky); border-radius: 16px; padding: 10px 14px; }
 .dresser-skin { display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .mini-btn { min-height: 44px; border-radius: 10px; border: 2px solid var(--ink); background: #fff; padding: 0 12px; font-family: 'Jua', sans-serif; font-size: 14px; }
-.scroll-tabs { overflow-x: auto; }
+.scroll-tabs { overflow-x: auto; flex-shrink: 0; } /* 창이 꽉 차도 탭 줄이 납작해지지 않게 */
 .scroll-tabs button { flex: 0 0 auto; padding: 0 14px; }
 .dresser-items { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .dresser-items button {

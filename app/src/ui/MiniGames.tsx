@@ -8,6 +8,7 @@ import { DEFAULT_OUTFIT, type Outfit } from '../engine/outfit'
 
 // 미니게임 화면. 결과: 0 실패, 1 성공, 2 대성공 (대결 timing은 0~100점)
 // level 0 쉬움 ~ 2 어려움 (능력치가 높을수록 쉬움)
+// 2026-10-21 난이도 한 단계쯤 올림 (실력 게임만, 운·지식 게임은 그대로)
 
 interface Props {
   mini: MiniState
@@ -154,8 +155,8 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
 
 // 바늘을 가운데에 멈추기. 쉬울수록 판정 범위가 넓고 바늘이 느림
 function Timing({ level, rounds, duel, onDone }: { level: number; rounds: number; duel: boolean; onDone: (v: number) => void }) {
-  const zone = [30, 20, 12][level]
-  const speed = [0.9, 1.25, 1.6][level]
+  const zone = [25, 17, 10][level]
+  const speed = [1.0, 1.4, 1.8][level]
   const [pos, setPos] = useState(0)
   const [scores, setScores] = useState<number[]>([])
   const [frozen, setFrozen] = useState(false) // 멈춘 자리를 잠깐 보여 줌
@@ -206,7 +207,7 @@ function Timing({ level, rounds, duel, onDone }: { level: number; rounds: number
 
 // 줄다리기: 왼쪽·오른쪽을 번갈아 눌러 줄을 당김. 상대는 계속 당김 (체력이 높을수록 상대가 약함)
 function Tug({ level, onDone }: { level: number; onDone: (v: number) => void }) {
-  const pull = [10, 16, 22][level] // 상대가 1초에 당기는 양
+  const pull = [12, 19, 26][level] // 상대가 1초에 당기는 양
   const [pos, setPos] = useState(0) // 100이면 내가 이김
   const [left, setLeft] = useState(6)
   const [started, setStarted] = useState(false)
@@ -252,7 +253,7 @@ function Tug({ level, onDone }: { level: number; onDone: (v: number) => void }) 
 
 // 공 던지기: 누르고 있으면 힘이 찼다 빠졌다 함. 목표 칸에서 손을 떼기
 function Throw({ level, onDone }: { level: number; onDone: (v: number) => void }) {
-  const w = [24, 16, 10][level] // 목표 칸 너비
+  const w = [20, 13, 8][level] // 목표 칸 너비
   const speed = [0.8, 1.1, 1.4][level]
   const target = useMemo(() => 55 + rand(25), [])
   const [power, setPower] = useState(0)
@@ -292,7 +293,7 @@ function Throw({ level, onDone }: { level: number; onDone: (v: number) => void }
 // 고백 타이밍: 하트가 콩닥콩닥. 가장 클 때 누르기
 function Confess({ level, onDone }: { level: number; onDone: (v: number) => void }) {
   const speed = [0.8, 1.1, 1.4][level]
-  const great = [0.97, 0.985, 0.993][level]
+  const great = [0.975, 0.988, 0.995][level]
   const ok = [0.88, 0.93, 0.96][level]
   const [beat, setBeat] = useState(0)
   const [stopped, setStopped] = useState(false)
@@ -323,7 +324,7 @@ function Confess({ level, onDone }: { level: number; onDone: (v: number) => void
 
 // 무대 공연: 음표 4개가 떨어짐. 선에 닿을 때 누르기
 function Rhythm({ level, onDone }: { level: number; onDone: (v: number) => void }) {
-  const fall = [1800, 1400, 1100][level] // 위에서 선까지 걸리는 시간(ms)
+  const fall = [1600, 1250, 1000][level] // 위에서 선까지 걸리는 시간(ms)
   const perfect = [130, 100, 70][level]
   const good = [240, 180, 130][level]
   const hits = useMemo(() => { let t = fall + 600; return Array.from({ length: 4 }, () => (t += 700 + rand(500))) }, [fall]) // 선에 닿는 시각
@@ -385,7 +386,7 @@ const ARROWS = ['↑', '↓', '←', '→']
 const POSE_OF: Record<string, Pose> = { '←': 'left', '↑': 'up', '→': 'right', '↓': 'out' }
 const POSE_NAME: Record<string, string> = { '←': '왼팔', '↑': '만세', '→': '오른팔', '↓': '팔 벌리기' }
 function Dance({ level, outfit, onDone }: { level: number; outfit: Outfit; onDone: (v: number) => void }) {
-  const len = [4, 5, 6][level]
+  const len = [5, 6, 7][level]
   const seq = useMemo(() => Array.from({ length: len }, () => ARROWS[rand(4)]), [len])
   const [shown, setShown] = useState(0) // 지금까지 보여 준 개수 (len이면 내 차례)
   const [picked, setPicked] = useState<string[]>([])
@@ -420,7 +421,7 @@ function Dance({ level, outfit, onDone }: { level: number; outfit: Outfit; onDon
 
 // 5초 동안 많이 누르기 (운동회 달리기). 체력이 높으면 목표가 낮음
 function Mash({ level, onDone }: { level: number; onDone: (v: number) => void }) {
-  const goal = [18, 25, 32][level]
+  const goal = [20, 28, 36][level]
   const [count, setCount] = useState(0)
   const [left, setLeft] = useState(5)
   const [started, setStarted] = useState(false)
@@ -451,7 +452,7 @@ function Mash({ level, onDone }: { level: number; onDone: (v: number) => void })
 
 // 잠깐 보여준 순서 기억하기. 지력이 높으면 개수가 적음
 function Memory({ level, symbols, onDone }: { level: number; symbols: string[]; onDone: (v: number) => void }) {
-  const len = [3, 4, 6][level]
+  const len = [4, 5, 6][level]
   const seq = useMemo(() => Array.from({ length: len }, () => symbols[rand(symbols.length)]), [len, symbols])
   const [show, setShow] = useState(true)
   const [picked, setPicked] = useState<string[]>([])
@@ -483,7 +484,7 @@ function Pairs({ level, onDone }: { level: number; onDone: (v: number) => void }
   const deck = useMemo(() => shuffle([...'●■▲★♥◆'.slice(0, n), ...'●■▲★♥◆'.slice(0, n)]), [n])
   const [open, setOpen] = useState<number[]>([])
   const [found, setFound] = useState<number[]>([])
-  const [left, setLeft] = useState(20)
+  const [left, setLeft] = useState(18)
   const doneRef = useRef(false)
   useEffect(() => {
     const t = setInterval(() => setLeft((l) => l - 1), 1000)
@@ -530,7 +531,7 @@ function QuickMath({ level, onDone }: { level: number; onDone: (v: number) => vo
   }), [max])
   const [i, setI] = useState(0)
   const [right, setRight] = useState(0)
-  const [left, setLeft] = useState([14, 11, 9][level])
+  const [left, setLeft] = useState([12, 10, 8][level])
   const doneRef = useRef(false)
   useEffect(() => { const t = setInterval(() => setLeft((l) => l - 1), 1000); return () => clearInterval(t) }, [])
   useEffect(() => {
