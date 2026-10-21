@@ -143,6 +143,7 @@ export default function App() {
     rememberAccount(null)
     setProfile(null)
     setSlot(null)
+    setResumeRoom(null)
     setScreen('title')
   }
 
@@ -179,7 +180,7 @@ export default function App() {
   if (screen === 'online' && profile) {
     return (
       <Suspense fallback={<div className="setup"><p className="center muted">온라인 불러오는 중…</p></div>}>
-        <Online me={profile} outfit={outfit} initialRoom={resumeRoom} onOutfit={changeOutfit} onBack={() => setScreen('menu')}
+        <Online me={profile} outfit={outfit} initialRoom={resumeRoom} onOutfit={changeOutfit} onBack={() => { setResumeRoom(null); setScreen('menu') }}
           renderPlay={(o) => <Play game={o.game} setGame={o.setGame} speed="fast" saving={false} onQuit={o.onQuit} online={o.online} />} />
       </Suspense>
     )

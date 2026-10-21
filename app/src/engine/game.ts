@@ -275,12 +275,7 @@ function beginTurn(s: GameState) {
 
   if (isAdultStage(s)) economyTick(s, p)
   else if (stageOf(s).id === 'student') p.money += STUDENT_ALLOWANCE
-  if (p.money < 0 && p.savings) { // 마이너스면 적금에서 자동으로
-    const amt = Math.min(p.savings, -p.money)
-    p.savings -= amt
-    p.money += amt
-    log(s, p.id, `돈이 모자라 적금에서 ${won(amt)} 꺼냈다`, 'info')
-  }
+  fromSavings(s, p, 0) // 마이너스면 적금에서 자동으로
   familyTick(s, p)
   friendLoanTick(s, p)
 
@@ -295,7 +290,9 @@ function beginTurn(s: GameState) {
   const careerJob = p.careerDue ? jobOf(p) : null
   p.careerDue = false
   if (careerJob?.boom && careerJob.id !== 'ceo') {
-    diceCheck(s, p, '커리어 주사위', `${careerJob.name} ${careerJob.ranks[p.jobRank]} · 주사위${luckBonusText(p)} → 5 이상이면 한 단계 위, 2 이하면 한 단계 아래`, { kind: 'career' })
+    const below = p.stats[careerJob.key] < (careerJob.req[careerJob.key] ?? 0) ? ' -1(능력치 부족)' : ''
+    const charm = careerJob.id === 'youtuber' ? (p.stats.cha >= 7 ? ' +1(매력)' : p.stats.cha <= 3 ? ' -1(매력)' : '') : ''
+    diceCheck(s, p, '커리어 주사위', `${careerJob.name} ${careerJob.ranks[p.jobRank]} · 주사위${luckBonusText(p)}${below}${charm} → 5 이상이면 한 단계 위, 2 이하면 한 단계 아래`, { kind: 'career' })
   } else if (!p.collegeDecided && (lastStudentTurn || sid === 'young')) {
     s.pending = {
       type: 'career', playerId: p.id,
@@ -416,10 +413,20 @@ function economyTick(s: GameState, p: Player) {
 }
 
 // 주택담보대출: 매 턴 정해진 돈이 자동으로 빠짐. 못 내면 연체, 3번이면 집을 경매로 팖
+// 적금에서 모자란 만큼 꺼냄 (갚을 돈이 모자랄 때)
+function fromSavings(s: GameState, p: Player, need: number) {
+  const amt = Math.min(p.savings ?? 0, Math.max(0, need - p.money))
+  if (amt <= 0) return
+  p.savings = (p.savings ?? 0) - amt
+  p.money += amt
+  log(s, p.id, `돈이 모자라 적금에서 ${won(amt)} 꺼냈다`, 'info')
+}
+
 function mortgageTick(s: GameState, p: Player) {
   const m = p.loans.find((l) => l.kind === '주담대')
   if (!m) return
   const pay = Math.min(m.amount, m.installment ?? m.amount)
+  fromSavings(s, p, pay)
   if (p.money >= pay) {
     p.money -= pay
     m.amount -= pay
@@ -548,6 +555,7 @@ function carCrashTick(s: GameState, p: Player) {
 function forceLiquidate(s: GameState, p: Player, overdue: { amount: number }[]) {
   const need = overdue.reduce((a, l) => a + l.amount, 0)
   p.loans = p.loans.filter((l) => !overdue.includes(l))
+  fromSavings(s, p, need) // 적금부터 (그래도 모자라면 주식·집)
   for (const k of SECTORS) {
     p.money += p.stocks[k] * s.stockPrice[k]
     p.record.stockGain += p.stocks[k] * s.stockPrice[k] - p.stockCost[k]
@@ -2794,6 +2802,7 @@ function applySabotage(s: GameState, p: Player, target: Player) {
   if (!card) return
   p.sabotage = null
   log(s, p.id, `${target.name}에게 ${SABOTAGE_NAMES[card]}!`, 'info')
+  const myLuck = p.fortune // 역풍은 쓰기 전 운세로
   changeFortune(s, p, -1, '방해 카드를 씀')
   say(s, p, 'sabotageUse')
   if (target.chance === 'block') {
@@ -2802,7 +2811,7 @@ function applySabotage(s: GameState, p: Player, target: Player) {
     return
   }
   if (card === 'lawsuit') { lawsuit(s, p, target, 'card'); return }
-  const backfire = Math.max(0, target.fortune - p.fortune) * 0.12
+  const backfire = Math.max(0, target.fortune - myLuck) * 0.12
   const victim = rng.chance(backfire) ? p : target
   if (victim === p) log(s, p.id, '역풍! 방해가 나에게 돌아왔다', 'bad')
   else say(s, target, 'sabotaged')
@@ -2946,7 +2955,7 @@ function nextStage(s: GameState) {
     p.rollsLeft = st.rolls ?? 0
     p.carCharges = CARS[p.car].charges[Math.max(0, s.stageIdx - 2)]
     if (st.id === 'middle' && p.jobId === 'athlete') { p.exAthlete = p.jobRank; log(s, p.id, `운동선수 은퇴!${p.medals.length ? ` (메달 ${p.medals.length}개)` : ''}`, 'info'); p.jobId = null; p.jobTenure = 0 }
-    if (st.id !== 'young') { if (p.human && jobOf(p)?.boom && p.jobId !== 'ceo') p.careerDue = true; else careerRoll(s, p) } // 사람은 첫 차례에 직접 굴림
+    if (st.id !== 'young') { if (st.id === 'middle' && p.human && jobOf(p)?.boom && p.jobId !== 'ceo') p.careerDue = true; else careerRoll(s, p) } // 중년: 사람은 첫 차례에 직접 굴림 (노년은 은퇴 전이라 자동)
     if (st.id === 'old') {
       if (p.jobId && p.jobId !== 'ceo') { paySeverance(s, p); log(s, p.id, `${jobOf(p)?.name} 은퇴${jobOf(p)?.pension ? ` (연금 매 턴 ${won(PENSION)})` : ''}`, 'info'); say(s, p, 'retire') }
       p.agency = null

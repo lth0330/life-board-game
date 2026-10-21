@@ -219,7 +219,7 @@ export function CardsSheet({ p, canUse, onUseChance, onSabotage, onClose }: {
         <div className="card sabotage">
           <span className="muted">방해 카드</span>
           <b className="jua">{p.sabotage ? SABOTAGE_NAMES[p.sabotage] : '없음'}</b>
-          <p className="muted">상대 운세가 나보다 좋으면 역풍이 불 수 있어요.</p>
+          <p className="muted">쓰면 내 운세 ↓. 상대 운세가 나보다 좋으면 역풍이 불 수 있어요.</p>
           {p.sabotage && <button disabled={!canUse} onClick={onSabotage}>상대 고르기</button>}
         </div>
       </div>
