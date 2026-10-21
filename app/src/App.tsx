@@ -36,6 +36,7 @@ const SPEED_MS: Record<Speed, number> = { fast: 450, normal: 1000, slow: 1700 }
 const WALK_MS = 230
 const DICE_ROLL_MS = 750
 const DICE_SHOW_MS = 650
+const DICE_BEFORE_WHEEL_MS = 1000
 // 상점 카테고리 (물건 id로 나눔)
 const SHOP_CATS = [
   { id: 'home', icon: '🏠', name: '집·차', match: (id: string) => id.startsWith('house') || id.startsWith('mortgage') || id.startsWith('car') },
@@ -287,13 +288,16 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
   // ── 주사위 결과 잠깐 보여주기 ──
   const [diceShow, setDiceShow] = useState<{ value: number; second?: number } | null>(null)
   const lastDiceId = useRef(game.dice?.id ?? 0)
+  const lastWheel = useRef(game.roulette?.id ?? 0)
   useEffect(() => {
     if (!game.dice || game.dice.id === lastDiceId.current) return
     lastDiceId.current = game.dice.id
     setDiceShow({ value: game.dice.value, second: game.dice.second })
-    const t = setTimeout(() => setDiceShow(null), DICE_SHOW_MS)
+    // 수능처럼 주사위 바로 뒤에 룰렛이 오면 주사위를 1초 보여 준 뒤 룰렛 (2026-10-21 사용자)
+    const wheelNext = !!game.roulette && game.roulette.id !== lastWheel.current
+    const t = setTimeout(() => setDiceShow(null), wheelNext ? DICE_BEFORE_WHEEL_MS : DICE_SHOW_MS)
     return () => clearTimeout(t)
-  }, [game.dice])
+  }, [game.dice]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── 한 칸씩 걷기 ──
   const [walk, setWalk] = useState({ id: game.pathId, idx: Math.max(0, game.path.length - 1) })
@@ -336,12 +340,11 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
   }, [popVisible, popShow, game.players, suspense])
   // 룰렛 연출 (대학 합격·감독 도전)
   const [wheel, setWheel] = useState<GameState['roulette']>(null)
-  const lastWheel = useRef(game.roulette?.id ?? 0)
   useEffect(() => {
-    if (!game.roulette || game.roulette.id === lastWheel.current) return
+    if (!game.roulette || game.roulette.id === lastWheel.current || diceShow !== null) return // 주사위가 사라진 뒤에 돌림
     lastWheel.current = game.roulette.id
     setWheel(game.roulette)
-  }, [game.roulette])
+  }, [game.roulette, diceShow])
   const closeWheel = useCallback(() => setWheel(null), [])
   // 상점 카테고리
   const [shopCat, setShopCat] = useState<string | null>(null)
