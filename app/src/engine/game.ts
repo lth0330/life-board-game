@@ -1,6 +1,7 @@
 import { buildStages, isEnd, maxDepth, walkAhead } from './board'
 import {
   AI_NAMES, BIZ, BUSINESSES, CARS, CHANCE_NAMES, DICE_ITEMS, FORTUNES, FORTUNE_WEIGHTS, HOUSES, CAR_CRASH_LOSS, CAR_RESALE, HOUSE_RULES, INSURANCE, CAFE, JOBS, KIDS, LOTTERY_PRICE, MAX_DICE_ITEMS, MEDALS, PENSION, SEVERANCE_RATE,
+  ADULT_BONUS_MULT, PERF_BONUS, SAVINGS_RATE, SCORE_PER_POINT,
   PERSONALITIES, PLAYER_COLORS, PRESTIGE_JOBS, SABOTAGE_NAMES, SECTORS, SPOUSE_NAMES, STAGE_SCALE, STAT_NAMES,
   TAX_RATE, TRAITS, JOB_PROS_CONS,
 } from './data'
@@ -81,7 +82,7 @@ export const bankDebt = (p: Player) => p.loans.filter((l) => l.kind !== '주담�
 export const friendDebt = (s: GameState, p: Player) => s.friendLoans.filter((l) => l.borrowerId === p.id).reduce((a, l) => a + l.owe, 0)
 export const friendCredit = (s: GameState, p: Player) => s.friendLoans.filter((l) => l.lenderId === p.id).reduce((a, l) => a + l.owe, 0)
 export function assetsOf(s: GameState, p: Player) {
-  return p.money + Math.round(houseValue(s, p) * HOUSE_RULES.scoreRate) + p.carValue + stocksValue(s, p) - loanTotal(p) - friendDebt(s, p) + friendCredit(s, p)
+  return p.money + (p.savings ?? 0) + Math.round(houseValue(s, p) * HOUSE_RULES.scoreRate) + p.carValue + stocksValue(s, p) - loanTotal(p) - friendDebt(s, p) + friendCredit(s, p)
 }
 // 집 시세: 상점 값 × 판 전체 시세
 // 할인 쿠폰: 30% 할인, 최대 집 1,000만 · 차 500만
@@ -96,7 +97,7 @@ export const houseValue = (s: GameState, p: Player) => housePriceOf(s, p.house)
 export function houseCost(s: GameState, p: Player, tier: number, coupon = p.chance === 'coupon') {
   return Math.max(0, housePriceOf(s, tier) - (coupon ? couponOff(housePriceOf(s, tier), 1000) : 0) - houseValue(s, p))
 }
-export const SCORE_PER_POINT = 50 // 자산 50만당 1점 (2026-10-15 밸런스: 행복과 비슷한 무게)
+export { SCORE_PER_POINT }
 // 결산 상: 1등(같으면 모두)에게 10점. 기록이 0이면 없음
 export const AWARD_POINTS = 10
 // 주식으로 번 돈: 판 동안 판 이익·손해 + 아직 들고 있는 주식의 (지금 값 - 산 값)
@@ -272,6 +273,12 @@ function beginTurn(s: GameState) {
 
   if (isAdultStage(s)) economyTick(s, p)
   else if (stageOf(s).id === 'student') p.money += STUDENT_ALLOWANCE
+  if (p.money < 0 && p.savings) { // 마이너스면 적금에서 자동으로
+    const amt = Math.min(p.savings, -p.money)
+    p.savings -= amt
+    p.money += amt
+    log(s, p.id, `돈이 모자라 적금에서 ${won(amt)} 꺼냈다`, 'info')
+  }
   familyTick(s, p)
   friendLoanTick(s, p)
 
@@ -331,6 +338,12 @@ function economyTick(s: GameState, p: Player) {
     const sal = Math.round(salaryOf(p) * (moodLevel(p) === 0 ? 0.8 : 1)) // 지침이면 월급 -20%
     const tax = Math.round(sal * TAX_RATE(sal))
     p.money += sal - tax
+    // 성과급: 운세가 좋을수록 자주, 월급의 2배 (2026-10-21)
+    if (rng.chance(PERF_BONUS.chance[p.fortune] ?? 0.1)) {
+      const bonus = sal * PERF_BONUS.salaries
+      p.money += bonus
+      log(s, p.id, `[운세 ${fortuneName(p.fortune)}] 성과급! +${won(bonus)}`, 'good')
+    }
     p.jobTurns++
     jobPerkTick(s, p)
     // 대박형(아이돌·배우 등): 핵심 능력치가 조건보다 높을수록 매 턴 승진 확률 (넘친 1당 3%)
@@ -353,6 +366,14 @@ function economyTick(s: GameState, p: Player) {
         say(s, p, 'promoted')
       }
     }
+  }
+  if (p.savings) { // 적금 이자
+    const interest = Math.round(p.savings * SAVINGS_RATE)
+    p.savings += interest
+  }
+  if (!p.human && st.id === 'old' && p.money > 500) { // AI: 노년엔 남는 돈을 적금에
+    p.savings = (p.savings ?? 0) + p.money - 500
+    p.money = 500
   }
   if (st.id !== 'old' && !job) p.happy += 1 // 백수: 월급은 없지만 여유
   if (st.id === 'old') {
@@ -1151,7 +1172,7 @@ function land(s: GameState) {
   switch (kind) {
     case 'money': {
       const mult = road === 'startup' ? 2.5 : road === 'work' ? 1.5 : road === 'city' ? (rng.chance(0.5) ? 2 : -1) : 1
-      const amt = Math.round(sc * rng.int(2, 5) * mult)
+      const amt = Math.round(sc * rng.int(2, 5) * mult * (isAdultStage(s) ? ADULT_BONUS_MULT : 1))
       p.money += amt
       log(s, p.id, amt >= 0 ? `${isAdultStage(s) ? '보너스' : '용돈'} +${won(amt)}` : `투자 손실 ${won(amt)}`, amt >= 0 ? 'good' : 'bad')
       break
@@ -2521,6 +2542,24 @@ export function toggleInsurance(s: GameState, kind: InsuranceKind) {
   if (kind === 'property' && !p.house) return
   p.insurance[kind] = true
   log(s, p.id, `${INSURANCE[kind].name} 가입`, 'info')
+}
+
+// ───────── 적금 (2026-10-21) ─────────
+// 넣어 두면 매 턴 이자. 언제든 뺄 수 있고, 돈이 마이너스가 되면 차례 시작에 자동으로 꺼내 메움
+export function deposit(s: GameState, amount: number) {
+  const p = cur(s)
+  if (!canAct(s) || !isAdultStage(s) || amount <= 0 || p.money < amount) return
+  p.money -= amount
+  p.savings = (p.savings ?? 0) + amount
+  log(s, p.id, `적금에 ${won(amount)} 넣었다 (모은 돈 ${won(p.savings)})`, 'info')
+}
+export function withdraw(s: GameState, amount?: number) {
+  const p = cur(s)
+  const amt = Math.min(p.savings ?? 0, amount ?? Infinity)
+  if (!canAct(s) || amt <= 0) return
+  p.savings = (p.savings ?? 0) - amt
+  p.money += amt
+  log(s, p.id, `적금에서 ${won(amt)} 꺼냈다`, 'info')
 }
 
 export function takeLoan(s: GameState, amount: number) {

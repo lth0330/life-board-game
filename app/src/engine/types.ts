@@ -132,6 +132,7 @@ export interface Player {
   happy: number
   stats: Record<StatKey, number>
   fortune: number // 0 최악 ~ 5 대대길
+  savings?: number // 적금 (2026-10-21, 예전 저장엔 없음)
   charmTurns: number
   goodDeeds: number
   jobId: string | null

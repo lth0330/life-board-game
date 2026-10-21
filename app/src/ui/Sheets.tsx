@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Character } from '../art/Character'
 import { Trophy } from '../art/More'
-import { CARS, CHANCE_NAMES, DICE_ITEMS, HOUSE_RULES, HOUSES, INSURANCE, JOBS, KIDS, LOTTERY_PRICE, MEDALS, PERSONALITIES, SABOTAGE_NAMES, SECTORS } from '../engine/data'
+import { CARS, CHANCE_NAMES, DICE_ITEMS, HOUSE_RULES, HOUSES, INSURANCE, JOBS, KIDS, LOTTERY_PRICE, MEDALS, PERSONALITIES, SABOTAGE_NAMES, SAVINGS_RATE, SECTORS } from '../engine/data'
 import {
   ageOf, moodLevel, moodOf, MOOD_FACES, MOOD_HELP, MOOD_NAMES, MOOD_TURNS, AWARD_POINTS, awardsOf, bankDebt, canBorrowFrom, fortuneName, friendDebt, houseValue, isAdultStage, jobOf, kidAllowance, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
   stars, stocksValue,
@@ -36,6 +36,8 @@ interface FinanceProps {
   onRepay: (amount?: number) => void
   onFriendLoan: (lenderId: number, amount: number, rateIdx: number, term: number) => void
   onRepayFriend: (idx: number) => void
+  onDeposit: (amount: number) => void
+  onWithdraw: (amount?: number) => void
   onClose: () => void
 }
 
@@ -50,7 +52,7 @@ function ProfitText({ v }: { v: number }) {
 }
 
 export function FinanceSheet(f: FinanceProps) {
-  const [tab, setTab] = useState<'lottery' | 'stock' | 'ins' | 'loan' | 'friend'>('stock')
+  const [tab, setTab] = useState<'lottery' | 'stock' | 'ins' | 'loan' | 'save' | 'friend'>('stock')
   const [amount, setAmount] = useState(1000)
   const [repay, setRepay] = useState(100)
   const [rateIdx, setRateIdx] = useState(1)
@@ -63,7 +65,7 @@ export function FinanceSheet(f: FinanceProps) {
       {!adult && <p className="note">재테크는 청년(성인)부터 할 수 있어요.</p>}
       {adult && !f.canUse && <p className="note">지금은 구경만 할 수 있어요 (내 차례, 주사위 던지기 전에 사용).</p>}
       <div className="tabs" role="tablist">
-        {([['stock', '주식'], ['lottery', '복권'], ['ins', '보험'], ['loan', '대출'], ['friend', '친구']] as const).map(([k, l]) => (
+        {([['stock', '주식'], ['save', '적금'], ['lottery', '복권'], ['ins', '보험'], ['loan', '대출'], ['friend', '친구']] as const).map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
@@ -145,6 +147,19 @@ export function FinanceSheet(f: FinanceProps) {
               </div>
             )
           })()}
+        </div>
+      )}
+      {tab === 'save' && (
+        <div className="list">
+          <p>모은 돈 <b>{won(p.savings ?? 0)}</b> · 매 턴 이자 {SAVINGS_RATE * 100}%{p.savings ? ` (다음 턴 +${won((p.savings ?? 0) * SAVINGS_RATE)})` : ''}</p>
+          <p className="note">언제든 꺼낼 수 있어요. 돈이 마이너스가 되면 차례 시작에 알아서 꺼내 메워요. 점수에는 모은 돈도 들어가요.</p>
+          <div className="row">
+            {[100, 500, 1000].map((a) => <button key={a} disabled={locked || p.money < a} onClick={() => f.onDeposit(a)}>{won(a)} 넣기</button>)}
+          </div>
+          <div className="row">
+            {[100, 500].map((a) => <button key={a} disabled={locked || (p.savings ?? 0) < a} onClick={() => f.onWithdraw(a)}>{won(a)} 빼기</button>)}
+            <button disabled={locked || !p.savings} onClick={() => f.onWithdraw()}>전부 빼기</button>
+          </div>
         </div>
       )}
       {tab === 'friend' && (
@@ -276,7 +291,7 @@ export function StageSummary({ s, onClose }: { s: GameState; onClose: () => void
     <div className="sheet-backdrop">
       <div className="sheet">
         <h2 className="jua center">{s.summary} 정산</h2>
-        <p className="center muted">지금까지 점수 (자산 50만당 1점 + 행복, 상은 마지막에)</p>
+        <p className="center muted">지금까지 점수 (자산 100만당 1점 + 행복, 상은 마지막에)</p>
         <div className="people">
           {ranked.map(({ p, sc }, i) => {
             const debt = loanTotal(p) + friendDebt(s, p)
@@ -309,7 +324,7 @@ export function GameOver({ s, onRestart }: { s: GameState; onRestart: () => void
       <div className="sheet">
         <div className="center"><Trophy size={64} /></div>
         <h2 className="jua center">인생 결산</h2>
-        <p className="center muted">점수 = 자산 50만당 1점 + 행복 + 상 {AWARD_POINTS}점씩(공동이면 나눔) (집은 지금 시세, 차는 지금 가치로)</p>
+        <p className="center muted">점수 = 자산 100만당 1점 + 행복 + 상 {AWARD_POINTS}점씩(공동이면 나눔) (집은 지금 시세, 차는 지금 가치로)</p>
         <div className="people">
           {ranked.map(({ p, sc }, i) => (
             <div key={p.id} className="person" style={{ borderColor: p.color }}>
@@ -386,6 +401,7 @@ export function MyInfoSheet({ s, p, onClose }: { s: GameState; p: Player; onClos
         <div className="info-row"><b>🏠 집</b> <span>{p.house ? `${HOUSES[p.house].name} · 시세 ${won(houseValue(s, p))}` : '없음'}</span></div>
         <div className="info-row"><b>🚗 차</b> <span>{p.car ? `${CARS[p.car].name} · ${won(p.carValue)}${p.carCharges ? ` · ±1 남은 ${p.carCharges}번` : ''}` : '없음'}</span></div>
         <div className="info-row"><b>📈 주식</b> <span>{stockList.length ? `${stockList.map((k) => `${k} ${p.stocks[k]}주`).join(' · ')} (${won(stocksValue(s, p))})` : '없음'}</span></div>
+        {!!p.savings && <div className="info-row"><b>🐷 적금</b> <span>{won(p.savings)}</span></div>}
         <div className="info-row"><b>💳 빚</b> <span>{debt || fDebt ? [debt ? `대출 ${won(debt)}` : '', fDebt ? `친구 ${won(fDebt)}` : ''].filter(Boolean).join(' · ') : '없음'}</span></div>
       </div>
 

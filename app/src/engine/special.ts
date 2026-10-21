@@ -1,5 +1,6 @@
 // 특별 이벤트 (2026-10-17 사용자): '좋은 일' 칸의 성장 몫 절반을 고르는 사건으로.
-// 능력치는 공짜로 오르지 않고 돈·행복·운(판정)과 바꿈. 돈 50만 = 행복 1 = 점수 1 (SCORE_PER_POINT)
+// 능력치는 공짜로 오르지 않고 돈·행복·운(판정)과 바꿈. 돈 100만 = 행복 1 = 점수 1 (SCORE_PER_POINT)
+import { SCORE_PER_POINT } from './data'
 import type { StageId, StatKey } from './types'
 
 export interface SpecialOption {
@@ -131,10 +132,10 @@ export function specialDesc(o: SpecialOption, sc: number, won: (n: number) => st
   return parts.join(' · ') || '아무 일 없음'
 }
 
-// AI가 보는 기대 점수: 능력치 1 = 3점, 행복 1 = 1점, 돈 50만 = 1점
+// AI가 보는 기대 점수: 능력치 1 = 3점, 행복 1 = 1점, 돈 SCORE_PER_POINT = 1점
 export function specialValue(o: SpecialOption, sc: number, statOf: (k: StatKey) => number): number {
   const sv = (st?: Partial<Record<StatKey, number>>) => Object.entries(st ?? {}).reduce((a, [k, v]) => a + (statOf(k as StatKey) >= 10 && v! > 0 ? 0 : v! * 3), 0)
-  let v = sv(o.stats) + (o.happy ?? 0) - ((o.cost ?? 0) * sc) / 50 + ((o.gain ?? 0) * sc) / 50
+  let v = sv(o.stats) + (o.happy ?? 0) - ((o.cost ?? 0) * sc) / SCORE_PER_POINT + ((o.gain ?? 0) * sc) / SCORE_PER_POINT
   if (o.check) {
     const p = Math.max(0, Math.min(1, (7 - (o.check.need - statOf(o.check.stat))) / 6))
     v += p * (sv(o.check.win.stats) + (o.check.win.happy ?? 0)) + (1 - p) * (sv(o.check.lose.stats) + (o.check.lose.happy ?? 0))

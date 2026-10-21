@@ -620,6 +620,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
           onLoan={(a) => run(['takeLoan', a])} onRepay={(a) => run(['repayLoans', a])}
           onFriendLoan={(id, a, r, t) => { setSheet(null); run(['requestFriendLoan', id, a, r, t]) }}
           onRepayFriend={(i) => run(['repayFriendLoan', i])}
+          onDeposit={(a) => run(['deposit', a])} onWithdraw={(a) => run(['withdraw', a])}
           onClose={() => setSheet(null)}
         />
       )}
