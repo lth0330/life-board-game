@@ -11,7 +11,7 @@ import { DILEMMAS, findEvent, SPECIALS, specialDesc, type SpecialEvent, type Spe
 import { speechLine, type SpeechKey } from './speech'
 import type {
   ChanceCard, ChoiceOption, DiceItem, DuelId, GameState, InsuranceKind, JobDef, MiniId, Personality, Player,
-  Biz, Kid, SabotageCard, Sector, Settings, Stage, StatKey, Suitor, Tile,
+  Biz, Kid, SabotageCard, Sector, Settings, Stage, StageId, StatKey, Suitor, Tile,
 } from './types'
 
 // ───────── 기본 도우미 ─────────
@@ -162,7 +162,9 @@ export function carChargesAt(p: Player, stageIdx: number, tier = p.car, boughtAt
 // 은행 대출 (2026-10-21 사용자): 한도는 가진 재산(집·차·주식)을 보고 정함, 매 턴 이자 3%, 같은 종류는 한 번에 하나만
 export const LOAN_RATE = 0.03
 export const LOAN_TURNS = 8
-export const loanCap = (s: GameState, p: Player) => Math.round(500 + (houseValue(s, p) + p.carValue + stocksValue(s, p)) * 0.5)
+// 청년은 재산이 없어도 3,000만까지 (2026-10-21 사용자)
+export const YOUNG_LOAN_MIN = 3000
+export const loanCap = (s: GameState, p: Player) => Math.max(stageOf(s).id === 'young' ? YOUNG_LOAN_MIN : 0, Math.round(500 + (houseValue(s, p) + p.carValue + stocksValue(s, p)) * 0.5))
 // 지금 더 빌릴 수 있는 돈
 export const loanLimit = (s: GameState, p: Player) => Math.max(0, loanCap(s, p) - bankDebt(p))
 export const canBankLoan = (s: GameState, p: Player) => isAdultStage(s) && p.creditBad <= 0 && !p.loans.some((l) => (l.kind ?? '일반') === '일반')
@@ -358,9 +360,9 @@ function beginTurn(s: GameState) {
     s.pending = {
       type: 'career', playerId: p.id,
       title: sid === 'student' ? '고등학교 졸업! 진로를 정해요' : '스무 살까지 어떻게 살았나요?',
-      text: `대학은 3종류예요. 고른 대학의 능력치가 높을수록 합격 확률이 올라가요. 떨어지면 바로 취업하거나 재수(1번)를 해요.\n지금 능력치 지력 ${p.stats.int} · 체력 ${p.stats.str} · 매력 ${p.stats.cha}\n\n[직업 조건]\n${jobGuide(p, false)}\n\n대학에 가면 수능을 보고, 청년이 되어 대학 길 9칸을 주사위로 걸으며(공부·동아리·연애·알바·시험·축제·장학금) 능력치를 키운 뒤 직업을 골라요. 대신 학자금 대출이 생기고 그동안 월급이 없어요.`,
+      text: `대학은 3종류예요. 먼저 수능 주사위를 굴리고(상위권 합격 +15%, 하위권 -10%), 그다음 합격 룰렛. 고른 대학의 능력치가 높을수록 합격 확률이 올라가요. 떨어지면 바로 취업하거나 재수(1번)를 해요.\n지금 능력치 지력 ${p.stats.int} · 체력 ${p.stats.str} · 매력 ${p.stats.cha}\n\n[직업 조건]\n${jobGuide(p, false)}\n\n합격하면 청년이 되어 대학 길 9칸을 주사위로 걸으며(공부·동아리·연애·알바·시험·축제·장학금) 능력치를 키운 뒤 직업을 골라요. 대신 학자금 대출(수능 상위권 0원 · 중간 500만 · 하위권 800만, 이자 3%)이 생기고 그동안 월급이 없어요.`,
       options: [
-        ...UNIS.map((u) => ({ id: `uni:${u.stat}`, label: `${u.name} 지원`, desc: `${STAT_NAMES[u.stat]} ${p.stats[u.stat]} → 합격 확률 ${Math.round(passChance(p, u.stat) * 100)}% (룰렛) · 대학 길에서 ${STAT_NAMES[u.stat]}을 키우면 행복 +1` })),
+        ...UNIS.map((u) => ({ id: `uni:${u.stat}`, label: `${u.name} 지원`, desc: `${STAT_NAMES[u.stat]} ${p.stats[u.stat]} → 합격 확률 ${Math.round(passChance(p, u.stat) * 100)}% (수능 상위권 +15%, 하위권 -10%) · 대학 길에서 ${STAT_NAMES[u.stat]}을 키우면 행복 +1` })),
         { id: 'work', label: '바로 취업', desc: '모아 둔 돈 +400만, 청년 첫 차례부터 직업·월급' },
       ],
     }
@@ -1167,25 +1169,44 @@ function diceCheck(s: GameState, p: Player, title: string, text: string, data: R
   s.pending = { type: 'diceCheck', playerId: p.id, title: `🎲 ${title}`, text, options: [{ id: 'roll', label: '🎲 주사위 굴리기' }], data }
 }
 function showDice(s: GameState, v: number) { s.dice = { value: v, id: (s.dice?.id ?? 0) + 1 } }
-function suneung(s: GameState, p: Player, dice: number) {
+// 대학 지원 (2026-10-21 사용자): 수능 주사위를 먼저 → 점수가 합격 룰렛 확률에 더해짐 → 합격하면 학자금 대출
+// after: 처음 지원이면 떨어졌을 때 재수/취업을 묻고, 재수면 묻지 않음
+type UniAfter = 'first' | 'retakeYoung' | 'retake'
+export const SUNEUNG = { top: 12, mid: 8, bonus: [-0.1, 0, 0.15], loan: [800, 500, 0] } // [하위권, 중간, 상위권]
+const suneungGrade = (score: number) => (score >= SUNEUNG.top ? 2 : score >= SUNEUNG.mid ? 1 : 0)
+function startUni(s: GameState, p: Player, k: StatKey, after: UniAfter) {
+  const u = UNIS.find((x) => x.stat === k)!
+  if (p.human) diceCheck(s, p, '수능', `지력 ${p.stats.int} + 주사위${luckBonusText(p)} → ${SUNEUNG.top} 이상 상위권(합격 +15%, 장학금) · ${SUNEUNG.mid} 이상 중간 · 그 밖 하위권(합격 -10%). 그다음 ${u.name} 합격 룰렛`, { kind: 'suneung', k, after })
+  else suneung(s, p, rngOf(s).int(1, 6), k, after)
+}
+function suneung(s: GameState, p: Player, dice: number, k: StatKey, after: UniAfter) {
   const score = p.stats.int + dice + luckBonus(p)
-  const loan = score >= 12 ? 300 : score >= 8 ? 800 : 1200
-  const grade = score >= 12 ? '상위권! 장학금을 받았다' : score >= 8 ? '중간' : '하위권… 등록금 비싼 대학'
-  log(s, p.id, `수능: 지력 ${p.stats.int} + 주사위 ${dice} → ${grade} (학자금 대출 ${won(loan)})`, score >= 12 ? 'good' : score >= 8 ? 'info' : 'bad')
-  p.loans.push({ amount: loan, dueTurn: p.turnsPlayed + 99, kind: '학자금' }) // 기한은 졸업할 때 정함 (졸업 + 8턴)
-  s.banner = score >= 12 ? { title: '수능 상위권!', text: `${p.name}: 장학금`, tone: 'good' } : p.human ? { title: `수능 ${score >= 8 ? '중간' : '하위권'}`, text: `학자금 대출 ${won(loan)}`, tone: score >= 8 ? 'info' : 'bad' } : s.banner
+  const g = suneungGrade(score)
+  log(s, p.id, `수능: 지력 ${p.stats.int} + 주사위 ${dice}${luckBonusText(p)} → ${['하위권…', '중간', '상위권!'][g]}`, (['bad', 'info', 'good'] as const)[g])
+  if (uniTry(s, p, k, SUNEUNG.bonus[g])) {
+    const loan = SUNEUNG.loan[g]
+    if (loan) p.loans.push({ amount: loan, dueTurn: p.turnsPlayed + 99, kind: '학자금' }) // 기한은 졸업할 때 정함 (졸업 + 8턴)
+    log(s, p.id, loan ? `학자금 대출 ${won(loan)}` : '수능 상위권이라 장학금! 학자금 대출 없음', loan ? 'info' : 'good')
+    return
+  }
+  if (after === 'retakeYoung') log(s, p.id, '또 떨어졌다… 다음 차례에 바로 직업을 골라요', 'bad')
+  else if (after === 'retake') log(s, p.id, '또 떨어졌다… 바로 일을 하기로 했다', 'bad')
+  else s.pending = {
+    type: 'uniFail', playerId: p.id, title: '대학 불합격', text: '어떻게 할까요?',
+    options: [
+      { id: 'retake', label: '재수하기 (1번만)', desc: `다음 차례를 써서 ${STAT_NAMES[k]} +1 하고 다시 도전`, disabled: !!p.retook },
+      { id: 'work', label: '바로 취업', desc: '지금 능력치로 바로 직업 고르기' },
+    ],
+    data: { k },
+  }
 }
 
 function applyRoadStart(s: GameState, p: Player, road: string) {
-  const rng = rngOf(s)
   switch (road) {
     case 'college': {
       p.college = true
       p.collegeDecided = true
       p.campusTurns = CAMPUS_TURNS
-      // 수능: 문제 없이 지력 + 주사위 + 운세. 사람은 주사위를 직접 굴림
-      if (p.human) diceCheck(s, p, '수능', `지력 ${p.stats.int} + 주사위${luckBonusText(p)} → 12 이상이면 장학금, 8 이상이면 중간, 아니면 등록금 비싼 대학`, { kind: 'suneung' })
-      else suneung(s, p, rng.int(1, 6))
       // 성인부터 시작한 판이면 지금 바로 대학교로
       if (stageOf(s).id === 'young') p.pos = campusIdx(s)
       break
@@ -1781,7 +1802,7 @@ function addAffinityOrMeet(s: GameState, p: Player, amount: number, target?: str
 
 // 미니게임 설명서에 보여 줄 '무엇이 쉽게 해 주나'와 보상 (miniReward와 같은 내용)
 export function miniGuide(s: GameState, game: MiniId | DuelId, duel: boolean): { stat: string; reward: string } {
-  if (duel) return { stat: '같은 칸에 선 사람끼리 점수 대결', reward: '1등이 꼴찌에게서 돈을 받아요' }
+  if (duel) return { stat: '같은 칸에 선 사람끼리 점수 대결', reward: `1등이 꼴찌에게서 ${won(DUEL_STAKE[stageOf(s).id] ?? scaleOf(s))}을 받아요` }
   const k = MINI_STAT[game as MiniId]
   const stat = k === 'fortune' ? '운세가 좋을수록 유리해요' : k ? `${STAT_NAMES[k]}이 높을수록 쉬워요` : '운에 맡겨요'
   const chance = ' · 대성공이면 가끔 찬스 카드'
@@ -1936,6 +1957,9 @@ function resolveRps(s: GameState, ids: number[], picks: Record<number, number>, 
   }
 }
 
+// 타이밍 대결 판돈: 청년 150만·중년 300만 (2026-10-21 사용자)
+const DUEL_STAKE: Partial<Record<StageId, number>> = { young: 150, middle: 300 }
+
 // 꼴찌만 잃고, 1등이 잃은 만큼 얻는다 (운은 1단계, 능력치는 1개 +1, 돈은 전부)
 function resolveDuel(s: GameState, game: DuelId, ids: number[], res: Record<number, number>) {
   const rng = rngOf(s)
@@ -1955,7 +1979,7 @@ function resolveDuel(s: GameState, game: DuelId, ids: number[], res: Record<numb
     const k = rng.pick(STATS)
     for (const w of winners) { w.stats[k] = clampStat(w.stats[k] + 1); log(s, w.id, `가위바위보 승리: ${STAT_NAMES[k]} +1`, 'good') }
   } else {
-    const loss = scaleOf(s)
+    const loss = DUEL_STAKE[stageOf(s).id] ?? scaleOf(s)
     let pot = 0
     for (const l of losers) { l.money -= loss; pot += loss }
     const share = Math.round(pot / winners.length)
@@ -2208,9 +2232,9 @@ function spinRoulette(s: GameState, p: Player, title: string, chance: number, ok
 // 대학 3종: 능력치가 높을수록 합격 (룰렛)
 export const UNIS: { stat: StatKey; name: string }[] = [{ stat: 'int', name: '일반대' }, { stat: 'str', name: '체대' }, { stat: 'cha', name: '예대·방송대' }]
 export const passChance = (p: Player, k: StatKey) => Math.min(0.95, 0.15 + p.stats[k] * 0.09)
-function uniTry(s: GameState, p: Player, k: StatKey) {
+function uniTry(s: GameState, p: Player, k: StatKey, bonus = 0) {
   const u = UNIS.find((x) => x.stat === k)!
-  const ch = passChance(p, k)
+  const ch = Math.max(0.05, Math.min(0.95, passChance(p, k) + bonus))
   const ok = rngOf(s).next() < ch
   spinRoulette(s, p, `${u.name} 합격 룰렛`, ch, ok)
   if (ok) {
@@ -2371,17 +2395,7 @@ export function choose(s: GameState, optionId: string) {
     case 'fork': applyForkChoice(s, p, +optionId); break
     case 'adultStart': case 'career':
       if (optionId.startsWith('uni:')) {
-        const k = optionId.slice(4) as StatKey
-        if (!uniTry(s, p, k)) {
-          s.pending = {
-            type: 'uniFail', playerId: p.id, title: '대학 불합격', text: '어떻게 할까요?',
-            options: [
-              { id: 'retake', label: '재수하기 (1번만)', desc: `다음 차례를 써서 ${STAT_NAMES[k]} +1 하고 다시 도전`, disabled: !!p.retook },
-              { id: 'work', label: '바로 취업', desc: '지금 능력치로 바로 직업 고르기' },
-            ],
-            data: { k },
-          }
-        }
+        startUni(s, p, optionId.slice(4) as StatKey, 'first')
       } else applyRoadStart(s, p, optionId)
       break
     case 'uniFail': {
@@ -2394,7 +2408,7 @@ export function choose(s: GameState, optionId: string) {
           // 청년이면 이번 차례를 재수에 씀: 바로 다시 시험
           p.stats[k] = clampStat(p.stats[k] + 1)
           log(s, p.id, `재수 1년: ${STAT_NAMES[k]} +1`, 'info')
-          if (!uniTry(s, p, k)) { log(s, p.id, '또 떨어졌다… 다음 차례에 바로 직업을 골라요', 'bad') }
+          startUni(s, p, k, 'retakeYoung')
           s.lastRoll = 0
         } else p.retake = k // 학생 마지막 차례면 청년 첫 차례에 다시 시험
       } else {
@@ -2408,7 +2422,7 @@ export function choose(s: GameState, optionId: string) {
       p.retake = null
       p.stats[k] = clampStat(p.stats[k] + 1)
       log(s, p.id, `재수 1년: ${STAT_NAMES[k]} +1`, 'info')
-      if (!uniTry(s, p, k)) log(s, p.id, '또 떨어졌다… 바로 일을 하기로 했다', 'bad')
+      startUni(s, p, k, 'retake')
       s.lastRoll = 0 // 재수한 차례는 이걸로 끝
       break
     }
@@ -2541,10 +2555,10 @@ export function choose(s: GameState, optionId: string) {
       break
     }
     case 'diceCheck': {
-      const d = pd.data as { kind: 'special' | 'suneung' | 'career'; ev?: string; opt?: string }
+      const d = pd.data as { kind: 'special' | 'suneung' | 'career'; ev?: string; opt?: string; k?: StatKey; after?: UniAfter }
       const v = rng.int(1, 6)
       showDice(s, v)
-      if (d.kind === 'suneung') suneung(s, p, v)
+      if (d.kind === 'suneung') suneung(s, p, v, d.k ?? 'int', d.after ?? 'first')
       else if (d.kind === 'career') careerRoll(s, p, v)
       else {
         const ev = findEvent(stageOf(s).id, d.ev ?? '')

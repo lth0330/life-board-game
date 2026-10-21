@@ -834,8 +834,8 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .logbox-input button { min-height: 40px; padding: 0 12px; border-radius: 10px; border: 2px solid var(--ink); background: var(--ink); color: var(--paper); font-family: 'Jua', sans-serif; }
 .key-hint { display: block; font-size: 11px; opacity: 0.7; font-family: inherit; }
 /* 내 차례 알림 (2026-10-21) */
-.turn-toast { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); z-index: 30; pointer-events: none; font-size: 34px; color: var(--paper); background: var(--ink); border-radius: 16px; padding: 10px 26px; box-shadow: var(--pop); animation: turn-toast 1.2s ease forwards; }
-@keyframes turn-toast { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.8); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -60%); } }
+.turn-toast { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); z-index: 30; pointer-events: none; font-size: 48px; color: var(--paper); background: var(--ink); border-radius: 18px; padding: 14px 34px; box-shadow: var(--pop); white-space: nowrap; animation: turn-toast 2s ease forwards; }
+@keyframes turn-toast { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.8); } 10% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -60%); } }
 .loan-pick { text-align: left; border: 2px solid var(--ink); border-radius: 10px; background: #fff; padding: 8px 10px; font: inherit; color: inherit; }
 .loan-pick.on { background: #FFF4C9; box-shadow: var(--pop-sm); }
 /* 세계일주 사진 찍기·짐 싸기, 야바위 홀짝 (2026-10-21) */
@@ -858,3 +858,5 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .cup-cover { transform: translateY(0); opacity: 1; }
 .cup-open { transform: translateY(-110px) rotate(-12deg); opacity: 1; transition-duration: 0.5s; }
 @media (prefers-reduced-motion: reduce) { .cup-dice .tumble, .pack-timer { animation: none; } }
+.hud-loan { font-size: 13px; padding: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud-loan.warn { color: #C2452D; }

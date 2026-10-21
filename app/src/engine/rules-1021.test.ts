@@ -52,7 +52,10 @@ describe('대출 (2026-10-21)', () => {
     const s = adult()
     const p = cur(s)
     p.carValue = 1000
-    expect(loanCap(s, p)).toBe(500 + 500)
+    expect(loanCap(s, p)).toBe(3000) // 청년은 재산이 없어도 3,000만
+    p.carValue = 8000
+    expect(loanCap(s, p)).toBe(500 + 4000)
+    p.carValue = 1000
     takeLoan(s, 1000)
     expect(p.loans.filter((l) => l.kind === '일반')).toHaveLength(1)
     expect(canBankLoan(s, p)).toBe(false)
@@ -82,5 +85,30 @@ describe('차 능력 횟수 (2026-10-21)', () => {
     p.carStage = 2 // 청년에 산 스쿠터
     expect(carChargesAt(p, 3)).toBe(2)
     expect(carChargesAt(p, 4)).toBe(3)
+  })
+})
+
+describe('대학 지원 순서 (2026-10-21)', () => {
+  it('수능 주사위를 먼저 굴리고, 그다음 합격 룰렛. 학자금은 0·500·800만', () => {
+    let passed = 0
+    for (let seed = 1; seed <= 30; seed++) {
+      const s = adult(seed)
+      const p = cur(s)
+      p.loans = []
+      p.college = false
+      const wheel = s.roulette?.id ?? 0
+      s.pending = { type: 'adultStart', playerId: p.id, title: '', text: '', options: [] }
+      choose(s, 'uni:int')
+      expect(s.pending?.type).toBe('diceCheck')
+      expect(s.roulette?.id ?? 0).toBe(wheel) // 아직 룰렛 안 돌림
+      choose(s, 'roll')
+      expect(s.roulette!.id).toBe(wheel + 1)
+      if (p.college) {
+        passed++
+        const loan = p.loans.find((l) => l.kind === '학자금')?.amount ?? 0
+        expect([0, 500, 800]).toContain(loan)
+      } else expect(s.pending?.type).toBe('uniFail')
+    }
+    expect(passed).toBeGreaterThan(0)
   })
 })

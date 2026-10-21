@@ -79,7 +79,7 @@ export const STAGE_DEFS: StageDef[] = [
   {
     id: 'old', name: '노년', ages: [60, 80], rolls: null, length: 22,
     weights: [['card', 40], ['happy', 20], ['money', 20], ['risk', 20]], // 노년 행복 몰림 줄이기 (2026-10-17)
-    stops: {}, points: { 8: 'shop', 18: 'shop' }, // 노년 상점 (여행·선물·기부는 2026-10-21 사용자 요청으로 없앰)
+    stops: {}, points: {}, // 노년 상점은 없앰 (2026-10-21 사용자)
     life: {
       id: 'retire', at: 1, rejoin: 7, title: '은퇴지 고르기', text: '어디서 노후를 보낼까요?',
       roads: [

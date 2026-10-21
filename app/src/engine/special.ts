@@ -50,8 +50,8 @@ export const SPECIALS: Partial<Record<StageId, SpecialEvent[]>> = {
     {
       id: 'newkid', title: '전학 온 친구', text: '전학 온 친구와 친해졌어요. 무엇을 같이 할까요?',
       options: [
-        { id: 'study', label: '📖 같이 공부', stats: { int: 1 }, happy: -1 },
-        { id: 'sport', label: '⚽ 같이 운동', stats: { str: 1 }, happy: -1 },
+        { id: 'study', label: '📖 같이 공부', stats: { int: 1 } },
+        { id: 'sport', label: '⚽ 같이 운동', stats: { str: 1 } },
         { id: 'play', label: '🎮 같이 놀기', happy: 3 },
       ],
     },

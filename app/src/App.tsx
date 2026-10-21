@@ -4,7 +4,7 @@ import { Character, type Expr } from './art/Character'
 import { aiStep } from './engine/ai'
 import { CARS, DICE_ITEMS, MINI_PRACTICE_LIMIT } from './engine/data'
 import {
-  ageOf, turnIncome, moodLevel, MOOD_FACES, MOOD_HELP, MOOD_NAMES, canAct, canUseCar, createGame, cur, fortuneName, miniGuide, canSeekJob, stageOf,
+  ageOf, turnIncome, loanTotal, moodLevel, MOOD_FACES, MOOD_HELP, MOOD_NAMES, canAct, canUseCar, createGame, cur, fortuneName, miniGuide, canSeekJob, stageOf,
 } from './engine/game'
 import { applyOp, type Op } from './engine/ops'
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
@@ -44,6 +44,20 @@ const SHOP_CATS = [
   { id: 'item', icon: '🎲', name: '카드·주사위', match: (id: string) => id === 'chance' || id.startsWith('dice_') },
   { id: 'loan', icon: '💳', name: '은행 대출', match: (id: string) => id.startsWith('loan') },
 ]
+// 정보 칸 대출 줄 (2026-10-21 사용자): 남은 빚, 가장 빠른 기한. 접어도 보임
+function LoanLine({ p }: { p: GameState['players'][number] }) {
+  const due = p.loans.filter((l) => l.kind !== '주담대').sort((a, b) => a.dueTurn - b.dueTurn)[0]
+  const mort = p.loans.find((l) => l.kind === '주담대')
+  const left = due ? Math.max(0, due.dueTurn - p.turnsPlayed) : null
+  const parts = p.loans.map((l) => `${l.kind ?? '일반'} ${won(l.amount)}`).join(' · ')
+  return (
+    <div className={`hud-loan${left !== null && left <= 3 ? ' warn' : ''}`} title={parts}>
+      💳 대출 <b>{won(loanTotal(p))}</b>{p.loans.length > 1 ? ` (${p.loans.length}개)` : ''}
+      {due && <> · {due.kind ?? '일반'} 기한 <b>{left}턴</b> 남음{left !== null && left <= 3 ? ' ⚠️' : ''}</>}
+      {mort && <> · 주담대 매 턴 {won(mort.installment ?? 0)}</>}
+    </div>
+  )
+}
 const CELEBRATE = ['결혼!', '복권 1등!', '복권 2등!', '아기 탄생', '수능 상위권!', '게임 끝!', '회사 성장!', '감독 도전 성공!', '자녀 대성공!', '금메달!', '은메달!', '동메달!', '육순 잔치', '칠순 잔치']
 
 type Screen = 'title' | 'auth' | 'menu' | 'setup' | 'play' | 'online' | 'admin'
@@ -399,7 +413,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
     if (!myTurn || game.phase !== 'roll' || game.pending || toastTurn.current === game.turn) return
     toastTurn.current = game.turn
     setTurnToast(true)
-    const t = setTimeout(() => setTurnToast(false), 1200)
+    const t = setTimeout(() => setTurnToast(false), 2000)
     return () => clearTimeout(t)
   }, [myTurn, game.phase, game.pending, game.turn])
 
@@ -544,6 +558,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
           </div>
           <span className="hud-mood">기분 <span className="mood" title={`기분 ${MOOD_NAMES[moodLevel(shown)]}: ${MOOD_HELP[moodLevel(shown)]}`} aria-label={`기분 ${MOOD_NAMES[moodLevel(shown)]}`}>{MOOD_FACES[moodLevel(shown)]}</span></span>
         </div>
+        {shown.loans.length > 0 && <LoanLine p={shown} />}
         <div className="hud-sub muted">{playerLine(game, shown)} · <b className="hud-stats">지력 {shown.stats.int} · 체력 {shown.stats.str} · 매력 {shown.stats.cha}</b></div>
         <button className="hud-fold" aria-label={hudMini ? '정보 펼치기' : '정보 접기'} aria-expanded={!hudMini} onClick={toggleHud}>{hudMini ? '▼' : '▲'}</button>
       </header>
