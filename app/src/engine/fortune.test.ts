@@ -48,3 +48,22 @@ describe('운세 (2026-10-21)', () => {
     expect(p.fortune).toBe(2)
   })
 })
+
+describe('아이돌 은퇴 (2026-10-21)', () => {
+  it('중년이 되면 아이돌은 은퇴하고, 배우·유튜버로 가면 아이돌 등급을 이어받는다', async () => {
+    const { stageOf } = await import('./game')
+    let checked = 0
+    for (let seed = 1; seed <= 30; seed++) {
+      const s = createGame({ humanName: '', humans: 0, aiCount: 2, settings: { startAdult: true, difficulty: 'normal' }, seed })
+      const p = s.players[0]
+      let i = 0
+      while (stageOf(s).id !== 'middle' && i++ < 8000) { if (stageOf(s).id === 'young') { p.jobId = 'idol'; p.jobRank = 2; p.biz = null } aiStep(s) }
+      expect(stageOf(s).id).toBe('middle')
+      expect(p.jobId).not.toBe('idol')
+      while (p.exIdol != null && i++ < 9000) aiStep(s)
+      expect(p.exIdol ?? null).toBeNull()
+      if (p.jobId === 'actor' || p.jobId === 'youtuber') { expect(p.jobRank).toBe(2); checked++ }
+    }
+    expect(checked).toBeGreaterThan(0)
+  })
+})

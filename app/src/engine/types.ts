@@ -157,6 +157,7 @@ export interface Player {
   bizKeep: boolean | null // 노년에 회사를 계속 경영하는지 (null = 아직 안 정함)
   medals: number[] // 운동선수 메달 (0 금, 1 은, 2 동). 메달마다 매 턴 연금
   exAthlete: number | null // 중년에 은퇴한 운동선수의 마지막 등급 (창업/감독 고르기 전까지)
+  exIdol?: number | null // 중년에 은퇴한 아이돌의 마지막 등급 (전직/창업 고르기 전까지, 2026-10-21)
   stockCost: Record<Sector, number> // 종목별 산 돈 합계 (평균 산 가격 = 이것 ÷ 가진 수)
   carValue: number // 차의 지금 가치 (산 값에서 사고마다 깎임, 최종 자산에 들어감)
   house: HouseTier

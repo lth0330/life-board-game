@@ -37,9 +37,10 @@ export const JOBS: JobDef[] = [
   { id: 'lawyer', name: '변호사', boom: false, req: { int: 5, cha: 3 }, college: true, salary: 450, ranks: ['변호사', '파트너', '대표 변호사'], key: 'int', note: '높은 등급 배우자↑' },
   { id: 'doctor', name: '의사', boom: false, req: { int: 7, str: 3 }, college: true, salary: 540, ranks: ['레지던트', '전문의', '병원장'], key: 'int', sector: '의료', note: '병원비 위기↓, 높은 등급 배우자↑' },
   { id: 'athlete', name: '운동선수', boom: true, req: { str: 5 }, college: false, salary: 390, ranks: ['2군', '주전', '국가대표'], key: 'str', note: '중년에 은퇴' },
-  { id: 'idol', name: '아이돌·배우', boom: true, req: { cha: 6 }, college: false, salary: 420, ranks: ['연습생', '신인', '톱스타'], key: 'cha', sector: '엔터', note: '대박 아니면 쪽박' },
+  { id: 'idol', name: '아이돌', boom: true, req: { cha: 6 }, college: false, salary: 420, ranks: ['연습생', '신인', '톱스타'], key: 'cha', sector: '엔터', note: '중년에 은퇴 → 배우·유튜버 전직 또는 창업' },
   { id: 'youtuber', name: '유튜버', boom: true, req: { cha: 3 }, college: false, salary: 270, ranks: ['구독자 1만', '10만', '100만'], key: 'cha', sector: '엔터', note: '떡상·떡락' },
   { id: 'ceo', name: '사업가', boom: true, req: {}, college: false, salary: 450, ranks: ['소기업', '중소기업', '중견기업'], key: 'int', note: '중년 창업으로만' },
+  { id: 'actor', name: '배우', boom: true, req: {}, college: false, salary: 420, ranks: ['단역', '조연', '주연'], key: 'cha', sector: '엔터', note: '아이돌 출신만 (중년에 전직, 2026-10-21)' },
   { id: 'coach', name: '감독', boom: false, req: {}, college: false, salary: 300, ranks: ['코치', '감독', '국가대표 감독'], key: 'str', note: '운동선수 출신만 (은퇴 때 도전)' },
 ]
 
@@ -133,6 +134,7 @@ export const BUSINESSES: Record<string, { name: string; stat: 'int' | 'str' | 'c
   lawyer: { name: '법률 사무소', stat: 'int', sector: null },
   doctor: { name: '개인 병원', stat: 'int', sector: '의료' },
   idol: { name: '엔터 기획사', stat: 'cha', sector: '엔터' },
+  actor: { name: '엔터 기획사', stat: 'cha', sector: '엔터' },
   youtuber: { name: '엔터 기획사', stat: 'cha', sector: '엔터' },
   coach: { name: '스포츠 센터', stat: 'str', sector: null, maxRank: 1 }, // 체인점(중소기업)까지
   athlete: { name: '스포츠 센터', stat: 'str', sector: null, maxRank: 1 }, // 체인점(중소기업)까지
@@ -188,6 +190,7 @@ export const JOB_PROS_CONS: Record<string, [string, string]> = {
   lawyer: ['월급이 높고 좋은 배우자를 만나기 쉬워요', '대학, 지력 5, 매력 3이 필요해요'],
   doctor: ['월급이 가장 높고 병원비 위기가 줄어요', '대학, 지력 7, 체력 3이 필요해요'],
   athlete: ['월급이 높고 메달 기회가 있어요', '중년에 은퇴해요. 승진은 운 (체력이 높을수록 잦음)'],
-  idol: ['톱스타가 되면 큰돈과 명성', '승진은 운 (매력이 높을수록 잦음), 엔터주에 따라 흔들려요'],
+  idol: ['톱스타가 되면 큰돈과 명성, 중년에 배우·유튜버로 전직하면 아이돌 등급만큼 높게 시작', '중년에 은퇴해요. 승진은 운 (매력이 높을수록 잦음)'],
+  actor: ['아이돌 등급을 이어받아 시작해요', '승진은 운 (매력이 높을수록 잦음)'],
   youtuber: ['매력 3이면 바로 시작해요', '떡상·떡락으로 수입이 크게 흔들려요'],
 }

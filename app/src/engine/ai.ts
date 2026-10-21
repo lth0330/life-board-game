@@ -105,6 +105,10 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
     }
     case 'middleBranch': return id === 'adopt' ? (per === 'family' ? 5 : 2) : id === 'pet' ? (per === 'family' ? 4 : 2.5) : 1
     case 'bizRetire': return id === 'sell' ? 2 : p.jobRank >= 1 && (per === 'gambler' || per === 'investor') ? 2.5 : 1
+    case 'idolNext': { // 아이돌 등급이 높을수록 전직, 도박꾼형·재테크형은 창업도
+      const r = p.exIdol ?? 0
+      return id === 'actor' ? 2 + r : id === 'youtuber' ? 1.5 + r * 0.8 : id === 'biz' ? (per === 'gambler' || per === 'investor' ? 3 : 1) + r * 0.5 : 0.3
+    }
     case 'athleteNext': return id === 'coach' ? 2 + p.stats.str / 10 : id === 'biz' ? (per === 'gambler' || per === 'investor' ? 3 : 1.5) : 0.5
     case 'retire': return id === 'city' ? (per === 'gambler' || per === 'investor' ? 3 : 1) : 2
     case 'shop': {

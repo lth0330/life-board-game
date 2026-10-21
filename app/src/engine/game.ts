@@ -145,7 +145,7 @@ function meetsReq(p: Player, job: JobDef, relax = 0) {
 export function eligibleJobs(p: Player, stageIdx = 2) {
   const relax = p.spouse && p.spouse.fame >= 7 ? 1 : 0 // 명성 높은 배우자: 인맥으로 조건 1 완화
   // 운동선수는 중년이 되면 은퇴하므로 중년부터는 새로 될 수 없음
-  return JOBS.filter((j) => j.id !== 'ceo' && j.id !== 'coach' && !(j.id === 'athlete' && stageIdx >= 3) && meetsReq(p, j, relax))
+  return JOBS.filter((j) => j.id !== 'ceo' && j.id !== 'coach' && j.id !== 'actor' && !((j.id === 'athlete' || j.id === 'idol') && stageIdx >= 3) && meetsReq(p, j, relax))
 }
 
 // ───────── 게임 만들기 ─────────
@@ -309,6 +309,19 @@ function beginTurn(s: GameState) {
     s.pending = { type: 'retake', playerId: p.id, title: '재수 1년', text: `${STAT_NAMES[p.retake]} +1 하고 다시 시험을 봐요 (이번 차례는 이걸로 끝)`, options: [{ id: 'go', label: '시험 보기' }] }
   } else if (sid === 'young' && p.collegeDecided && !p.college && !p.jobId && p.pos === 0) {
     goToJob(s, p)
+  } else if (sid === 'middle' && p.exIdol != null) {
+    const r = p.exIdol
+    const actor = JOBS.find((j) => j.id === 'actor')!
+    const yt = JOBS.find((j) => j.id === 'youtuber')!
+    s.pending = {
+      type: 'idolNext', playerId: p.id, title: '아이돌 은퇴! 다음 인생은?', text: `아이돌 때 ${JOBS.find((j) => j.id === 'idol')!.ranks[r]} · 매력 ${p.stats.cha}. 아이돌 때 등급만큼 높게 시작해요.`,
+      options: [
+        { id: 'actor', label: '🎬 배우 전직', desc: `${actor.ranks[r]}부터 시작 · 대박형 · 월급 ${won(actor.salary)}` },
+        { id: 'youtuber', label: '📹 유튜버 전직', desc: `${yt.ranks[r]}부터 시작 · 대박형 · 월급 ${won(yt.salary)}` },
+        { id: 'biz', label: `🏢 창업: ${BUSINESSES.idol.name}`, desc: `자금 ${won(bizCost(p))} · 매력 바탕 · ${r >= 2 ? '톱스타라 중소기업부터' : '소기업부터'}` },
+        { id: 'rest', label: '🛋️ 좀 쉬기', desc: '백수 (중년 초반 창업 갈림길에서 창업 가능)' },
+      ],
+    }
   } else if (sid === 'middle' && p.exAthlete !== null) {
     const ch = Math.round(coachChance(p, p.exAthlete) * 100)
     s.pending = {
@@ -1996,7 +2009,7 @@ function uniTry(s: GameState, p: Player, k: StatKey) {
 // 직업 조건 한눈에 보기 (진로·직업 선택 창 설명에 붙임). ✅ = 지금 조건이 됨
 export function jobGuide(p: Player, collegeAssumed = p.college) {
   const short = { int: '지력', str: '체력', cha: '매력' } as const
-  return JOBS.filter((j) => j.id !== 'ceo' && j.id !== 'coach').map((j) => {
+  return JOBS.filter((j) => j.id !== 'ceo' && j.id !== 'coach' && j.id !== 'actor').map((j) => {
     const req = (Object.keys(j.req) as StatKey[]).map((k) => `${short[k]} ${j.req[k]}`).join('·')
     const ok = (!j.college || collegeAssumed) && (Object.keys(j.req) as StatKey[]).every((k) => p.stats[k] >= (j.req[k] ?? 0))
     return `${ok ? '✅' : '·'} ${j.name} (${req}${j.college ? ' · 🎓대학 필수' : ''}) 월급 ${won(j.salary)}`
@@ -2226,6 +2239,20 @@ export function choose(s: GameState, optionId: string) {
       if (optionId === 'sell') sellCompany(s, p)
       else { p.bizKeep = true; log(s, p.id, `노년에도 ${p.biz?.name}를 계속 경영한다`, 'info') }
       break
+    case 'idolNext': {
+      const rank = p.exIdol ?? 0
+      p.exIdol = null
+      if (optionId === 'actor' || optionId === 'youtuber') {
+        setJob(s, p, optionId)
+        p.jobRank = rank // 아이돌 등급 그대로 이어받음
+        log(s, p.id, `${jobOf(p)!.name}(으)로 전직! ${jobOf(p)!.ranks[rank]}부터 시작`, 'good')
+        s.banner = { title: `${jobOf(p)!.name} 전직!`, text: `${p.name}: ${jobOf(p)!.ranks[rank]}`, tone: 'good' }
+      } else if (optionId === 'biz') {
+        startCompany(s, p, BUSINESSES.idol)
+        if (rank >= 2) { p.jobRank = 1; log(s, p.id, `톱스타 이름값으로 ${bizRankOf(p)}부터!`, 'good') }
+      } else log(s, p.id, '아이돌 생활을 마치고 좀 쉬기로 했다', 'info')
+      break
+    }
     case 'athleteNext': {
       const rank = p.exAthlete ?? 0
       p.exAthlete = null
@@ -2558,7 +2585,7 @@ export function buyLottery(s: GameState) {
 // 백수 취업 도전: 청년·중년에 백수면 굴리기 전에 언제든 조건 맞는 직업을 고를 수 있음 (2026-10-16 사용자)
 export function canSeekJob(s: GameState, p: Player) {
   const id = stageOf(s).id
-  return (id === 'young' || id === 'middle') && !p.jobId && p.collegeDecided && p.campusTurns === 0 && p.exAthlete === null && !p.biz && eligibleJobs(p, s.stageIdx).length > 0
+  return (id === 'young' || id === 'middle') && !p.jobId && p.collegeDecided && p.campusTurns === 0 && p.exAthlete === null && p.exIdol == null && !p.biz && eligibleJobs(p, s.stageIdx).length > 0
 }
 export function seekJob(s: GameState) {
   const p = cur(s)
@@ -2793,12 +2820,12 @@ export function startSabotage(s: GameState) {
   if (!canAct(s) || !p.sabotage) return
   s.pending = {
     type: 'sabotageTarget', playerId: p.id, title: SABOTAGE_NAMES[p.sabotage], text: '누구에게 쓸까요? 상대 운세가 나보다 좋을수록 역풍이 불 수 있어요.',
-    options: s.players.filter((q) => q.id !== p.id).map((q) => ({ id: String(q.id), label: q.name, desc: `운세 ${fortuneName(q.fortune)} · 역풍 ${Math.round((BACKFIRE[q.fortune] ?? 0) * 100)}%` })),
+    options: s.players.filter((q) => q.id !== p.id).map((q) => ({ id: String(q.id), label: q.name, desc: `운세 ${fortuneName(q.fortune)} · 역풍 ${q.fortune > p.fortune ? Math.round((BACKFIRE[q.fortune] ?? 0) * 100) : 0}%` })),
   }
   s.phase = 'decision'
 }
 
-// 역풍 확률: 상대 운세(대흉~대길)에 따라 (2026-10-21 사용자: 쓰는 사람 운세는 안 내려감)
+// 역풍 확률: 상대 운세가 내 운세보다 높을 때만, 상대 운세(대흉~대길)에 따라 (2026-10-21 사용자: 쓰는 사람 운세는 안 내려감)
 export const BACKFIRE = [0, 0, 0.1, 0.25, 0.4]
 function applySabotage(s: GameState, p: Player, target: Player) {
   const rng = rngOf(s)
@@ -2813,7 +2840,7 @@ function applySabotage(s: GameState, p: Player, target: Player) {
     return
   }
   if (card === 'lawsuit') { lawsuit(s, p, target, 'card'); return }
-  const backfire = BACKFIRE[target.fortune] ?? 0
+  const backfire = target.fortune > p.fortune ? BACKFIRE[target.fortune] ?? 0 : 0 // 상대 운세가 나보다 높을 때만
   const victim = rng.chance(backfire) ? p : target
   if (victim === p) log(s, p.id, '역풍! 방해가 나에게 돌아왔다', 'bad')
   else say(s, target, 'sabotaged')
@@ -2956,6 +2983,7 @@ function nextStage(s: GameState) {
     p.forkChoice = null
     p.rollsLeft = st.rolls ?? 0
     p.carCharges = CARS[p.car].charges[Math.max(0, s.stageIdx - 2)]
+    if (st.id === 'middle' && p.jobId === 'idol') { p.exIdol = p.jobRank; log(s, p.id, `아이돌 은퇴! (${jobOf(p)!.ranks[p.jobRank]})`, 'info'); p.jobId = null; p.jobTenure = 0 }
     if (st.id === 'middle' && p.jobId === 'athlete') { p.exAthlete = p.jobRank; log(s, p.id, `운동선수 은퇴!${p.medals.length ? ` (메달 ${p.medals.length}개)` : ''}`, 'info'); p.jobId = null; p.jobTenure = 0 }
     if (st.id !== 'young') { if (st.id === 'middle' && p.human && jobOf(p)?.boom && p.jobId !== 'ceo') p.careerDue = true; else careerRoll(s, p) } // 중년: 사람은 첫 차례에 직접 굴림 (노년은 은퇴 전이라 자동)
     if (st.id === 'old') {
