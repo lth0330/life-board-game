@@ -21,6 +21,7 @@
 3. ④ **온라인을 전부 AWS로** (거의 끝) (Amplify Gen 2 → Cognito·DynamoDB·AppSync·Amplify Hosting, 서울). 계정 433889138774 무료 플랜(크레딧 100달러, 2027-04-16까지), 요금 알림 `lifegame-monthly` 1달러. 순서: 1 요금 알림 ✅ → 2 백엔드 ✅ (`app/amplify/`, 시험 환경 sandbox) → 3 로그인·방·대기실 화면 ✅ (`app/src/online/`, 구글 로그인은 아직) → 4 방장 기기가 진행 ✅ → 5 배포 ✅ (https://main.d16edqa9h9pqgu.amplifyapp.com, GitHub main에 올리면 자동 배포) → 6 같은 칸 대결 각자 기기로 ✅ (연습 3번 ✅). '미니게임 모두 같이 해서 보상'(13-review 6-19)은 규칙 결정이 필요해 남음
    - 같이 하기는 각자 기기 온라인으로. 한 기기 여럿 문제(대결 자동 점수 등)는 고치지 않음
    - 계정 정보 `aws.txt`는 `.gitignore`로 제외. 절대 커밋하지 않기
+   - 계정: 가입 때 이메일, 아이디·비밀번호 찾기 메일, 내 계정, 관리자 화면(처음 화면 ⚙️, 관리자 아이디 `admin`) — 2026-10-21
    - 남은 온라인: 구글 로그인(사용자가 Google Cloud 설정), 미니게임 모두 같이 보상(규칙 결정), 방장 연결 끊김 알아채기 A(15초 신호, 시험이 줄면). 지금은 방장이 나가기 누를 때만 안내(B)
 4. ⑤ 그림·연출 (`docs/12-art.md` 진행 계획 표). **A(코드)로 되는 것은 모두 끝 (2026-10-17)**: 캐릭터·꾸미기 새 그림체(+아이템 19개), 표정 말풍선, UI 종이 보드게임 방향, 칸 아이콘, 춤 미니게임 캐릭터 동작, 주사위 판 위 튀기, 다리 걷기, 큰 장면. 남은 것: 건물 보류, 소리(C), 진짜 3D(맨 마지막)
    - 시험 브라우저(agent-browser)는 그리기를 멈출 때가 있음 → `--disable-renderer-backgrounding,--disable-backgrounding-occluded-windows`. 배포본 시험 뒤 시험 계정·방·행동·프로필은 지우기. 서버 없이 확인: `npx vite build --base ./ --outDir <scratchpad>` 뒤 `--allow-file-access-from-files`로 file:// 열기
