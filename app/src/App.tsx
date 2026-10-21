@@ -195,7 +195,7 @@ export default function App() {
           setSpeed(o.speed)
           setGame(createGame({
             humanName: o.name, humanNames: o.names, humans: o.humans, aiCount: o.ai, outfits: [o.outfit],
-            settings: { startAdult: o.adult, difficulty: o.difficulty },
+            settings: { startAdult: false, difficulty: o.difficulty },
           }))
           setScreen('play')
         }}

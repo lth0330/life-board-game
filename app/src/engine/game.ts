@@ -41,6 +41,7 @@ const MOOD_FORTUNE: [number, number][] = [[-1, 0.4], [-1, 0.2], [0, 0], [1, 0.15
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}만`
 const STATS: StatKey[] = ['int', 'str', 'cha']
 const SCHOOL_GIFT = 10 // 학생 단계 시작 때 모두에게 (만 원)
+const STUDENT_ALLOWANCE = 2 // 학생 동안 차례마다 용돈 (만 원, 2026-10-21 사용자: 학생 때 마이너스가 잦아서)
 
 export function log(s: GameState, playerId: number | null, text: string, tone: 'good' | 'bad' | 'info' = 'info') {
   s.log.push({ turn: s.turn, playerId, text, tone })
@@ -270,6 +271,7 @@ function beginTurn(s: GameState) {
   }
 
   if (isAdultStage(s)) economyTick(s, p)
+  else if (stageOf(s).id === 'student') p.money += STUDENT_ALLOWANCE
   familyTick(s, p)
   friendLoanTick(s, p)
 
@@ -538,7 +540,7 @@ function forceLiquidate(s: GameState, p: Player, overdue: { amount: number }[]) 
 
 // 위쪽 정보 줄용: 이번 단계에서 매 턴 대략 얼마가 들어오고 나가는지 (운에 따른 사건 제외)
 export function turnIncome(s: GameState, p: Player) {
-  if (!isAdultStage(s)) return 0
+  if (!isAdultStage(s)) return stageOf(s).id === 'student' ? STUDENT_ALLOWANCE : 0
   const st = stageOf(s)
   const job = jobOf(p)
   let inc = 0

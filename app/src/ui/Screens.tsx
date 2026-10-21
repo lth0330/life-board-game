@@ -8,7 +8,7 @@ import { Dresser } from './Dresser'
 import { Manual } from './Manual'
 
 export type Speed = 'fast' | 'normal' | 'slow'
-export interface SetupResult { name: string; names: string[]; humans: number; ai: number; adult: boolean; difficulty: Difficulty; speed: Speed; outfit: Outfit }
+export interface SetupResult { name: string; names: string[]; humans: number; ai: number; difficulty: Difficulty; speed: Speed; outfit: Outfit }
 
 export function Frame({ children }: { children: ReactNode }) {
   return (
@@ -100,7 +100,6 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
   const [humans, setHumans] = useState(1)
   const [names, setNames] = useState(['', '', ''])
   const [ai, setAi] = useState(3)
-  const [adult, setAdult] = useState(false)
   const [difficulty, setDifficulty] = useState<Difficulty>('normal')
   const [speed, setSpeed] = useState<Speed>('fast') // 기획: 기본은 빠르게 + 큰 일만 연출
   const [outfit, setOutfit] = useState(initialOutfit)
@@ -134,16 +133,13 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
       <div className="field"><span>AI 수</span>
         <Choice value={aiCount} options={([0, 1, 2, 3] as number[]).filter((n) => n <= maxAi && n + humans >= 2).map((n) => [n, `${n}명`] as [number, string])} onChange={setAi} />
       </div>
-      <div className="field"><span>시작 나이</span>
-        <Choice value={adult} options={[[false, '1살부터 (약 45분)'], [true, '성인부터 (약 30분)']]} onChange={setAdult} />
-      </div>
       <div className="field"><span>AI 난이도</span>
         <Choice value={difficulty} options={[['easy', '쉬움'], ['normal', '보통'], ['hard', '어려움']]} onChange={setDifficulty} />
       </div>
       <div className="field"><span>AI 차례 속도</span>
         <Choice value={speed} options={[['fast', '빠르게'], ['normal', '보통'], ['slow', '천천히']]} onChange={setSpeed} />
       </div>
-      <button className="wide big" disabled={humans + aiCount < 2} onClick={() => onStart({ name, names: names.slice(0, humans - 1), humans, ai: aiCount, adult, difficulty, speed, outfit })}>게임 시작</button>
+      <button className="wide big" disabled={humans + aiCount < 2} onClick={() => onStart({ name, names: names.slice(0, humans - 1), humans, ai: aiCount, difficulty, speed, outfit })}>게임 시작</button>
       <button className="wide ghost" onClick={onBack}>뒤로</button>
       {dress && <Dresser value={outfit} onChange={(o) => { setOutfit(o); onOutfit(o) }} onDone={() => setDress(false)} />}
       {manual && <Manual onClose={() => setManual(false)} />}

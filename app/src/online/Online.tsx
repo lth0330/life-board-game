@@ -177,7 +177,7 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
     const game = createGame({
       humanName: people[0]?.name ?? '방장', humanNames: people.slice(1).map((s) => s.name ?? '친구'), humans: people.length, aiCount: ai,
       outfits: people.map((s) => (s.outfit ? cleanOutfit(s.outfit) : undefined)),
-      settings: { startAdult: lobby.settings.startAdult, difficulty: lobby.settings.difficulty, online: true },
+      settings: { startAdult: false, difficulty: lobby.settings.difficulty, online: true },
     })
     const owners = [...people.map((s) => s.userId ?? null), ...Array<null>(ai).fill(null)]
     const r = await saveRoom(room, { status: 'playing', state: { ...lobby, owners, game } })
@@ -204,11 +204,6 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
       </div>
       {!isHost && !inSeat && <p className="muted center">자리에 앉는 중…</p>}
       <div className="lobby-settings">
-        <div className="seg">
-          {([[false, '1살부터'], [true, '성인부터']] as const).map(([v, l]) => (
-            <button key={l} className={lobby.settings.startAdult === v ? 'on' : ''} disabled={!isHost} onClick={() => setSettings({ startAdult: v })}>{l}</button>
-          ))}
-        </div>
         <div className="seg">
           {DIFF.map(([v, l]) => <button key={v} className={lobby.settings.difficulty === v ? 'on' : ''} disabled={!isHost} onClick={() => setSettings({ difficulty: v })}>AI {l}</button>)}
         </div>
