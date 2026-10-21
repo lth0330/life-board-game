@@ -418,12 +418,12 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
     aiQueue.forEach(([pid, e]) => showEmote(pid, e))
     setAiQueue([])
   }, [aiQueue, walking, diceShow, popShow, showEmote])
-  // AI: 차례가 오면 기분이 아주 좋거나 지쳤을 때 표정
+  // AI: 차례가 오면 기쁘거나 우울할 때 표정 (자주 뜨지 않게 반만)
   useEffect(() => {
     const q = game.players[game.current]
-    if (q.human) return
+    if (q.human || Math.random() < 0.5) return
     const lv = moodLevel(q)
-    if (lv === 4) showEmote(q.id, 'happy')
+    if (lv === 2) showEmote(q.id, 'happy')
     else if (lv === 0) showEmote(q.id, 'sad')
   }, [game.current]) // eslint-disable-line react-hooks/exhaustive-deps
   // 다른 기기에서 온 표정

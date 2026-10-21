@@ -713,3 +713,7 @@ button.wide:not(:disabled):active, .decision .options button:not(:disabled):acti
 .logo-art { position: relative; max-width: 100%; border: var(--line); border-radius: 18px; overflow: hidden; box-shadow: var(--pop); background: #fbf5e8; }
 .logo-art img { display: block; width: 100%; height: auto; }
 .logo-art svg { position: absolute; left: 6%; right: 6%; top: 3%; width: 88%; height: auto; }
+
+/* 대출 갚기: 직접 적기 (2026-10-21) */
+.row.repay { align-items: center; }
+.row.repay input { min-height: 44px; min-width: 0; width: 100%; border-radius: 10px; border: 2px solid var(--ink); padding: 0 10px; font: inherit; font-size: 17px; background: #fff; color: var(--ink); }

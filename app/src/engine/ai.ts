@@ -71,14 +71,14 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
       if (!o) return 0
       // 운세: 가족형·안전형은 더 챙기고, 도박꾼형·재테크형은 돈·재미 쪽으로 (2026-10-21)
       const luckTaste = { family: 2, safe: 1.5, elite: 0, investor: -2, gambler: -2.5 }[per] * (o.luck ?? 0)
-      return specialValue(o, scaleOf(s), (k) => p.stats[k]) + luckTaste + (moodLevel(p) <= 1 ? (o.happy ?? 0) * 0.5 : 0) + rng.next() * 0.5 // 기분이 나쁘면 행복을 더 챙김
+      return specialValue(o, scaleOf(s), (k) => p.stats[k]) + luckTaste + (moodLevel(p) === 0 ? (o.happy ?? 0) * 0.5 : 0) + rng.next() * 0.5 // 기분이 나쁘면 행복을 더 챙김
     }
     case 'happyPick': {
       // 기분이 나쁘면 크게 놀고, 돈이 모자라면 일하고, 아니면 소소하게 (성격 따라 조금씩)
       const mood = moodLevel(p)
       const cost = (pd.data as { cost: number }).cost
-      if (id === 'big') return (mood <= 1 ? 3 : 1) + (per === 'family' ? 1 : 0) - (p.money < cost * 4 ? 2 : 0) + rng.next()
-      if (id === 'work') return (p.money < 0 ? 3 : 0.5) + (per === 'investor' || per === 'elite' ? 1 : 0) - (mood <= 1 ? 1.5 : 0) + rng.next()
+      if (id === 'big') return (mood === 0 ? 3 : 1) + (per === 'family' ? 1 : 0) - (p.money < cost * 4 ? 2 : 0) + rng.next()
+      if (id === 'work') return (p.money < 0 ? 3 : 0.5) + (per === 'investor' || per === 'elite' ? 1 : 0) - (mood === 0 ? 1.5 : 0) + rng.next()
       return 1.5 + rng.next()
     }
     case 'growPick': {

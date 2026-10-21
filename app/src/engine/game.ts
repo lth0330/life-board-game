@@ -29,15 +29,17 @@ const clampStat = (v: number) => Math.max(0, Math.min(10, v))
 // ───────── 기분 (2026-10-17 사용자): 최근 5턴 동안 행복이 얼마나 오르내렸나. 쌓인 행복은 마지막 점수, 기분은 지금 삶의 상태 ─────────
 export const MOOD_TURNS = 5
 export const moodOf = (p: Player) => p.happy - (p.happyHist?.[0] ?? p.happy)
-export type MoodLevel = 0 | 1 | 2 | 3 | 4 // 지침 · 우울 · 보통 · 좋음 · 신남
+export type MoodLevel = 0 | 1 | 2 // 우울 · 보통 · 기쁨 (2026-10-21 사용자: 5단계 → 3단계)
 export function moodLevel(p: Player): MoodLevel {
   const m = moodOf(p)
-  // 행복은 원래 오르는 편이라 기준을 위로 (100판 분포로 맞춤: 대략 지침 10% · 우울 15% · 보통 50% · 좋음 15% · 신남 10%)
-  return m >= 22 ? 4 : m >= 12 ? 3 : m >= 0 ? 2 : m >= -3 ? 1 : 0
+  // 행복은 원래 오르는 편이라 기쁨 기준을 위로 (100판 분포: 대략 우울 25% · 보통 50% · 기쁨 25%)
+  return m >= 12 ? 2 : m >= 0 ? 1 : 0
 }
-export const MOOD_NAMES = ['지침', '우울', '보통', '좋음', '신남']
-export const MOOD_FACES = ['😩', '😟', '😐', '🙂', '😄']
-export const MOOD_HELP = ['월급 -20%', '효과 없음', '효과 없음', '효과 없음', '연애 호감도 +20%'] // 2026-10-21 운세와는 따로 (운세는 내 행동으로)
+export const MOOD_NAMES = ['우울', '보통', '기쁨']
+export const MOOD_FACES = ['😟', '😐', '😄']
+export const MOOD_HELP = ['월급 -15%', '효과 없음', '연애 호감도 +15%'] // 운세와는 따로 (운세는 내 행동으로)
+const MOOD_SALARY = [0.85, 1, 1]
+const MOOD_AFFINITY = [1, 1, 1.15]
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}만`
 const STATS: StatKey[] = ['int', 'str', 'cha']
 const SCHOOL_GIFT = 10 // 학생 단계 시작 때 모두에게 (만 원)
@@ -338,7 +340,7 @@ function economyTick(s: GameState, p: Player) {
   if (job?.id === 'ceo' && (st.id !== 'old' || p.bizKeep)) bizTick(s, p, st.id === 'old' ? BIZ.oldMult : 1)
   if (st.id !== 'old' && job) p.jobTenure++
   if (st.id !== 'old' && job && job.id !== 'ceo') {
-    const sal = Math.round(salaryOf(p) * (moodLevel(p) === 0 ? 0.8 : 1)) // 지침이면 월급 -20%
+    const sal = Math.round(salaryOf(p) * MOOD_SALARY[moodLevel(p)]) // 우울하면 월급 -15%
     const tax = Math.round(sal * TAX_RATE(sal))
     p.money += sal - tax
     // 성과급: 운세가 좋을수록 자주, 월급의 2배 (2026-10-21)
@@ -1633,7 +1635,7 @@ export function finishMini(s: GameState, value: number) {
 export function affinityGain(s: GameState, p: Player, x: Suitor) {
   const [lo, hi] = ([[30, 40], [25, 33], [20, 27], [15, 22], [12, 18]] as const)[Math.max(0, Math.min(4, x.grade - 1))]
   const base = rngOf(s).int(lo, hi) + Math.max(0, p.stats.cha - 4)
-  return moodLevel(p) === 4 ? Math.round(base * 1.2) : base // 신나면 호감도 +20%
+  return Math.round(base * MOOD_AFFINITY[moodLevel(p)]) // 기쁘면 호감도 +15%
 }
 
 // 축제 거리: 호감도가 아니라 새 사람을 만나는 곳. 대성공이면 높은 등급이 잘 나옴
@@ -2791,19 +2793,19 @@ export function startSabotage(s: GameState) {
   if (!canAct(s) || !p.sabotage) return
   s.pending = {
     type: 'sabotageTarget', playerId: p.id, title: SABOTAGE_NAMES[p.sabotage], text: '누구에게 쓸까요? 상대 운세가 나보다 좋을수록 역풍이 불 수 있어요.',
-    options: s.players.filter((q) => q.id !== p.id).map((q) => ({ id: String(q.id), label: q.name, desc: `운세 ${fortuneName(q.fortune)}` })),
+    options: s.players.filter((q) => q.id !== p.id).map((q) => ({ id: String(q.id), label: q.name, desc: `운세 ${fortuneName(q.fortune)} · 역풍 ${Math.round((BACKFIRE[q.fortune] ?? 0) * 100)}%` })),
   }
   s.phase = 'decision'
 }
 
+// 역풍 확률: 상대 운세(대흉~대길)에 따라 (2026-10-21 사용자: 쓰는 사람 운세는 안 내려감)
+export const BACKFIRE = [0, 0, 0.1, 0.25, 0.4]
 function applySabotage(s: GameState, p: Player, target: Player) {
   const rng = rngOf(s)
   const card = p.sabotage
   if (!card) return
   p.sabotage = null
   log(s, p.id, `${target.name}에게 ${SABOTAGE_NAMES[card]}!`, 'info')
-  const myLuck = p.fortune // 역풍은 쓰기 전 운세로
-  changeFortune(s, p, -1, '방해 카드를 씀')
   say(s, p, 'sabotageUse')
   if (target.chance === 'block') {
     target.chance = null
@@ -2811,7 +2813,7 @@ function applySabotage(s: GameState, p: Player, target: Player) {
     return
   }
   if (card === 'lawsuit') { lawsuit(s, p, target, 'card'); return }
-  const backfire = Math.max(0, target.fortune - myLuck) * 0.12
+  const backfire = BACKFIRE[target.fortune] ?? 0
   const victim = rng.chance(backfire) ? p : target
   if (victim === p) log(s, p.id, '역풍! 방해가 나에게 돌아왔다', 'bad')
   else say(s, target, 'sabotaged')

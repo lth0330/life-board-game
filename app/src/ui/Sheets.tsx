@@ -54,7 +54,7 @@ function ProfitText({ v }: { v: number }) {
 export function FinanceSheet(f: FinanceProps) {
   const [tab, setTab] = useState<'lottery' | 'stock' | 'ins' | 'loan' | 'save' | 'friend'>('stock')
   const [amount, setAmount] = useState(1000)
-  const [repay, setRepay] = useState(100)
+  const [repay, setRepay] = useState('')
   const [rateIdx, setRateIdx] = useState(1)
   const [term, setTerm] = useState(10)
   const { s, p } = f
@@ -134,16 +134,17 @@ export function FinanceSheet(f: FinanceProps) {
             ))}
           </div>
           {p.loans.length > 0 && (() => {
-            // 100만 단위로 갚을 액수 고르기 (가진 돈과 남은 빚을 넘지 않게)
-            const max = Math.max(0, Math.floor(Math.min(p.money, loanTotal(p)) / 100) * 100)
-            const amt = Math.min(repay, max)
+            // 갚을 돈을 직접 적기 (만 원 단위, 가진 돈과 남은 빚을 넘지 않게) + 전부 갚기 (2026-10-21 사용자)
+            const total = loanTotal(p)
+            const max = Math.max(0, Math.min(p.money, total))
+            const amt = Math.min(Math.floor(Number(repay) || 0), max)
             return (
               <div className="row repay">
-                <button disabled={locked || amt <= 100} onClick={() => setRepay(Math.max(100, amt - 100))} aria-label="100만 줄이기">−</button>
-                <b className="grow center">{won(amt)}</b>
-                <button disabled={locked || amt + 100 > max} onClick={() => setRepay(amt + 100)} aria-label="100만 늘리기">＋</button>
-                <button disabled={locked || amt < 100} onClick={() => f.onRepay(amt)}>갚기</button>
-                <button disabled={locked || p.money <= 0} onClick={() => f.onRepay()}>최대</button>
+                <input className="grow" type="number" inputMode="numeric" min={1} max={max} value={repay} placeholder="얼마 갚을까요?"
+                  aria-label="갚을 돈 (만 원)" disabled={locked || max <= 0} onChange={(e) => setRepay(e.target.value.replace(/[^0-9]/g, ''))} />
+                <span>만</span>
+                <button disabled={locked || amt < 1} onClick={() => { f.onRepay(amt); setRepay('') }}>갚기</button>
+                <button disabled={locked || max <= 0} onClick={() => { f.onRepay(); setRepay('') }}>{p.money >= total ? '전부 갚기' : '가진 만큼 갚기'}</button>
               </div>
             )
           })()}
@@ -219,7 +220,7 @@ export function CardsSheet({ p, canUse, onUseChance, onSabotage, onClose }: {
         <div className="card sabotage">
           <span className="muted">방해 카드</span>
           <b className="jua">{p.sabotage ? SABOTAGE_NAMES[p.sabotage] : '없음'}</b>
-          <p className="muted">쓰면 내 운세 ↓. 상대 운세가 나보다 좋으면 역풍이 불 수 있어요.</p>
+          <p className="muted">상대 운세가 좋을수록 역풍이 불기 쉬워요.</p>
           {p.sabotage && <button disabled={!canUse} onClick={onSabotage}>상대 고르기</button>}
         </div>
       </div>
