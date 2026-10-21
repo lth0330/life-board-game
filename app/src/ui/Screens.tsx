@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from 'react'
 import { Logo } from '../art/Art'
 import { Character } from '../art/Character'
-import { DEFAULT_OUTFIT, type Outfit } from '../engine/outfit'
+import type { Outfit } from '../engine/outfit'
 import type { Difficulty } from '../engine/types'
-import type { Profile, SaveSlot } from '../storage'
+import { savedSpeed, type Profile, type SaveSlot } from '../storage'
 import { Dresser } from './Dresser'
 import { Manual } from './Manual'
 
@@ -25,11 +25,6 @@ export function TitleScreen({ notice, onAuth, onGuest }: { notice?: string; onAu
   return (
     <Frame>
       <div className="title-logo"><Logo size={340} /></div>
-      <div className="title-cast" aria-hidden="true">
-        <Character outfit={{ ...DEFAULT_OUTFIT, hat: 'cap', hatColor: '#C2452D' }} size={46} />
-        <Character outfit={{ ...DEFAULT_OUTFIT, gender: 'f', hair: 'long', hairColor: '#A8692E', top: 'dress', topColor: '#F3A3C0', acc: 'bag', accColor: '#2F8F5B' }} size={46} />
-        <Character outfit={{ ...DEFAULT_OUTFIT, hair: 'curly', skin: '#C98F62', top: 'hoodie', topColor: '#2F8F5B', acc: 'glasses' }} size={46} />
-      </div>
       {notice && <p className="bad center">{notice}</p>}
       <button className="wide big" onClick={() => onAuth('login')}>로그인</button>
       <button className="wide secondary" onClick={() => onAuth('join')}>회원가입</button>
@@ -101,7 +96,7 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
   const [names, setNames] = useState(['', '', ''])
   const [ai, setAi] = useState(3)
   const [difficulty, setDifficulty] = useState<Difficulty>('normal')
-  const [speed, setSpeed] = useState<Speed>('fast') // 기획: 기본은 빠르게 + 큰 일만 연출
+  const [speed, setSpeed] = useState<Speed>(savedSpeed) // 기본은 빠르게, 지난번 고른 속도를 기억
   const [outfit, setOutfit] = useState(initialOutfit)
   const [dress, setDress] = useState(false)
   const [manual, setManual] = useState(false)

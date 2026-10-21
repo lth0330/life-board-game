@@ -363,7 +363,6 @@ button.wide.secondary { background: #fff; color: var(--ink); border: 2px solid v
 .setup-scene .cloud.b { right: 10%; top: 16%; width: 90px; height: 28px; }
 .setup-card { position: relative; }
 .title-logo { display: flex; justify-content: center; }
-.title-cast { display: flex; justify-content: center; gap: 10px; margin-top: -6px; }
 button.wide.ghost { background: transparent; color: var(--ink); border: none; text-decoration: underline; min-height: 44px; }
 .btn-sub { display: block; font-family: 'Gowun Dodum', sans-serif; font-size: 13px; opacity: 0.85; }
 .menu-hello { display: flex; gap: 10px; align-items: center; background: var(--paper-2); border-radius: 14px; padding: 8px 12px; }

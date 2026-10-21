@@ -9,7 +9,7 @@ import {
 import { applyOp, type Op } from './engine/ops'
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
 import type { DiceItem, GameState } from './engine/types'
-import { deleteLocalGame, dropOldProfiles, lastAccount, lastWhere, makeSlot, rememberAccount, rememberWhere, saveLocalGame, type Profile, type SaveSlot } from './storage'
+import { deleteLocalGame, dropOldProfiles, lastAccount, lastWhere, makeSlot, rememberAccount, rememberWhere, saveLocalGame, savedSpeed, saveSpeed, type Profile, type SaveSlot } from './storage'
 import type { Me } from './online/client'
 import { BannerArt, EventArt, EventPopup, Roulette } from './art/More'
 import { setSoundPrefs, sfx, soundPrefs, unlockAudio } from './sound'
@@ -53,7 +53,7 @@ export default function App() {
   const [afterAuth, setAfterAuth] = useState<Screen>('menu')
   const [notice, setNotice] = useState('')
   const [game, setGame] = useState<GameState | null>(null)
-  const [speed, setSpeed] = useState<Speed>('fast')
+  const [speed, setSpeed] = useState<Speed>(savedSpeed) // 새로고침해도 그대로
   const [dress, setDress] = useState(false)
   const [resumeRoom, setResumeRoom] = useState<string | null>(null) // 새로고침 전에 있던 온라인 방
   const outfit = profile?.outfit ?? DEFAULT_OUTFIT
@@ -194,6 +194,7 @@ export default function App() {
         onBack={() => setScreen('menu')}
         onStart={(o) => {
           setSpeed(o.speed)
+          saveSpeed(o.speed)
           setGame(createGame({
             humanName: o.name, humanNames: o.names, humans: o.humans, aiCount: o.ai, outfits: [o.outfit],
             settings: { startAdult: false, difficulty: o.difficulty },

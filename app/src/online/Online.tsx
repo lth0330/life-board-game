@@ -90,6 +90,8 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
   const [room, setRoom] = useState<Room | null>(null)
   const [closed, setClosed] = useState(false)
   const [missing, setMissing] = useState(false) // 방이 지워짐 (새로고침으로 돌아왔는데 오래된 방)
+  const [netErr, setNetErr] = useState(false) // 방을 못 불러옴 (인터넷)
+  const [tryNo, setTryNo] = useState(0) // 다시 시도
   const roomRef = useRef<Room | null>(null)
   const apply = useCallback((r: Room | null) => {
     if (!r) return
@@ -103,10 +105,15 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
 
   // 방 불러오기 + 바뀔 때마다 받기
   useEffect(() => {
-    void client.models.Room.get({ id: roomId }).then((r) => { if (r.data) apply(r.data); else setMissing(true) }).catch(() => setMissing(true))
+    setNetErr(false)
+    void client.models.Room.get({ id: roomId }).then((r) => {
+      if (r.data) apply(r.data)
+      else if (r.errors?.length) setNetErr(true) // 서버에 못 닿음: 방이 없는 것과 구별
+      else setMissing(true)
+    }).catch(() => setNetErr(true))
     const sub = client.models.Room.onUpdate({ filter: { id: { eq: roomId } } }).subscribe({ next: apply })
     return () => sub.unsubscribe()
-  }, [roomId, apply])
+  }, [roomId, apply, tryNo])
 
   // 손님: 들어가겠다고 알림
   const joined = useRef(false)
@@ -153,6 +160,15 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
       <Frame>
         <p className="center">{missing ? '방이 없어졌어요' : '방장이 방을 닫았어요'}</p>
         <button className="wide big" onClick={onLeave}>돌아가기</button>
+      </Frame>
+    )
+  }
+  if (netErr && !room) {
+    return (
+      <Frame>
+        <p className="center">방을 불러오지 못했어요. 인터넷 연결을 확인해 주세요</p>
+        <button className="wide big" onClick={() => setTryNo((n) => n + 1)}>다시 시도</button>
+        <button className="wide ghost" onClick={onLeave}>돌아가기</button>
       </Frame>
     )
   }

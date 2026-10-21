@@ -60,3 +60,9 @@ export function lastWhere(): Where | null {
 export function rememberWhere(w: Where | null) {
   try { if (w) sessionStorage.setItem(WHERE, JSON.stringify(w)); else sessionStorage.removeItem(WHERE) } catch { /* 무시 */ }
 }
+
+// AI 차례 속도: 이 기기에 기억 (2026-10-21)
+export function savedSpeed(): 'fast' | 'normal' | 'slow' {
+  try { const v = localStorage.getItem('dgl:speed'); return v === 'normal' || v === 'slow' ? v : 'fast' } catch { return 'fast' }
+}
+export function saveSpeed(v: string) { try { localStorage.setItem('dgl:speed', v) } catch { /* 무시 */ } }
