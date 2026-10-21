@@ -832,3 +832,4 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .logbox-input { display: flex; gap: 6px; }
 .logbox-input input { flex: 1; min-width: 0; min-height: 40px; border-radius: 10px; border: 2px solid var(--ink); padding: 0 10px; font: inherit; font-size: 15px; background: #fff; color: var(--ink); }
 .logbox-input button { min-height: 40px; padding: 0 12px; border-radius: 10px; border: 2px solid var(--ink); background: var(--ink); color: var(--paper); font-family: 'Jua', sans-serif; }
+.key-hint { display: block; font-size: 11px; opacity: 0.7; font-family: inherit; }

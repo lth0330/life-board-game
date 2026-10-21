@@ -206,6 +206,22 @@ function Timing({ level, rounds, duel, onDone }: { level: number; rounds: number
 }
 
 // 줄다리기: 왼쪽·오른쪽을 번갈아 눌러 줄을 당김. 상대는 계속 당김 (체력이 높을수록 상대가 약함)
+// 노트북·컴퓨터(마우스)면 키보드로도 (2026-10-21 사용자: 마우스로 연타하기 힘듦). 폰은 그대로 버튼
+const finePointer = () => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: fine)').matches
+function useKeys(map: Record<string, () => void>) {
+  const ref = useRef(map)
+  ref.current = map
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => {
+      if (e.repeat) return // 꾹 누르기는 한 번만
+      const f = ref.current[e.code] ?? ref.current[e.key]
+      if (f) { e.preventDefault(); f() }
+    }
+    window.addEventListener('keydown', on)
+    return () => window.removeEventListener('keydown', on)
+  }, [])
+}
+
 function Tug({ level, onDone }: { level: number; onDone: (v: number) => void }) {
   const pull = [12, 19, 26][level] // 상대가 1초에 당기는 양
   const [pos, setPos] = useState(0) // 100이면 내가 이김
@@ -238,15 +254,19 @@ function Tug({ level, onDone }: { level: number; onDone: (v: number) => void }) 
     setPos(posRef.current)
     if (posRef.current >= 100) finish(leftRef.current >= 2 ? 2 : 1)
   }
+  // 키보드: 왼손 ← 또는 A, 오른손 → 또는 L
+  useKeys({ ArrowLeft: () => tap('L'), KeyA: () => tap('L'), ArrowRight: () => tap('R'), KeyL: () => tap('R') })
+  const keyHint = finePointer()
   return (
     <div className="mini-body">
       <p>왼손·오른손을 <b>번갈아</b> 눌러 줄을 당기세요! (6초)</p>
       <div className="tug-track"><div className="tug-flag" style={{ left: `${50 + pos / 2}%` }}>🚩</div></div>
       <div className="mini-big jua">{left}초</div>
       <div className="mini-grid two">
-        <button onPointerDown={(e) => { e.preventDefault(); tap('L') }}>왼손</button>
-        <button onPointerDown={(e) => { e.preventDefault(); tap('R') }}>오른손</button>
+        <button onPointerDown={(e) => { e.preventDefault(); tap('L') }}>왼손{keyHint && <small className="key-hint">← 또는 A</small>}</button>
+        <button onPointerDown={(e) => { e.preventDefault(); tap('R') }}>오른손{keyHint && <small className="key-hint">→ 또는 L</small>}</button>
       </div>
+      {keyHint && <p className="muted center">⌨️ 키보드로: ←와 →(또는 A와 L)를 번갈아 눌러요</p>}
     </div>
   )
 }
@@ -439,13 +459,18 @@ function Mash({ level, onDone }: { level: number; onDone: (v: number) => void })
     }), 1000)
     return () => clearInterval(t)
   }, [started, goal, onDone])
+  const press = () => { if (left <= 0) return; if (!started) setStarted(true); countRef.current++; setCount(countRef.current) }
+  // 키보드: 스페이스바 연타 (꾹 누르기는 한 번만)
+  useKeys({ Space: press, Enter: press })
+  const keyHint = finePointer()
   return (
     <div className="mini-body">
       <p>5초 동안 최대한 많이 누르세요! 목표 {goal}번</p>
       <div className="mini-big jua">{count}번 · {left}초</div>
-      <button className="wide big" onClick={() => { if (!started) setStarted(true); countRef.current++; setCount(countRef.current) }}>
+      <button className="wide big" onPointerDown={(e) => e.preventDefault()} onClick={press}>{/* 눌러도 포커스가 안 남아 스페이스가 두 번 세지지 않게 */}
         {started ? '달려!' : '누르면 시작'}
       </button>
+      {keyHint && <p className="muted center">⌨️ 키보드로: 스페이스바를 연타해요</p>}
     </div>
   )
 }

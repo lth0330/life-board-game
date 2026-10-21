@@ -243,3 +243,22 @@ export function walkAhead(st: Stage, from: number, steps: number, prefer?: numbe
   }
   return i
 }
+
+// 화면 배치: 칸이 좁게 모인 옆길(이벤트 길 등)은 좌우로 번갈아 놓아 칸끼리 안 겹치게 (2026-10-21 사용자)
+// 칸 크기 120px, 깊이 1 = 150px라 깊이 차이가 0.95보다 작으면 위아래로 겹침
+export const ZIG = 190 // 바깥쪽으로만 번갈아 (본 길 쪽으로 가면 본 길 칸과 겹침)
+export function zigOffsets(st: Stage): Map<Tile, number> {
+  const out = new Map<Tile, number>()
+  const groups = new Map<string, Tile[]>()
+  for (const t of st.tiles) if (t.road !== 'main') groups.set(`${t.road}:${t.lane}`, [...(groups.get(`${t.road}:${t.lane}`) ?? []), t])
+  for (const list of groups.values()) {
+    const sorted = [...list].sort((a, b) => a.d - b.d)
+    const tight = sorted.some((t, k) => k > 0 && t.d - sorted[k - 1].d < 0.95)
+    if (tight) sorted.forEach((t, k) => out.set(t, k % 2 ? Math.sign(t.lane || 1) * ZIG : 0))
+  }
+  return out
+}
+// 판 위 칸 자리 (px). 화면(ui/Board.tsx)과 겹침 시험이 같이 씀
+export const LANE_PX = 250
+export const tileX = (t: Tile, zig: Map<Tile, number>) => 540 + Math.round(Math.sin(t.d * 0.55) * 150) + t.lane * LANE_PX - 60 + (zig.get(t) ?? 0)
+export const tileY = (t: Tile) => 1600 - t.d * 150

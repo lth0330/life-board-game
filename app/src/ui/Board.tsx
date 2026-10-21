@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactElement } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactElement } from 'react'
 import { Building, TileIcon, Tree } from '../art/Art'
 import { Landmark } from '../art/More'
 import { Character, type Expr } from '../art/Character'
 import { EmoteBubble, RpsBubble } from './Emotes'
 import { ageOf, TEAM_COLORS, TEAM_NAMES, UNI_NAMES } from '../engine/game'
-import { distancesFrom, EVENT_ROAD_NAME } from '../engine/board'
+import { distancesFrom, EVENT_ROAD_NAME, tileX, tileY, zigOffsets } from '../engine/board'
 import { MINI_NAMES } from '../engine/game'
 import type { GameState, Player, Tile } from '../engine/types'
 
@@ -74,8 +74,9 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
   useEffect(() => { setPan({ x: 0, y: 0 }) }, [focus.id, focusPos, s.stageIdx])
   useEffect(() => { if (!canPan) { drag.current = null; setDragging(false); setPan({ x: 0, y: 0 }) } }, [canPan])
   const panD = pan.y / 150 // 끌어서 옮긴 깊이
-  const xAt = (t: Tile) => 540 + Math.round(Math.sin(t.d * 0.55) * 150) + t.lane * LANE - 60
-  const yAt = (t: Tile) => 1600 - t.d * 150 // 칸 위치는 고정. 카메라(.track)가 fd만큼 움직임
+  const zig = useMemo(() => zigOffsets(st), [st])
+  const xAt = (t: Tile) => tileX(t, zig) // 좁은 옆길은 지그재그 (칸끼리 안 겹치게)
+  const yAt = (t: Tile) => tileY(t) // 칸 위치는 고정. 카메라(.track)가 fd만큼 움직임
   const visible = (t: Tile) => t.d >= fd + panD - 2.5 && t.d <= fd + panD + 11
   const steps = showSteps ? distancesFrom(st, focusPos, 6) : new Map<number, number>()
   const items: ReactElement[] = []
