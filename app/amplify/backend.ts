@@ -2,9 +2,24 @@ import { defineBackend } from '@aws-amplify/backend'
 import { auth } from './auth/resource'
 import { preSignUp } from './auth/pre-sign-up/resource'
 import { data } from './data/resource'
+import { customMessage } from './auth/custom-message/resource'
+import { account } from './functions/account/resource'
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam'
 
 // AWS에 만드는 것: 로그인(Cognito) + 가입 확인 함수(Lambda) + 방·행동 데이터(AppSync + DynamoDB)
-const backend = defineBackend({ auth, data, preSignUp })
+const backend = defineBackend({ auth, data, preSignUp, customMessage, account })
+
+// 계정 함수: 회원 목록·삭제·이메일 바꾸기·찾기 메일 + 프로필(최근 접속·삭제) (2026-10-21)
+const { userPool, userPoolClient } = backend.auth.resources
+const profileTable = backend.data.resources.tables['Profile']
+backend.account.addEnvironment('USER_POOL_ID', userPool.userPoolId)
+backend.account.addEnvironment('USER_POOL_CLIENT_ID', userPoolClient.userPoolClientId)
+backend.account.addEnvironment('PROFILE_TABLE', profileTable.tableName)
+backend.account.resources.lambda.addToRolePolicy(new PolicyStatement({
+  actions: ['cognito-idp:ListUsers', 'cognito-idp:ListUsersInGroup', 'cognito-idp:AdminDeleteUser', 'cognito-idp:AdminUpdateUserAttributes', 'cognito-idp:ForgotPassword'],
+  resources: [userPool.userPoolArn],
+}))
+profileTable.grantReadWriteData(backend.account.resources.lambda)
 
 // 방·행동 기록은 expiresAt 시각이 지나면 DynamoDB가 알아서 지움 (보통 하루 이틀 안에)
 const { amplifyDynamoDbTables } = backend.data.resources.cfnResources

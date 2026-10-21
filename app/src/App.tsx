@@ -26,6 +26,8 @@ import { CardsSheet, FinanceSheet, GameOver, MyInfoSheet, PeopleSheet, playerLin
 const Online = lazy(() => import('./online/Online').then((m) => ({ default: m.Online })))
 // 로그인 화면과 계정 저장도 AWS 코드라 필요할 때만
 const AuthScreen = lazy(() => import('./account/AuthScreen'))
+const AccountSheet = lazy(() => import('./account/AccountSheet'))
+const AdminScreen = lazy(() => import('./account/AdminScreen'))
 const account = () => import('./account/api')
 
 const SPEED_MS: Record<Speed, number> = { fast: 450, normal: 1000, slow: 1700 }
@@ -41,7 +43,7 @@ const SHOP_CATS = [
 ]
 const CELEBRATE = ['결혼!', '복권 1등!', '복권 2등!', '아기 탄생', '수능 상위권!', '게임 끝!', '회사 성장!', '감독 도전 성공!', '자녀 대성공!', '금메달!', '은메달!', '동메달!', '육순 잔치', '칠순 잔치']
 
-type Screen = 'title' | 'auth' | 'menu' | 'setup' | 'play' | 'online'
+type Screen = 'title' | 'auth' | 'menu' | 'setup' | 'play' | 'online' | 'admin'
 const CLOUD_SAVE_MS = 8000 // 계정 저장은 많아야 8초에 한 번 (이 기기에는 매번)
 
 export default function App() {
@@ -55,6 +57,7 @@ export default function App() {
   const [game, setGame] = useState<GameState | null>(null)
   const [speed, setSpeed] = useState<Speed>(savedSpeed) // 새로고침해도 그대로
   const [dress, setDress] = useState(false)
+  const [myAccount, setMyAccount] = useState(false)
   const [resumeRoom, setResumeRoom] = useState<string | null>(null) // 새로고침 전에 있던 온라인 방
   const outfit = profile?.outfit ?? DEFAULT_OUTFIT
   const profileRef = useRef(profile)
@@ -149,7 +152,10 @@ export default function App() {
 
   if (booting) return <Frame><p className="center muted">계정 불러오는 중…</p></Frame>
   if (screen === 'title') {
-    return <TitleScreen notice={notice} onAuth={(m) => askLogin(m, 'menu')} onGuest={() => { setProfile(null); setScreen('menu') }} />
+    return <TitleScreen notice={notice} onAuth={(m) => askLogin(m, 'menu')} onGuest={() => { setProfile(null); setScreen('menu') }} onAdmin={() => setScreen('admin')} />
+  }
+  if (screen === 'admin') {
+    return <Suspense fallback={<Frame><p className="center muted">불러오는 중…</p></Frame>}><AdminScreen onBack={() => setScreen('title')} /></Suspense>
   }
   if (screen === 'auth') {
     return (
@@ -172,8 +178,10 @@ export default function App() {
           onOnline={() => (profile ? setScreen('online') : askLogin('login', 'online'))}
           onLogout={() => (profile ? logoutAll() : setScreen('title'))}
           onDress={() => setDress(true)}
+          onAccount={() => setMyAccount(true)}
         />
         {dress && <Dresser value={outfit} onChange={changeOutfit} onDone={() => setDress(false)} />}
+        {myAccount && profile && <Suspense fallback={null}><AccountSheet loginId={profile.loginId} nick={profile.nick} onClose={() => setMyAccount(false)} /></Suspense>}
       </>
     )
   }

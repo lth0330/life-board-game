@@ -20,10 +20,11 @@ export function Frame({ children }: { children: ReactNode }) {
 }
 
 // 처음 화면: 로그인 / 회원가입 (온라인 계정) / 로그인 없이 / 설명서
-export function TitleScreen({ notice, onAuth, onGuest }: { notice?: string; onAuth: (mode: 'login' | 'join') => void; onGuest: () => void }) {
+export function TitleScreen({ notice, onAuth, onGuest, onAdmin }: { notice?: string; onAuth: (mode: 'login' | 'join') => void; onGuest: () => void; onAdmin: () => void }) {
   const [manual, setManual] = useState(false)
   return (
     <Frame>
+      <button className="admin-gear" aria-label="관리자 설정" onClick={onAdmin}>⚙️</button>
       <div className="title-logo"><Logo size={340} /></div>
       {notice && <p className="bad center">{notice}</p>}
       <button className="wide big" onClick={() => onAuth('login')}>로그인</button>
@@ -37,8 +38,8 @@ export function TitleScreen({ notice, onAuth, onGuest }: { notice?: string; onAu
 }
 
 // 메뉴: 이어 하기 / 새로 하기
-export function MenuScreen({ profile, slot, onContinue, onNew, onOnline, onLogout, onDress }: {
-  profile: Profile | null; slot: SaveSlot | null; onContinue: () => void; onNew: () => void; onOnline: () => void; onLogout: () => void; onDress: () => void
+export function MenuScreen({ profile, slot, onContinue, onNew, onOnline, onLogout, onDress, onAccount }: {
+  profile: Profile | null; slot: SaveSlot | null; onContinue: () => void; onNew: () => void; onOnline: () => void; onLogout: () => void; onDress: () => void; onAccount: () => void
 }) {
   const [manual, setManual] = useState(false)
   const [confirm, setConfirm] = useState(false)
@@ -70,6 +71,7 @@ export function MenuScreen({ profile, slot, onContinue, onNew, onOnline, onLogou
       )}
       <button className="wide secondary" onClick={onOnline}>🌐 온라인으로 하기</button>
       {profile && <button className="wide secondary" onClick={onDress}>캐릭터 꾸미기</button>}
+      {profile && <button className="wide ghost" onClick={onAccount}>내 계정 (이메일·비밀번호)</button>}
       <button className="wide ghost" onClick={() => setManual(true)}>게임 설명서</button>
       <button className="wide ghost" onClick={onLogout}>{profile ? '로그아웃' : '처음 화면으로'}</button>
       {manual && <Manual onClose={() => setManual(false)} />}

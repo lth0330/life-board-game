@@ -1,6 +1,6 @@
 // 온라인: AWS 연결 (로그인·방·행동). 화면은 Online.tsx
 import { Amplify } from 'aws-amplify'
-import { fetchUserAttributes, getCurrentUser, signIn, signOut, signUp, updateUserAttributes } from 'aws-amplify/auth'
+import { confirmResetPassword, fetchAuthSession, fetchUserAttributes, getCurrentUser, signIn, signOut, signUp, updatePassword, updateUserAttributes } from 'aws-amplify/auth'
 import { generateClient } from 'aws-amplify/data'
 import type { Schema } from '../../amplify/data/resource'
 import type { GameState } from '../engine/types'
@@ -19,6 +19,7 @@ export const cleanId = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, '').
 export const cleanPw = (v: string) => v.toLowerCase().replace(/[^\x21-\x7e]/g, '').slice(0, 32)
 export const ID_OK = /^[a-z0-9]{4,16}$/
 export const PW_OK = /^[\x21-\x7e]{6,32}$/
+export const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export interface Me { userId: string; loginId: string; nick: string }
 
@@ -39,6 +40,10 @@ function errText(e: unknown): string {
   if (name === 'UsernameExistsException') return '이미 있는 아이디예요'
   if (name === 'NotAuthorizedException' || name === 'UserNotFoundException') return '아이디나 비밀번호가 맞지 않아요'
   if (name === 'UserAlreadyAuthenticatedException') return '이미 로그인되어 있어요'
+  if (name === 'CodeMismatchException') return '코드가 맞지 않아요'
+  if (name === 'ExpiredCodeException') return '코드가 만료됐어요. 메일을 다시 받아 주세요'
+  if (name === 'LimitExceededException' || name === 'TooManyRequestsException') return '너무 많이 시도했어요. 잠시 뒤 다시 해 주세요'
+  if (msg.includes('이메일을')) return '이메일을 확인해 주세요'
   if (msg.includes('아이디는')) return '아이디는 영어 소문자·숫자 4~16자예요'
   if (name === 'NetworkError' || msg.includes('Network')) return '인터넷 연결을 확인해 주세요'
   return '잠시 뒤 다시 해 주세요'
@@ -53,10 +58,10 @@ async function freshSignIn(username: string, password: string) {
   }
 }
 
-export async function join(loginId: string, password: string, nick: string): Promise<string | null> {
+export async function join(loginId: string, password: string, nick: string, email: string): Promise<string | null> {
   try {
     await signOut().catch(() => {})
-    await signUp({ username: loginId, password, options: { userAttributes: { preferred_username: nick } } })
+    await signUp({ username: loginId, password, options: { userAttributes: { preferred_username: nick, email } } })
     await freshSignIn(loginId, password)
     return null
   } catch (e) { return errText(e) }
@@ -74,6 +79,55 @@ export async function setNick(nick: string) {
 }
 
 export const logoutOnline = () => signOut()
+
+// ───────── 아이디·비밀번호 찾기, 내 계정 (2026-10-21) ─────────
+// 그 이메일로 가입한 계정마다 메일(아이디 + 6자리 코드). 있든 없든 같은 대답
+export async function sendFindMail(email: string): Promise<string | null> {
+  try {
+    const r = await client.mutations.findAccount({ email }, { authMode: 'identityPool' })
+    return r.errors?.length ? '잠시 뒤 다시 해 주세요' : null
+  } catch (e) { return errText(e) }
+}
+export async function resetWithCode(loginId: string, code: string, newPassword: string): Promise<string | null> {
+  try { await confirmResetPassword({ username: loginId, confirmationCode: code, newPassword }); return null } catch (e) { return errText(e) }
+}
+export async function myEmail(): Promise<string | null> {
+  try { return (await fetchUserAttributes()).email ?? null } catch { return null }
+}
+export async function changeEmail(email: string): Promise<string | null> {
+  try {
+    const r = await client.mutations.setMyEmail({ email })
+    return r.data ? null : '이메일을 바꾸지 못했어요'
+  } catch (e) { return errText(e) }
+}
+export async function changePassword(oldPassword: string, newPassword: string): Promise<string | null> {
+  try { await updatePassword({ oldPassword, newPassword }); return null } catch (e) {
+    return (e as { name?: string })?.name === 'NotAuthorizedException' ? '지금 비밀번호가 맞지 않아요' : errText(e)
+  }
+}
+
+// ───────── 관리자 ─────────
+export interface AdminUser { id: string; nick: string | null; email: string | null; created: string | null; lastSeen: string | null; admin: boolean }
+export async function amAdmin(): Promise<boolean> {
+  try {
+    const t = (await fetchAuthSession()).tokens?.accessToken.payload['cognito:groups']
+    return Array.isArray(t) && t.includes('admin')
+  } catch { return false }
+}
+export async function adminUsers(): Promise<AdminUser[] | string> {
+  try {
+    const r = await client.queries.adminUsers()
+    if (r.errors?.length) return r.errors[0].message
+    const v = parse<unknown>(r.data, [])
+    return typeof v === 'string' ? parse<AdminUser[]>(v, []) : (v as AdminUser[]) // AWSJSON이 글자로 한 번 더 싸여 올 때도
+  } catch (e) { return errText(e) }
+}
+export async function adminDeleteUser(id: string): Promise<string | null> {
+  try {
+    const r = await client.mutations.adminDeleteUser({ id })
+    return r.data ? null : r.errors?.[0]?.message ?? '지우지 못했어요'
+  } catch (e) { return errText(e) }
+}
 
 // ───────── 방 ─────────
 export type SeatKind = 'human' | 'ai' | 'open'

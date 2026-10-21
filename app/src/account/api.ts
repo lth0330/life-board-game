@@ -16,6 +16,7 @@ export async function openAccount(me: Me): Promise<{ profile: Profile; slot: Sav
   }
   const outfit = cleanOutfit(parse<Outfit | null>(row.outfit, null))
   const slot = newerSave(loadLocalGame(me.loginId), parse<SaveSlot | null>(row.save, null))
+  void client.models.Profile.update({ id: row.id, lastSeen: new Date().toISOString() }).catch(() => {}) // 최근 접속 (관리자 화면)
   return { profile: { ...me, outfit, cloudId: row.id }, slot }
 }
 

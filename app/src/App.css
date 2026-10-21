@@ -716,3 +716,12 @@ button.wide:not(:disabled):active, .decision .options button:not(:disabled):acti
 /* 대출 갚기: 직접 적기 (2026-10-21) */
 .row.repay { align-items: center; }
 .row.repay input { min-height: 44px; min-width: 0; width: 100%; border-radius: 10px; border: 2px solid var(--ink); padding: 0 10px; font: inherit; font-size: 17px; background: #fff; color: var(--ink); }
+
+/* 관리자·내 계정 (2026-10-21) */
+.admin-gear { position: absolute; top: 10px; right: 10px; z-index: 2; width: 44px; height: 44px; border: none; background: transparent; font-size: 20px; opacity: 0.55; }
+.admin-list { display: flex; flex-direction: column; gap: 8px; max-height: 55vh; overflow-y: auto; }
+.admin-user { display: flex; gap: 8px; align-items: center; padding: 10px; border: 2px solid var(--paper-2); border-radius: 12px; background: #fff; font-size: 14px; }
+.admin-tag { margin-left: 6px; font-style: normal; font-size: 12px; background: var(--ink); color: var(--paper); padding: 1px 6px; border-radius: 6px; }
+button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color: #fff; border: 2px solid var(--ink); border-radius: 10px; min-height: 44px; padding: 0 12px; }
+.account-sheet input { min-height: 44px; border-radius: 10px; border: 2px solid var(--ink); padding: 0 10px; font: inherit; font-size: 16px; background: #fff; color: var(--ink); min-width: 0; }
+.account-sheet .good { color: #2F8F5B; }
