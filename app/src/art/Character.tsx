@@ -25,8 +25,8 @@ type Extra = 'baby' | 'kinder' | 'student' | null
 function aged(o: Outfit, age?: number): { o: Outfit; scale: number; cane: boolean; extra: Extra } {
   if (age === undefined) return { o, scale: 1, cane: false, extra: null }
   const f = o.gender === 'f'
-  if (age < 4) return { o: { ...o, hair: 'buzz', hat: f ? 'ribbon' : 'none', hatColor: '#F3A3C0', top: 'tee', topColor: f ? '#F7D3E2' : '#CFE7F5', outer: 'none', bottom: 'shorts', bottomColor: '#FFFFFF', shoes: 'sneakers', shoesColor: '#FFFFFF', acc: 'none' }, scale: 0.55, cane: false, extra: 'baby' }
-  if (age < 8) return { o: { ...o, hat: 'cap', hatColor: '#F2C230', top: 'tee', outer: 'none', bottom: 'shorts', acc: 'none' }, scale: 0.68, cane: false, extra: 'kinder' }
+  if (age < 4) return { o: { ...o, hair: 'buzz', hat: f ? 'ribbon' : 'none', hatColor: '#F3A3C0', top: 'tee', topColor: f ? '#F7D3E2' : '#CFE7F5', outer: 'none', bottom: 'shorts', bottomColor: '#FFFFFF', shoes: 'sneakers', shoesColor: '#FFFFFF', acc: 'none' }, scale: 0.66, cane: false, extra: 'baby' }
+  if (age < 8) return { o: { ...o, hat: 'cap', hatColor: '#F2C230', top: 'tee', outer: 'none', bottom: 'shorts', acc: 'none' }, scale: 0.76, cane: false, extra: 'kinder' }
   if (age < 20) return { o: { ...o, hat: 'none', top: 'shirt', topColor: '#F4EBD6', outer: 'jacket', outerColor: '#1E2A44', bottom: f ? 'skirt' : 'pants', bottomColor: '#2C3A5C', acc: 'none' }, scale: age < 14 ? 0.8 : 0.9, cane: false, extra: 'student' }
   const hairColor = age >= 60 ? '#DCDCDC' : age >= 45 ? mix(o.hairColor, '#C8C8C8', 0.4) : o.hairColor
   return { o: { ...o, hairColor }, scale: 1, cane: age >= 65, extra: null }
@@ -73,6 +73,11 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
   const outerOn = o.outer !== 'none'
   const outerLong = LONG_OUTER.includes(o.outer)
   const vb = crop === 'head' ? '14 2 72 72' : '0 0 100 200'
+  // 아이 비율 (2026-10-21 사용자: 어른을 줄인 모습이 아니게): 몸·팔다리는 짧고 통통하게, 머리는 크게
+  const kid = !crop && (extra === 'baby' || extra === 'kinder')
+  const [bx, by, hs] = extra === 'baby' ? [1.24, 0.5, 1.4] : [1.1, 0.66, 1.22]
+  const bodyT = kid ? `translate(50 188) scale(${bx} ${by}) translate(-50 -188)` : undefined
+  const headT = kid ? `translate(50 ${188 - 116 * by}) scale(${hs}) translate(-50 -72)` : undefined
   const h = crop === 'head' ? size : size * 2
   const torsoClip = `t${uid}`
   return (
@@ -81,8 +86,9 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
       {!crop && <ellipse cx="50" cy="191" rx={24 * scale} ry="4" fill="rgba(42,33,24,0.16)" />}
       <g transform={`translate(${50 - 50 * scale} ${200 - 200 * scale}) scale(${scale})`} strokeLinejoin="round">
         {/* 뒤로 넘어간 머리 (앞모습일 때 몸 뒤) */}
-        {!back && <HairBehind o={o} />}
+        <g transform={headT}>{!back && <HairBehind o={o} />}</g>
 
+        <g transform={bodyT}>
         {/* 다리 */}
         {bareLegs && <><Limb cls="leg-l" d="M42 116 L41.5 178" w={9} fill={o.skin} /><Limb cls="leg-r" d="M58 116 L58.5 178" w={9} fill={o.skin} /></>}
         {pantsLike && (
@@ -136,7 +142,9 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
 
         {/* 겉옷 */}
         {outerOn && <Outer o={o} back={back} arms={[aL, aR]} />}
+        </g>
 
+        <g transform={headT}>
         {/* 목 */}
         <path d="M45 62 v10 q5 3 10 0 v-10z" fill={o.skin} stroke={INK} strokeWidth={SW} />
         <path d="M45 66 q5 4 10 0" fill="none" stroke="rgba(42,33,24,0.18)" strokeWidth="3" />
@@ -159,23 +167,30 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
         {!back && o.acc === 'glasses' && <g stroke={INK} strokeWidth="2" fill="rgba(255,255,255,0.25)"><circle cx="40" cy="47" r="7" /><circle cx="60" cy="47" r="7" /><path d="M47 46 q3 -2 6 0" fill="none" /></g>}
         {!back && o.acc === 'sunglasses' && <g fill={INK}><path d="M30 42 h17 v5 q0 6 -8 6 q-9 0 -9 -6z" /><path d="M53 42 h17 v5 q0 6 -9 6 q-8 0 -8 -6z" /><rect x="46" y="42" width="8" height="2" /><path d="M33 44.5 h5" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" /></g>}
         {!back && o.acc === 'mask' && <g><path d="M24 50 Q30 52 37 53 M76 50 Q70 52 63 53" stroke="#ddd" strokeWidth="1.4" fill="none" /><rect x="37" y="50" width="26" height="13" rx="5" fill={o.accColor} stroke={INK} strokeWidth="1.6" /><path d="M40 55 h20 M40 58.5 h20" stroke={shade(o.accColor, -0.2)} strokeWidth="1" /></g>}
+        </g>
+        <g transform={bodyT}>
         {!back && o.acc === 'necklace' && <g><path d="M42 72 Q50 82 58 72" stroke="#E2B85C" strokeWidth="2" fill="none" /><circle cx="50" cy="79" r="2.6" fill="#E2B85C" stroke={INK} strokeWidth="1.2" /></g>}
         {o.acc === 'bag' && (back
           ? <g><rect x="31" y="74" width="38" height="40" rx="10" fill={o.accColor} stroke={INK} strokeWidth={SW} /><rect x="37" y="92" width="26" height="14" rx="4" fill={shade(o.accColor, -0.12)} stroke={INK} strokeWidth="1.5" /></g>
           : <g><path d="M35 72 L68 108" stroke={shade(o.accColor, -0.3)} strokeWidth="3.5" strokeLinecap="round" /><rect x="62" y="102" width="17" height="15" rx="4" fill={o.accColor} stroke={INK} strokeWidth={SW} /><path d="M62 108 h17" stroke={INK} strokeWidth="1.3" /></g>)}
+        </g>
+        <g transform={headT}>
         {o.acc === 'headphones' && <g><path d="M24 44 Q24 12 50 12 Q76 12 76 44" fill="none" stroke={INK} strokeWidth="7" strokeLinecap="round" /><path d="M24 44 Q24 12 50 12 Q76 12 76 44" fill="none" stroke={o.accColor} strokeWidth="3.6" strokeLinecap="round" /><g fill={o.accColor} stroke={INK} strokeWidth={SW}><rect x="17" y="38" width="10" height="16" rx="4" /><rect x="73" y="38" width="10" height="16" rx="4" /></g></g>}
 
         {/* 모자 */}
         <Hat o={o} back={back} />
         {!back && <Face o={o} expr={expr} layer="fx" />}
+        {extra === 'baby' && !back && <g><circle cx="50" cy="66" r="4.5" fill="#F3A3C0" stroke={INK} strokeWidth="1.5" /><circle cx="50" cy="66" r="1.8" fill="#fff" /></g>}
+        </g>
 
+        <g transform={bodyT}>
         {/* 나이별 */}
         {(extra === 'kinder' || extra === 'student') && (back
           ? <g><rect x="31" y="74" width="38" height={extra === 'kinder' ? 34 : 44} rx="10" fill={extra === 'kinder' ? '#F2C230' : outfit.topColor} stroke={INK} strokeWidth={SW} /><rect x="38" y="88" width="24" height="10" rx="3" fill="rgba(255,255,255,0.4)" /></g>
           : <path d="M37 72 v38 M63 72 v38" stroke={extra === 'kinder' ? '#F2C230' : outfit.topColor} strokeWidth="4" strokeLinecap="round" />)}
         {extra === 'student' && !back && <path d="M46 72 l4 12 4 -12z" fill="#C2452D" stroke={INK} strokeWidth="1.5" />}
-        {extra === 'baby' && !back && <g><circle cx="50" cy="61" r="5" fill="#F3A3C0" stroke={INK} strokeWidth="1.5" /><circle cx="50" cy="61" r="2" fill="#fff" /></g>}
         {cane && <g fill="none" strokeLinecap="round"><path d="M85 110 v80 M85 110 q0 -8 8 -8" stroke={INK} strokeWidth="7.5" /><path d="M85 110 v80 M85 110 q0 -8 8 -8" stroke="#9A6A3E" strokeWidth="4" /></g>}
+        </g>
       </g>
     </svg>
   )
