@@ -1,6 +1,6 @@
 // 캐릭터 그림 (SVG): 테두리 선 + 부드러운 곡선 + 그림자, 표정 8가지. 2026-10-17 다시 그림 (docs/12-art.md)
 import { useId, type ReactNode } from 'react'
-import type { Outfit } from '../engine/outfit'
+import { accList, type Outfit } from '../engine/outfit'
 
 export type Expr = 'normal' | 'happy' | 'sad' | 'surprised' | 'angry' | 'love' | 'tease' | 'clap'
 // pose: 춤 동작 (left·right = 화면 기준 그쪽 팔 위로, up = 두 팔 위로, out = 두 팔 옆으로)
@@ -25,10 +25,10 @@ type Extra = 'baby' | 'kinder' | 'student' | null
 function aged(o: Outfit, age?: number): { o: Outfit; scale: number; cane: boolean; extra: Extra } {
   if (age === undefined) return { o, scale: 1, cane: false, extra: null }
   const f = o.gender === 'f'
-  if (age < 4) return { o: { ...o, hair: 'buzz', hat: f ? 'ribbon' : 'none', hatColor: '#F3A3C0', top: 'tee', topColor: f ? '#F7D3E2' : '#CFE7F5', outer: 'none', bottom: 'shorts', bottomColor: '#FFFFFF', shoes: 'sneakers', shoesColor: '#FFFFFF', acc: 'none' }, scale: 0.66, cane: false, extra: 'baby' }
-  if (age < 8) return { o: { ...o, hat: 'cap', hatColor: '#F2C230', top: 'tee', outer: 'none', bottom: 'shorts', acc: 'none' }, scale: 0.76, cane: false, extra: 'kinder' }
-  if (age < 20) return { o: { ...o, hat: 'none', top: 'shirt', topColor: '#F4EBD6', outer: 'jacket', outerColor: '#1E2A44', bottom: f ? 'skirt' : 'pants', bottomColor: '#2C3A5C', acc: 'none' }, scale: age < 14 ? 0.8 : 0.9, cane: false, extra: 'student' }
-  const hairColor = age >= 60 ? '#DCDCDC' : age >= 45 ? mix(o.hairColor, '#C8C8C8', 0.4) : o.hairColor
+  if (age < 4) return { o: { ...o, hair: 'buzz', hat: f ? 'ribbon' : 'none', hatColor: '#F3A3C0', top: 'tee', topColor: f ? '#F7D3E2' : '#CFE7F5', outer: 'none', bottom: 'shorts', bottomColor: '#FFFFFF', shoes: 'sneakers', shoesColor: '#FFFFFF', acc: 'none', acc2: 'none', acc3: 'none' }, scale: 0.66, cane: false, extra: 'baby' }
+  if (age < 8) return { o: { ...o, hat: 'cap', hatColor: '#F2C230', top: 'tee', outer: 'none', bottom: 'shorts', acc: 'none', acc2: 'none', acc3: 'none' }, scale: 0.76, cane: false, extra: 'kinder' }
+  if (age < 20) return { o: { ...o, hat: 'none', top: 'shirt', topColor: '#F4EBD6', outer: 'jacket', outerColor: '#1E2A44', bottom: f ? 'skirt' : 'pants', bottomColor: '#2C3A5C', acc: 'none', acc2: 'none', acc3: 'none' }, scale: age < 14 ? 0.8 : 0.9, cane: false, extra: 'student' }
+  const hairColor = age >= 60 ? '#A9AEB6' : age >= 45 ? mix(o.hairColor, '#C8C8C8', 0.4) : o.hairColor
   return { o: { ...o, hairColor }, scale: 1, cane: age >= 65, extra: null }
 }
 
@@ -64,6 +64,9 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
   const uid = useId().replace(/:/g, '')
   const a = aged(outfit, age)
   const { o, cane, extra } = a
+  const accs = accList(o)
+  const hasAcc = (id: string) => accs.some((x) => x.id === id)
+  const accC = (id: string) => accs.find((x) => x.id === id)?.color ?? o.accColor
   const scale = crop ? 1 : a.scale // 얼굴만 그릴 땐 아기도 크게
   const back = view === 'back'
   const dress = o.top === 'dress'
@@ -128,7 +131,7 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
         {longSleeve && pose === 'idle' && <path d="M22 109 l7 1.5 M78 109 l-7 1.5" stroke={shade(o.topColor, -0.25)} strokeWidth="2.5" strokeLinecap="round" />}
         {o.top === 'sport' && pose === 'idle' && <path d="M29 82 Q25 96 24 106 M71 82 Q75 96 76 106" stroke="#fff" strokeWidth="1.8" fill="none" />}
         <g fill={o.skin} stroke={INK} strokeWidth={SW}><circle cx={aL.hand[0]} cy={aL.hand[1]} r="5.5" /><circle cx={aR.hand[0]} cy={aR.hand[1]} r="5.5" /></g>
-        {o.acc === 'watch' && pose === 'idle' && <rect x="20" y="106.5" width="10" height="4" rx="1.5" fill={o.accColor} stroke={INK} strokeWidth="1.5" />}
+        {hasAcc('watch') && pose === 'idle' && <rect x="20" y="106.5" width="10" height="4" rx="1.5" fill={accC('watch')} stroke={INK} strokeWidth="1.5" />}
 
         {/* 상의 */}
         <path d={dress ? DRESS : TORSO} fill={o.topColor} stroke={INK} strokeWidth={SW} />
@@ -142,13 +145,15 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
 
         {/* 겉옷 */}
         {outerOn && <Outer o={o} back={back} arms={[aL, aR]} />}
+        {/* 겉옷 소매가 손을 덮지 않게 손을 한 번 더 (2026-10-21 사용자) */}
+        {outerOn && <g fill={o.skin} stroke={INK} strokeWidth={SW}><circle cx={aL.hand[0]} cy={aL.hand[1]} r="5.5" /><circle cx={aR.hand[0]} cy={aR.hand[1]} r="5.5" /></g>}
         </g>
 
         <g transform={headT}>
         {/* 목 */}
         <path d="M45 62 v10 q5 3 10 0 v-10z" fill={o.skin} stroke={INK} strokeWidth={SW} />
         <path d="M45 66 q5 4 10 0" fill="none" stroke="rgba(42,33,24,0.18)" strokeWidth="3" />
-        {o.acc === 'scarf' && <Scarf c={o.accColor} back={back} />}
+        {hasAcc('scarf') && <Scarf c={accC('scarf')} back={back} />}
 
         {/* 얼굴 */}
         <g stroke={INK} strokeWidth={SW} fill={o.skin}>
@@ -157,25 +162,25 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
           <ellipse cx="50" cy="42" rx="27" ry="25" />
         </g>
         {!back && <Face o={o} expr={expr} layer="face" />}
-        {o.acc === 'earrings' && <g fill={o.accColor} stroke={INK} strokeWidth="1.2"><circle cx="22.5" cy="53" r="2.4" /><circle cx="77.5" cy="53" r="2.4" /></g>}
+        {hasAcc('earrings') && <g fill={accC('earrings')} stroke={INK} strokeWidth="1.2"><circle cx="22.5" cy="53" r="2.4" /><circle cx="77.5" cy="53" r="2.4" /></g>}
 
         {/* 머리카락 */}
         {back ? <HairBack o={o} /> : <HairFront o={o} />}
-        {o.acc === 'hairpin' && !back && <Flower x={33} y={27} c={o.accColor} />}
+        {hasAcc('hairpin') && !back && <Flower x={33} y={27} c={accC('hairpin')} />}
 
         {/* 액세서리 */}
-        {!back && o.acc === 'glasses' && <g stroke={INK} strokeWidth="2" fill="rgba(255,255,255,0.25)"><circle cx="40" cy="47" r="7" /><circle cx="60" cy="47" r="7" /><path d="M47 46 q3 -2 6 0" fill="none" /></g>}
-        {!back && o.acc === 'sunglasses' && <g fill={INK}><path d="M30 42 h17 v5 q0 6 -8 6 q-9 0 -9 -6z" /><path d="M53 42 h17 v5 q0 6 -9 6 q-8 0 -8 -6z" /><rect x="46" y="42" width="8" height="2" /><path d="M33 44.5 h5" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" /></g>}
-        {!back && o.acc === 'mask' && <g><path d="M24 50 Q30 52 37 53 M76 50 Q70 52 63 53" stroke="#ddd" strokeWidth="1.4" fill="none" /><rect x="37" y="50" width="26" height="13" rx="5" fill={o.accColor} stroke={INK} strokeWidth="1.6" /><path d="M40 55 h20 M40 58.5 h20" stroke={shade(o.accColor, -0.2)} strokeWidth="1" /></g>}
+        {!back && hasAcc('glasses') && <g stroke={INK} strokeWidth="2" fill="rgba(255,255,255,0.25)"><circle cx="40" cy="47" r="7" /><circle cx="60" cy="47" r="7" /><path d="M47 46 q3 -2 6 0" fill="none" /></g>}
+        {!back && hasAcc('sunglasses') && <g fill={INK}><path d="M30 42 h17 v5 q0 6 -8 6 q-9 0 -9 -6z" /><path d="M53 42 h17 v5 q0 6 -9 6 q-8 0 -8 -6z" /><rect x="46" y="42" width="8" height="2" /><path d="M33 44.5 h5" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" /></g>}
+        {!back && hasAcc('mask') && <g><path d="M24 50 Q30 52 37 53 M76 50 Q70 52 63 53" stroke="#ddd" strokeWidth="1.4" fill="none" /><rect x="37" y="50" width="26" height="13" rx="5" fill={accC('mask')} stroke={INK} strokeWidth="1.6" /><path d="M40 55 h20 M40 58.5 h20" stroke={shade(accC('mask'), -0.2)} strokeWidth="1" /></g>}
         </g>
         <g transform={bodyT}>
-        {!back && o.acc === 'necklace' && <g><path d="M42 72 Q50 82 58 72" stroke="#E2B85C" strokeWidth="2" fill="none" /><circle cx="50" cy="79" r="2.6" fill="#E2B85C" stroke={INK} strokeWidth="1.2" /></g>}
-        {o.acc === 'bag' && (back
-          ? <g><rect x="31" y="74" width="38" height="40" rx="10" fill={o.accColor} stroke={INK} strokeWidth={SW} /><rect x="37" y="92" width="26" height="14" rx="4" fill={shade(o.accColor, -0.12)} stroke={INK} strokeWidth="1.5" /></g>
-          : <g><path d="M35 72 L68 108" stroke={shade(o.accColor, -0.3)} strokeWidth="3.5" strokeLinecap="round" /><rect x="62" y="102" width="17" height="15" rx="4" fill={o.accColor} stroke={INK} strokeWidth={SW} /><path d="M62 108 h17" stroke={INK} strokeWidth="1.3" /></g>)}
+        {!back && hasAcc('necklace') && <g><path d="M42 72 Q50 82 58 72" stroke="#E2B85C" strokeWidth="2" fill="none" /><circle cx="50" cy="79" r="2.6" fill="#E2B85C" stroke={INK} strokeWidth="1.2" /></g>}
+        {hasAcc('bag') && (back
+          ? <g><rect x="31" y="74" width="38" height="40" rx="10" fill={accC('bag')} stroke={INK} strokeWidth={SW} /><rect x="37" y="92" width="26" height="14" rx="4" fill={shade(accC('bag'), -0.12)} stroke={INK} strokeWidth="1.5" /></g>
+          : <g><path d="M35 72 L68 108" stroke={shade(accC('bag'), -0.3)} strokeWidth="3.5" strokeLinecap="round" /><rect x="62" y="102" width="17" height="15" rx="4" fill={accC('bag')} stroke={INK} strokeWidth={SW} /><path d="M62 108 h17" stroke={INK} strokeWidth="1.3" /></g>)}
         </g>
         <g transform={headT}>
-        {o.acc === 'headphones' && <g><path d="M24 44 Q24 12 50 12 Q76 12 76 44" fill="none" stroke={INK} strokeWidth="7" strokeLinecap="round" /><path d="M24 44 Q24 12 50 12 Q76 12 76 44" fill="none" stroke={o.accColor} strokeWidth="3.6" strokeLinecap="round" /><g fill={o.accColor} stroke={INK} strokeWidth={SW}><rect x="17" y="38" width="10" height="16" rx="4" /><rect x="73" y="38" width="10" height="16" rx="4" /></g></g>}
+        {hasAcc('headphones') && <g><path d="M24 44 Q24 12 50 12 Q76 12 76 44" fill="none" stroke={INK} strokeWidth="7" strokeLinecap="round" /><path d="M24 44 Q24 12 50 12 Q76 12 76 44" fill="none" stroke={accC('headphones')} strokeWidth="3.6" strokeLinecap="round" /><g fill={accC('headphones')} stroke={INK} strokeWidth={SW}><rect x="17" y="38" width="10" height="16" rx="4" /><rect x="73" y="38" width="10" height="16" rx="4" /></g></g>}
 
         {/* 모자 */}
         <Hat o={o} back={back} />

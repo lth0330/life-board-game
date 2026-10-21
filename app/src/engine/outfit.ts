@@ -20,6 +20,11 @@ export interface Outfit {
   shoesColor: string
   acc: string
   accColor: string
+  // 액세서리 최대 3개 (2026-10-21). 같은 자리(ACC_SPOT)끼리는 하나만
+  acc2?: string
+  acc2Color?: string
+  acc3?: string
+  acc3Color?: string
 }
 
 export const SKINS = ['#F6D3B3', '#EBB98F', '#C98F62', '#8D5A3B']
@@ -58,6 +63,32 @@ export const ITEMS: Record<Slot, { id: string; name: string }[]> = {
     { id: 'bag', name: '가방' }, { id: 'scarf', name: '목도리' }, { id: 'necklace', name: '목걸이' }, { id: 'headphones', name: '헤드폰' },
     { id: 'earrings', name: '귀걸이' }, { id: 'hairpin', name: '머리핀' }, { id: 'watch', name: '손목시계' }, { id: 'mask', name: '마스크' },
   ],
+}
+
+// 액세서리 자리: 같은 자리끼리는 겹쳐서 하나만
+export const ACC_SPOT: Record<string, string> = {
+  glasses: 'face', sunglasses: 'face', mask: 'face', headphones: 'head', earrings: 'head', hairpin: 'head',
+  scarf: 'neck', necklace: 'neck', bag: 'bag', watch: 'wrist',
+}
+export const MAX_ACC = 3
+export interface Acc { id: string; color: string }
+export function accList(o: Outfit): Acc[] {
+  return ([[o.acc, o.accColor], [o.acc2, o.acc2Color], [o.acc3, o.acc3Color]] as const)
+    .filter(([id]) => id && id !== 'none').map(([id, c]) => ({ id: id!, color: c ?? o.accColor }))
+}
+export function withAccs(o: Outfit, list: Acc[]): Outfit {
+  const [a, b, c] = list
+  return { ...o, acc: a?.id ?? 'none', accColor: a?.color ?? o.accColor, acc2: b?.id ?? 'none', acc2Color: b?.color, acc3: c?.id ?? 'none', acc3Color: c?.color }
+}
+// 고르기: 이미 있으면 빼고, 같은 자리에 있으면 바꾸고, 3개가 넘으면 null (못 넣음)
+export function toggleAcc(o: Outfit, id: string, color: string): Outfit | null {
+  const list = accList(o)
+  if (id === 'none') return withAccs(o, [])
+  if (list.some((x) => x.id === id)) return withAccs(o, list.filter((x) => x.id !== id))
+  const same = list.findIndex((x) => ACC_SPOT[x.id] === ACC_SPOT[id])
+  if (same >= 0) { list[same] = { id, color }; return withAccs(o, list) }
+  if (list.length >= MAX_ACC) return null
+  return withAccs(o, [...list, { id, color }])
 }
 
 export const SLOT_NAMES: Record<Slot, string> = { hair: '머리', hat: '모자', top: '상의', outer: '겉옷', bottom: '하의', shoes: '신발', acc: '액세서리' }
@@ -103,5 +134,13 @@ export function cleanOutfit(v: unknown): Outfit {
   for (const k of ['skin', 'hairColor', 'hatColor', 'topColor', 'outerColor', 'bottomColor', 'shoesColor', 'accColor'] as const) {
     if (typeof o[k] === 'string' && COLOR_OK.test(o[k] as string)) out[k] = o[k] as string
   }
-  return out
+  // 두·세 번째 액세서리 (모르는 값·같은 자리 겹침은 버림)
+  const extra: Acc[] = []
+  for (const [k, ck] of [['acc2', 'acc2Color'], ['acc3', 'acc3Color']] as const) {
+    const id = o[k], c = o[ck]
+    if (typeof id === 'string' && id !== 'none' && ITEMS.acc.some((it) => it.id === id)) extra.push({ id, color: typeof c === 'string' && COLOR_OK.test(c) ? c : out.accColor })
+  }
+  const list: Acc[] = []
+  for (const x of [...accList(out), ...extra]) if (!list.some((y) => ACC_SPOT[y.id] === ACC_SPOT[x.id])) list.push(x)
+  return withAccs(out, list.slice(0, MAX_ACC))
 }
