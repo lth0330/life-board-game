@@ -78,7 +78,11 @@ export function accList(o: Outfit): Acc[] {
 }
 export function withAccs(o: Outfit, list: Acc[]): Outfit {
   const [a, b, c] = list
-  return { ...o, acc: a?.id ?? 'none', accColor: a?.color ?? o.accColor, acc2: b?.id ?? 'none', acc2Color: b?.color, acc3: c?.id ?? 'none', acc3Color: c?.color }
+  const out: Outfit = { ...o, acc: a?.id ?? 'none', accColor: a?.color ?? o.accColor }
+  delete out.acc2; delete out.acc2Color; delete out.acc3; delete out.acc3Color // 없으면 칸도 안 남김 (예전 저장과 같은 모양)
+  if (b) { out.acc2 = b.id; out.acc2Color = b.color }
+  if (c) { out.acc3 = c.id; out.acc3Color = c.color }
+  return out
 }
 // 고르기: 이미 있으면 빼고, 같은 자리에 있으면 바꾸고, 3개가 넘으면 null (못 넣음)
 export function toggleAcc(o: Outfit, id: string, color: string): Outfit | null {
