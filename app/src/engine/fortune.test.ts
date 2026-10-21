@@ -50,7 +50,7 @@ describe('운세 (2026-10-21)', () => {
 })
 
 describe('아이돌 은퇴 (2026-10-21)', () => {
-  it('중년이 되면 아이돌은 은퇴하고, 배우·유튜버로 가면 아이돌 등급을 이어받는다', async () => {
+  it('중년이 되면 아이돌은 은퇴하고, 배우·유튜버로 가면 아이돌 등급에서 한 단계 아래부터', async () => {
     const { stageOf } = await import('./game')
     let checked = 0
     for (let seed = 1; seed <= 30; seed++) {
@@ -62,7 +62,7 @@ describe('아이돌 은퇴 (2026-10-21)', () => {
       expect(p.jobId).not.toBe('idol')
       while (p.exIdol != null && i++ < 9000) aiStep(s)
       expect(p.exIdol ?? null).toBeNull()
-      if (p.jobId === 'actor' || p.jobId === 'youtuber') { expect(p.jobRank).toBe(2); checked++ }
+      if (p.jobId === 'actor' || p.jobId === 'youtuber') { expect(p.jobRank).toBeGreaterThanOrEqual(1); checked++ } // 톱스타 → 2단계 (그 뒤 승진으로 3단계일 수도)
     }
     expect(checked).toBeGreaterThan(0)
   })

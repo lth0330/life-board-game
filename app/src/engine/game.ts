@@ -311,13 +311,14 @@ function beginTurn(s: GameState) {
     goToJob(s, p)
   } else if (sid === 'middle' && p.exIdol != null) {
     const r = p.exIdol
+    const start = Math.max(0, r - 1) // 전직하면 아이돌 등급에서 한 단계 아래부터 (연습생은 1단계)
     const actor = JOBS.find((j) => j.id === 'actor')!
     const yt = JOBS.find((j) => j.id === 'youtuber')!
     s.pending = {
-      type: 'idolNext', playerId: p.id, title: '아이돌 은퇴! 다음 인생은?', text: `아이돌 때 ${JOBS.find((j) => j.id === 'idol')!.ranks[r]} · 매력 ${p.stats.cha}. 아이돌 때 등급만큼 높게 시작해요.`,
+      type: 'idolNext', playerId: p.id, title: '아이돌 은퇴! 다음 인생은?', text: `아이돌 때 ${JOBS.find((j) => j.id === 'idol')!.ranks[r]} · 매력 ${p.stats.cha}. 배우·유튜버로 가면 아이돌 등급에서 한 단계 아래부터 시작해요.`,
       options: [
-        { id: 'actor', label: '🎬 배우 전직', desc: `${actor.ranks[r]}부터 시작 · 대박형 · 월급 ${won(actor.salary)}` },
-        { id: 'youtuber', label: '📹 유튜버 전직', desc: `${yt.ranks[r]}부터 시작 · 대박형 · 월급 ${won(yt.salary)}` },
+        { id: 'actor', label: '🎬 배우 전직', desc: `${actor.ranks[start]}부터 시작 · 대박형 · 월급 ${won(actor.salary)}` },
+        { id: 'youtuber', label: '📹 유튜버 전직', desc: `${yt.ranks[start]}부터 시작 · 대박형 · 월급 ${won(yt.salary)}` },
         { id: 'biz', label: `🏢 창업: ${BUSINESSES.idol.name}`, desc: `자금 ${won(bizCost(p))} · 매력 바탕 · ${r >= 2 ? '톱스타라 중소기업부터' : '소기업부터'}` },
         { id: 'rest', label: '🛋️ 좀 쉬기', desc: '백수 (중년 초반 창업 갈림길에서 창업 가능)' },
       ],
@@ -2244,9 +2245,9 @@ export function choose(s: GameState, optionId: string) {
       p.exIdol = null
       if (optionId === 'actor' || optionId === 'youtuber') {
         setJob(s, p, optionId)
-        p.jobRank = rank // 아이돌 등급 그대로 이어받음
-        log(s, p.id, `${jobOf(p)!.name}(으)로 전직! ${jobOf(p)!.ranks[rank]}부터 시작`, 'good')
-        s.banner = { title: `${jobOf(p)!.name} 전직!`, text: `${p.name}: ${jobOf(p)!.ranks[rank]}`, tone: 'good' }
+        p.jobRank = Math.max(0, rank - 1) // 아이돌 등급에서 한 단계 아래 (톱스타 → 2단계, 신인·연습생 → 1단계)
+        log(s, p.id, `${jobOf(p)!.name}(으)로 전직! ${jobOf(p)!.ranks[p.jobRank]}부터 시작`, 'good')
+        s.banner = { title: `${jobOf(p)!.name} 전직!`, text: `${p.name}: ${jobOf(p)!.ranks[p.jobRank]}`, tone: 'good' }
       } else if (optionId === 'biz') {
         startCompany(s, p, BUSINESSES.idol)
         if (rank >= 2) { p.jobRank = 1; log(s, p.id, `톱스타 이름값으로 ${bizRankOf(p)}부터!`, 'good') }
