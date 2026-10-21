@@ -2,7 +2,7 @@
 // 혼자 할 때도 같은 길로 적용해서, 온라인과 혼자 하기가 똑같이 움직이게 함
 import {
   buyLottery, choose, cur, cureAddiction, finishMini, playChance, repayFriendLoan, repayLoans, requestFriendLoan, roll, seekJob,
-  startSabotage, takeLoan, toggleInsurance, tradeStock, deposit, withdraw,
+  startSabotage, takeLoan, toggleInsurance, tradeStock, deposit, withdraw, giveTeammate,
 } from './game'
 import type { DiceItem, GameState, InsuranceKind, Sector } from './types'
 
@@ -19,6 +19,7 @@ export type Op =
   | ['repayFriendLoan', number]
   | ['deposit', number]
   | ['withdraw', number | undefined]
+  | ['giveTeam', number, number]
 
 export function applyOp(s: GameState, op: Op) {
   switch (op[0]) {
@@ -38,6 +39,7 @@ export function applyOp(s: GameState, op: Op) {
     case 'repayFriendLoan': return repayFriendLoan(s, op[1])
     case 'deposit': return deposit(s, op[1])
     case 'withdraw': return withdraw(s, op[1])
+    case 'giveTeam': return giveTeammate(s, op[1], op[2])
   }
 }
 

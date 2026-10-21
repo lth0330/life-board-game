@@ -17,6 +17,9 @@ import {
   type ActionPayload, type LobbyState, type Me, type Room, type Seat,
 } from './client'
 
+export const CHAT_MAX = 60
+export interface ChatMsg { id: string; name: string; text: string; player: number | null; mine: boolean }
+
 // 게임 화면(Play)은 App에서 그려서 넘겨받음 (서로 불러오는 고리를 피하려고)
 export interface PlayProps {
   game: GameState; setGame: (g: GameState) => void; onQuit: () => void
@@ -181,6 +184,13 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
   const inSeat = seats.some((s) => s.userId === me.userId)
   const humans = seats.filter((s) => s.kind === 'human').length
   const players = seats.filter((s) => s.kind !== 'open').length
+  // 팀전 (2026-10-21): 4자리가 다 차면 켤 수 있음. 자리마다 팀 (처음엔 번갈아)
+  const seatTeam = (i: number) => seats[i].team ?? ((i % 2) as 0 | 1)
+  const teamOk = players === 4 && [0, 1, 2, 3].filter((i) => seatTeam(i) === 0).length === 2
+  const flipTeam = (i: number) => {
+    if (!isHost) return
+    void saveRoom(room, { seats: seats.map((x, k) => (k === i ? { ...x, team: (seatTeam(i) ? 0 : 1) as 0 | 1 } : x)) }).then(apply)
+  }
   const toggleSeat = (i: number) => {
     if (!isHost || seats[i].kind === 'human') return
     const next = seats.map((s, k) => (k === i ? { kind: s.kind === 'ai' ? 'open' : 'ai' } as Seat : s))
@@ -190,9 +200,13 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
   const start = async () => {
     const people = seats.filter((s) => s.kind === 'human')
     const ai = seats.filter((s) => s.kind === 'ai').length
+    // 팀: 플레이어 순서(사람 자리 다음 AI 자리)에 맞춰
+    const order = [...seats.map((x, i) => ({ x, i })).filter(({ x }) => x.kind === 'human'), ...seats.map((x, i) => ({ x, i })).filter(({ x }) => x.kind === 'ai')]
+    const teams = lobby.settings.teams && teamOk ? order.map(({ i }) => seatTeam(i)) : undefined
     const game = createGame({
       humanName: people[0]?.name ?? '방장', humanNames: people.slice(1).map((s) => s.name ?? '친구'), humans: people.length, aiCount: ai,
       outfits: people.map((s) => (s.outfit ? cleanOutfit(s.outfit) : undefined)),
+      teams,
       settings: { startAdult: false, difficulty: lobby.settings.difficulty, online: true },
     })
     const owners = [...people.map((s) => s.userId ?? null), ...Array<null>(ai).fill(null)]
@@ -220,12 +234,29 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
       </div>
       {!isHost && !inSeat && <p className="muted center">자리에 앉는 중…</p>}
       <div className="lobby-settings">
+        {players === 4 && (
+          <div className="seg">
+            {([[false, '각자'], [true, '팀전 (2 대 2)']] as const).map(([v, l]) => (
+              <button key={l} className={!!lobby.settings.teams === v ? 'on' : ''} disabled={!isHost} onClick={() => setSettings({ teams: v })}>{l}</button>
+            ))}
+          </div>
+        )}
+        {players === 4 && lobby.settings.teams && (
+          <div className="team-pick">
+            {seats.map((x, i) => (
+              <button key={i} className={`team-seat t${seatTeam(i)}`} disabled={!isHost} onClick={() => flipTeam(i)}>
+                <b>{x.kind === 'human' ? x.name : '🤖 AI'}</b><span>{seatTeam(i) ? 'B팀' : 'A팀'}</span>
+              </button>
+            ))}
+            {!teamOk && <p className="bad">두 명씩 나눠 주세요 (방장이 눌러서 바꿔요)</p>}
+          </div>
+        )}
         <div className="seg">
           {DIFF.map(([v, l]) => <button key={v} className={lobby.settings.difficulty === v ? 'on' : ''} disabled={!isHost} onClick={() => setSettings({ difficulty: v })}>AI {l}</button>)}
         </div>
       </div>
       {isHost ? (
-        <button className="wide big" disabled={players < 2} onClick={() => void start()}>시작 ({humans}명 + AI {players - humans})</button>
+        <button className="wide big" disabled={players < 2 || (players === 4 && !!lobby.settings.teams && !teamOk)} onClick={() => void start()}>시작 ({humans}명 + AI {players - humans})</button>
       ) : (
         <p className="center">방장이 시작하기를 기다리는 중…</p>
       )}
@@ -306,6 +337,30 @@ function OnlineGame({ me, room, isHost, renderPlay, onLeave }: { me: Me; room: R
   const [incoming, setIncoming] = useState<{ player: number; expr: Expr; id: string } | null>(null)
   const ownersNow = useRef(owners)
   ownersNow.current = isHost ? ownersRef.current : owners
+  // 채팅 (2026-10-21): 행동 기록으로 주고받음. 새로고침하면 지난 채팅은 사라짐 (하루 뒤 서버에서도 지워짐)
+  const [chat, setChat] = useState<ChatMsg[]>([])
+  useEffect(() => {
+    const sub = client.models.Action.onCreate({ filter: { roomId: { eq: room.id } } }).subscribe({
+      next: (a) => {
+        if (a.kind !== 'chat') return
+        const p = parse<ActionPayload & { text?: string } | null>(a.payload, null)
+        const text = typeof p?.text === 'string' ? p.text.trim().slice(0, CHAT_MAX) : ''
+        if (!p || !text) return
+        const player = ownersNow.current.indexOf(p.userId)
+        setChat((c) => [...c, { id: a.id, name: a.name ?? '?', text, player: player >= 0 ? player : null, mine: p.userId === me.userId }].slice(-50))
+      },
+    })
+    return () => sub.unsubscribe()
+  }, [room.id, me.userId])
+  const lastChat = useRef(0)
+  const sendChat = (text: string) => {
+    const t = text.trim().slice(0, CHAT_MAX)
+    if (!t || Date.now() - lastChat.current < 1000) return false // 도배 막기: 1초에 한 번
+    lastChat.current = Date.now()
+    void sendAction(room.id, me, 'chat', { text: t })
+    return true
+  }
+
   useEffect(() => {
     const sub = client.models.Action.onCreate({ filter: { roomId: { eq: room.id } } }).subscribe({
       next: (a) => {
@@ -346,7 +401,7 @@ function OnlineGame({ me, room, isHost, renderPlay, onLeave }: { me: Me; room: R
         online: {
           mine, host: isHost, send: (op) => void sendAction(room.id, me, 'op', { op }),
           emote: (player, expr) => { if (mine.includes(player)) void sendAction(room.id, me, 'emote', { player, expr }) },
-          incoming,
+          incoming, chat, sendChat,
         },
       })}
       {hostAway && (

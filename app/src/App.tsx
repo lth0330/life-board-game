@@ -15,12 +15,14 @@ import { BannerArt, EventArt, EventPopup, Roulette } from './art/More'
 import { setSoundPrefs, sfx, soundPrefs, unlockAudio } from './sound'
 import { Board, FullMap } from './ui/Board'
 import { Dresser } from './ui/Dresser'
+import { LogBox } from './ui/LogBox'
+import type { ChatMsg } from './online/Online'
 import { autoEmote, EMOTE_COOLDOWN_MS, EMOTE_MS, EmotePicker } from './ui/Emotes'
 import { Confetti, DiceThrow, StageCard } from './ui/Effects'
 import { Manual } from './ui/Manual'
 import { MiniGame } from './ui/MiniGames'
 import { Frame, MenuScreen, SetupScreen, TitleScreen, type Speed } from './ui/Screens'
-import { CardsSheet, FinanceSheet, GameOver, MyInfoSheet, PeopleSheet, playerLine, StageSummary, won } from './ui/Sheets'
+import { CardsSheet, FinanceSheet, GameOver, MyInfoSheet, PeopleSheet, playerLine, StageSummary, won, TeamBadge } from './ui/Sheets'
 
 // 온라인 화면(AWS 연결 포함)은 '온라인으로 하기'를 눌렀을 때만 내려받음 (혼자 하기는 가볍게)
 const Online = lazy(() => import('./online/Online').then((m) => ({ default: m.Online })))
@@ -208,7 +210,7 @@ export default function App() {
           setSpeed(o.speed)
           saveSpeed(o.speed)
           setGame(createGame({
-            humanName: o.name, humanNames: o.names, humans: o.humans, aiCount: o.ai, outfits: [o.outfit],
+            humanName: o.name, humanNames: o.names, humans: o.humans, aiCount: o.ai, outfits: [o.outfit], teams: o.teams,
             settings: { startAdult: false, difficulty: o.difficulty },
           }))
           setScreen('play')
@@ -234,6 +236,8 @@ export interface OnlinePlay {
   mine: number[]; host: boolean; send: (op: Op) => void
   emote?: (player: number, expr: Expr) => void
   incoming?: { player: number; expr: Expr; id: string } | null
+  chat?: ChatMsg[] // 채팅 (2026-10-21)
+  sendChat?: (text: string) => boolean
 }
 
 export function Play({ game, setGame, speed, saving, onQuit, online }: { game: GameState; setGame: (g: GameState) => void; speed: Speed; saving: boolean; onQuit: () => void; online?: OnlinePlay }) {
@@ -242,8 +246,6 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
   const [menu, setMenu] = useState(false)
   // 위쪽 정보 칸 접기 (폰에서 판을 넓게). 이 기기에 기억
   const [hudMini, setHudMini] = useState(() => { try { return localStorage.getItem('dgl:hudMini') === '1' } catch { return false } })
-  const [logOpen, setLogOpen] = useState(() => { try { return localStorage.getItem('dgl:logOpen') === '1' } catch { return false } })
-  const toggleLog = () => { const v = !logOpen; setLogOpen(v); try { localStorage.setItem('dgl:logOpen', v ? '1' : '0') } catch { /* 무시 */ } }
   const toggleHud = () => { const v = !hudMini; setHudMini(v); try { localStorage.setItem('dgl:hudMini', v ? '1' : '0') } catch { /* 무시 */ } }
   const [sound, setSound] = useState(soundPrefs())
   const [carMode, setCarMode] = useState(false)
@@ -517,7 +519,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
         <div className="hud-row">
           <div className="hud-who">
             <span className="hud-face" style={{ borderColor: shown.color }}><Character outfit={shown.outfit} size={22} age={ageOf(game, shown)} /></span>
-            <div className="jua hud-stage">{st.name} · {ageOf(game, shown)}세</div>
+            <div className="jua hud-stage">{st.name} · {ageOf(game, shown)}세{game.settings.teams && <TeamBadge team={shown.team} />}</div>
           </div>
           <div className="hud-money"><span aria-label="돈">💰</span><b>{won(shown.money)}</b>{turnIncome(game, shown) ? <span className={turnIncome(game, shown) > 0 ? 'inc-up' : 'inc-down'} title="매 턴 들어오고 나가는 돈"> ({turnIncome(game, shown) > 0 ? '+' : ''}{won(turnIncome(game, shown))})</span> : null} · 행복 <b>{shown.happy}</b></div>
           <div className={`fortune f${shown.fortune}`} title="운세 (착한 일 ↑, 이기적인 일 ↓)">{fortuneName(shown.fortune)}</div>
@@ -549,15 +551,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
       </div>
       {picker && emoteId !== undefined && <EmotePicker outfit={game.players[emoteId].outfit} age={ageOf(game, game.players[emoteId])} onPick={pickEmote} onClose={() => setPicker(false)} />}
 
-      {/* 기록 창: 늘 보이고, 누르면 1줄 ↔ 5줄 (2026-10-21 사용자) */}
-      <button className={`ticker${logOpen ? ' open' : ''}`} onClick={toggleLog} aria-label={logOpen ? '기록 줄이기' : '기록 크게 보기'}>
-        {(logOpen ? game.log.slice(-5) : game.log.slice(-1)).map((l, i, arr) => (
-          <div key={game.log.length - arr.length + i} className={`log-${l.tone}`}>
-            {l.playerId !== null && <b style={{ color: game.players[l.playerId].color }}>{game.players[l.playerId].name} </b>}{l.text}
-          </div>
-        ))}
-        <span className="ticker-toggle" aria-hidden="true">{logOpen ? '▼' : '▲'}</span>
-      </button>
+      <LogBox game={game} chat={online?.chat} onSend={online?.sendChat} />
 
       {(showCar || heldItems.length > 0 || showSeek) && (
         <div className="roll-mods">
@@ -649,6 +643,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
           onFriendLoan={(id, a, r, t) => { setSheet(null); run(['requestFriendLoan', id, a, r, t]) }}
           onRepayFriend={(i) => run(['repayFriendLoan', i])}
           onDeposit={(a) => run(['deposit', a])} onWithdraw={(a) => run(['withdraw', a])}
+          onGiveTeam={(id, a) => run(['giveTeam', id, a])}
           onClose={() => setSheet(null)}
         />
       )}

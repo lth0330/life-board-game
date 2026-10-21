@@ -133,6 +133,7 @@ export interface Player {
   happy: number
   stats: Record<StatKey, number>
   fortune: number // 0 최악 ~ 5 대대길
+  team?: 0 | 1 // 팀전 팀 (A=0, B=1)
   luckPts?: number // 운세 포인트 -5~5 (평→길 2, 길→대길 5). 2026-10-21
   careerDue?: boolean // 새 단계 첫 차례에 커리어 주사위를 직접 굴림 (사람)
   savings?: number // 적금 (2026-10-21, 예전 저장엔 없음)
@@ -217,6 +218,7 @@ export interface Settings {
   startAdult: boolean
   difficulty: Difficulty
   online?: boolean // 온라인(각자 기기): 같은 칸 대결에서 사람은 모두 자기 기기로 함
+  teams?: boolean // 2 대 2 팀전 (2026-10-21): 팀 점수 합계로 승패. Player.team
 }
 
 export interface GameState {

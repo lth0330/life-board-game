@@ -101,6 +101,25 @@ export function houseCost(s: GameState, p: Player, tier: number, coupon = p.chan
   return Math.max(0, housePriceOf(s, tier) - (coupon ? couponOff(housePriceOf(s, tier), 1000) : 0) - houseValue(s, p))
 }
 export { SCORE_PER_POINT }
+
+// ───────── 팀전 (2026-10-21 사용자: 부루마블처럼 2 대 2, 팀 점수 합계) ─────────
+export const TEAM_NAMES = ['A팀', 'B팀']
+export const TEAM_COLORS = ['#1B4DDB', '#C2452D']
+export const sameTeam = (s: GameState, a: Player, b: Player) => !!s.settings.teams && a.id !== b.id && a.team === b.team
+export function teamTotals(s: GameState) {
+  const t = [0, 0]
+  for (const p of s.players) if (p.team !== undefined) t[p.team] += scoreOf(s, p).total
+  return t
+}
+// 팀원에게 돈 보내기 (빚 없이 그냥 줌)
+export function giveTeammate(s: GameState, toId: number, amount: number) {
+  const p = cur(s)
+  const to = s.players[toId]
+  if (!canAct(s) || !to || !sameTeam(s, p, to) || amount <= 0 || p.money < amount) return
+  p.money -= amount
+  to.money += amount
+  log(s, p.id, `팀원 ${to.name}에게 ${won(amount)}을 보냈다`, 'info')
+}
 // 결산 상: 1등(같으면 모두)에게 10점. 기록이 0이면 없음
 export const AWARD_POINTS = 10
 // 주식으로 번 돈: 판 동안 판 이익·손해 + 아직 들고 있는 주식의 (지금 값 - 산 값)
@@ -176,6 +195,7 @@ export interface NewGameOptions {
   aiCount: number
   humans?: number
   outfits?: (Outfit | undefined)[] // 사람 플레이어 옷차림 (없으면 무작위)
+  teams?: (0 | 1)[] // 팀전: 플레이어 순서(사람 다음 AI)대로 팀. 4명이고 2:2일 때만
   settings: Settings
   seed?: number
 }
@@ -195,6 +215,7 @@ export function createGame(o: NewGameOptions): GameState {
   }
   const rng = rngOf(s)
   s.stages = buildStages(rng)
+  s.settings = { ...s.settings, teams: false }
   const humans = o.humans ?? 1
   for (let i = 0; i < humans; i++) s.players.push(newPlayer(i, i === 0 ? o.humanName || '나' : o.humanNames?.[i - 1]?.trim() || `친구${i}`, true, 'safe'))
   const kinds = Object.keys(PERSONALITIES) as Personality[]
@@ -215,6 +236,12 @@ export function createGame(o: NewGameOptions): GameState {
   }
   log(s, null, `${st.name} 단계 시작! (${st.ages[0]}세)`, 'info')
   s.banner = { title: `${st.name} 단계`, text: `${st.ages[0]}세부터 시작해요`, tone: 'info' }
+  // 팀전: 4명이고 2 대 2일 때만
+  if (o.teams && o.teams.length === s.players.length && s.players.length === 4 && o.teams.filter((t) => t === 0).length === 2) {
+    s.settings.teams = true
+    s.players.forEach((p, k) => { p.team = o.teams![k] })
+    log(s, null, `팀전! ${TEAM_NAMES[0]}: ${s.players.filter((p) => p.team === 0).map((p) => p.name).join('·')} vs ${TEAM_NAMES[1]}: ${s.players.filter((p) => p.team === 1).map((p) => p.name).join('·')}`, 'info')
+  }
   beginTurn(s)
   return s
 }
@@ -1791,6 +1818,12 @@ function meet(s: GameState) {
   const all = [p, ...others]
   const rng = rngOf(s)
   const id = stageOf(s).id
+  // 팀전: 같은 팀끼리만 만나면 대결 대신 둘 다 행복 +2
+  if (s.settings.teams && all.every((q) => q.team === p.team)) {
+    for (const q of all) q.happy += 2
+    log(s, null, `${all.map((q) => q.name).join(', ')} 같은 팀끼리 만났다! 하이파이브 (행복 +2)`, 'good')
+    return
+  }
   if (id === 'young' || id === 'middle') {
     const game = rng.pick(['dice', 'rps', 'timing'] as DuelId[])
     log(s, null, `${all.map((q) => q.name).join(', ')} 같은 칸에서 만났다! ${MINI_NAMES[game]}`, 'info')
@@ -2894,7 +2927,7 @@ export function startSabotage(s: GameState) {
   if (!canAct(s) || !p.sabotage) return
   s.pending = {
     type: 'sabotageTarget', playerId: p.id, title: SABOTAGE_NAMES[p.sabotage], text: '누구에게 쓸까요? 상대 운세가 나보다 좋을수록 역풍이 불 수 있어요.',
-    options: s.players.filter((q) => q.id !== p.id).map((q) => ({ id: String(q.id), label: q.name, desc: `운세 ${fortuneName(q.fortune)} · 역풍 ${q.fortune > p.fortune ? Math.round((BACKFIRE[q.fortune] ?? 0) * 100) : 0}%` })),
+    options: s.players.filter((q) => q.id !== p.id && !sameTeam(s, p, q)).map((q) => ({ id: String(q.id), label: q.name, desc: `운세 ${fortuneName(q.fortune)} · 역풍 ${q.fortune > p.fortune ? Math.round((BACKFIRE[q.fortune] ?? 0) * 100) : 0}%` })),
   }
   s.phase = 'decision'
 }

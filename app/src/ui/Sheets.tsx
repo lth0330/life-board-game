@@ -4,7 +4,7 @@ import { Trophy } from '../art/More'
 import { CARS, CHANCE_NAMES, DICE_ITEMS, HOUSE_RULES, HOUSES, INSURANCE, JOBS, KIDS, LOTTERY_PRICE, MEDALS, PERSONALITIES, SABOTAGE_NAMES, SAVINGS_RATE, SECTORS } from '../engine/data'
 import {
   ageOf, moodLevel, moodOf, MOOD_FACES, MOOD_HELP, MOOD_NAMES, MOOD_TURNS, AWARD_POINTS, awardsOf, bankDebt, canBorrowFrom, fortuneName, friendDebt, houseValue, isAdultStage, jobOf, kidAllowance, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
-  stars, stocksValue,
+  stars, stocksValue, teamTotals, TEAM_COLORS, TEAM_NAMES, sameTeam,
 } from '../engine/game'
 import type { GameState, InsuranceKind, Player, Sector } from '../engine/types'
 
@@ -38,6 +38,7 @@ interface FinanceProps {
   onRepayFriend: (idx: number) => void
   onDeposit: (amount: number) => void
   onWithdraw: (amount?: number) => void
+  onGiveTeam: (toId: number, amount: number) => void
   onClose: () => void
 }
 
@@ -165,6 +166,14 @@ export function FinanceSheet(f: FinanceProps) {
       )}
       {tab === 'friend' && (
         <div className="list">
+          {s.settings.teams && s.players.filter((q) => sameTeam(s, p, q)).map((q) => (
+            <div key={`team${q.id}`} className="note">
+              <b>🤝 팀원 {q.name}에게 돈 보내기</b> <span className="muted">(빚 없이 그냥 줘요 · 팀원 돈 {won(q.money)})</span>
+              <div className="row">
+                {[100, 500, 1000].map((a) => <button key={a} disabled={locked || p.money < a} onClick={() => f.onGiveTeam(q.id, a)}>{won(a)}</button>)}
+              </div>
+            </div>
+          ))}
           <p className="note">친구에게는 <b>사람마다 한 번만</b> 부탁할 수 있어요. 기한을 넘기면 3턴 동안 독촉, 그래도 안 갚으면 소송이에요 (큰돈일수록 빌린 사람이 불리). 빌려준 사람은 돌려받으면 운세가 좋아져요.</p>
           {s.friendLoans.map((l, i) => (l.borrowerId === p.id || l.lenderId === p.id) && (
             <div key={i} className="row">
@@ -259,7 +268,7 @@ export function PeopleSheet({ s, onClose }: { s: GameState; onClose: () => void 
             <div key={p.id} className="person" style={{ borderColor: p.color }}>
               <div className="person-head">
                 <span className="person-face" style={{ borderColor: p.color }}><Character outfit={p.outfit} size={24} /></span>
-                <b className="jua">{p.name}</b>
+                <b className="jua">{p.name}</b><TeamBadge team={p.team} />
                 <span className="muted">{p.human ? '사람' : PERSONALITIES[p.personality]}</span>
                 <span className="fortune">{fortuneName(p.fortune)}</span>
               </div>
@@ -292,7 +301,8 @@ export function StageSummary({ s, onClose }: { s: GameState; onClose: () => void
     <div className="sheet-backdrop">
       <div className="sheet">
         <h2 className="jua center">{s.summary} 정산</h2>
-        <p className="center muted">지금까지 점수 (자산 100만당 1점 + 행복, 상은 마지막에)</p>
+        <p className="center muted">지금까지 점수 (자산 150만당 1점 + 행복, 상은 마지막에)</p>
+        {s.settings.teams && <TeamTotal s={s} />}
         <div className="people">
           {ranked.map(({ p, sc }, i) => {
             const debt = loanTotal(p) + friendDebt(s, p)
@@ -301,7 +311,7 @@ export function StageSummary({ s, onClose }: { s: GameState; onClose: () => void
                 <div className="person-head">
                   <b className="jua rank">{['🥇', '🥈', '🥉'][i] ?? ''}{i + 1}위</b>
                   <span className="person-face" style={{ borderColor: p.color }}><Character outfit={p.outfit} size={24} age={ageOf(s, p)} /></span>
-                  <b className="jua">{p.name}</b>
+                  <b className="jua">{p.name}</b><TeamBadge team={p.team} />
                   <b className="jua total">{sc.total}점</b>
                 </div>
                 <div className="muted">{ageOf(s, p)}세 · {playerLine(s, p)}{salaryOf(p) ? ` · 월급 ${won(salaryOf(p))}` : ''}</div>
@@ -318,6 +328,27 @@ export function StageSummary({ s, onClose }: { s: GameState; onClose: () => void
   )
 }
 
+// 팀전 합계: 팀 점수 합 + 재산 합 (2026-10-21)
+export const TeamBadge = ({ team }: { team?: 0 | 1 }) => (team === undefined ? null : <span className="team-badge" style={{ background: TEAM_COLORS[team] }}>{TEAM_NAMES[team]}</span>)
+function TeamTotal({ s, final = false }: { s: GameState; final?: boolean }) {
+  const t = teamTotals(s)
+  const assets = [0, 1].map((k) => s.players.filter((p) => p.team === k).reduce((a, p) => a + scoreOf(s, p).assets, 0))
+  const win = t[0] === t[1] ? -1 : t[0] > t[1] ? 0 : 1
+  return (
+    <div className="team-total">
+      {[0, 1].map((k) => (
+        <div key={k} className={win === k ? 'win' : ''} style={{ borderColor: TEAM_COLORS[k] }}>
+          <b className="jua" style={{ color: TEAM_COLORS[k] }}>{final && win === k ? '🏆 ' : ''}{TEAM_NAMES[k]}</b>
+          <div className="jua">{t[k]}점</div>
+          <div className="muted">{s.players.filter((p) => p.team === k).map((p) => p.name).join(' · ')}</div>
+          <div className="muted">재산 합계 {won(assets[k])}</div>
+        </div>
+      ))}
+      {final && win === -1 && <p className="center">무승부!</p>}
+    </div>
+  )
+}
+
 export function GameOver({ s, onRestart }: { s: GameState; onRestart: () => void }) {
   const ranked = [...s.players].map((p) => ({ p, sc: scoreOf(s, p) })).sort((a, b) => b.sc.total - a.sc.total)
   return (
@@ -325,14 +356,15 @@ export function GameOver({ s, onRestart }: { s: GameState; onRestart: () => void
       <div className="sheet">
         <div className="center"><Trophy size={64} /></div>
         <h2 className="jua center">인생 결산</h2>
-        <p className="center muted">점수 = 자산 100만당 1점 + 행복 + 상 {AWARD_POINTS}점씩(공동이면 나눔) (집은 지금 시세, 차는 지금 가치로)</p>
+        <p className="center muted">점수 = 자산 150만당 1점 + 행복 + 상 {AWARD_POINTS}점씩(공동이면 나눔) (집은 지금 시세, 차는 지금 가치로)</p>
+        {s.settings.teams && <TeamTotal s={s} final />}
         <div className="people">
           {ranked.map(({ p, sc }, i) => (
             <div key={p.id} className="person" style={{ borderColor: p.color }}>
               <div className="person-head">
                 <b className="jua rank">{['🥇', '🥈', '🥉'][i] ?? ''}{i + 1}위</b>
                 <span className="person-face" style={{ borderColor: p.color }}><Character outfit={p.outfit} size={24} /></span>
-                <b className="jua">{p.name}</b>
+                <b className="jua">{p.name}</b><TeamBadge team={p.team} />
                 <span className="muted">{p.human ? '사람' : PERSONALITIES[p.personality]}</span>
                 <b className="jua total">{sc.total}점</b>
               </div>

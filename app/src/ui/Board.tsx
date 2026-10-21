@@ -3,7 +3,7 @@ import { Building, TileIcon, Tree } from '../art/Art'
 import { Landmark } from '../art/More'
 import { Character, type Expr } from '../art/Character'
 import { EmoteBubble, RpsBubble } from './Emotes'
-import { ageOf, UNI_NAMES } from '../engine/game'
+import { ageOf, TEAM_COLORS, TEAM_NAMES, UNI_NAMES } from '../engine/game'
 import { distancesFrom, EVENT_ROAD_NAME } from '../engine/board'
 import { MINI_NAMES } from '../engine/game'
 import type { GameState, Player, Tile } from '../engine/types'
@@ -197,7 +197,7 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
         <div key={`c${p.id}`} className={`char${p.id === walkingId ? ' walking' : ''}${ageOf(s, p) <= 2 ? ' baby' : ''}`} style={{ ...stand, left: xAt(t) + 20 + dx, top: yAt(t) - 90 }}>
           <div style={{ opacity: me ? 1 : 0.5 }}>
             <Character outfit={p.outfit} view={p.id === walkingId ? 'back' : 'front'} size={80} age={ageOf(s, p)} /> {/* 걸을 때만 뒷모습 */}
-            <div className="name-tag" style={{ background: me ? p.color : 'rgba(42,33,24,0.6)', top: -40 - k * 34 }}>{p.name}</div>
+            <div className="name-tag" style={{ background: me ? p.color : 'rgba(42,33,24,0.6)', top: -40 - k * 34, ...(p.team !== undefined && s.settings.teams ? { boxShadow: `0 0 0 4px ${TEAM_COLORS[p.team]}` } : {}) }}>{p.name}{s.settings.teams && p.team !== undefined ? ` · ${TEAM_NAMES[p.team]}` : ''}</div>
           </div>
           {p.id in hands
             ? <div className="emote-on-board" style={{ top: -130 - k * 34 }}><RpsBubble value={hands[p.id]} /></div>

@@ -805,3 +805,30 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .sign-post { align-items: flex-end; width: 230px; }
 .sign-boards { align-items: flex-end; }
 .sign-pole { margin-right: 30px; }
+/* 팀전 (2026-10-21) */
+.team-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.team-pick .bad { grid-column: 1 / -1; }
+.team-seat { min-height: 52px; border-radius: 12px; border: 2px solid var(--ink); background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Jua', sans-serif; }
+.team-seat span { font-size: 12px; color: #fff; border-radius: 6px; padding: 0 8px; }
+.team-seat.t0 { box-shadow: inset 0 -5px 0 #1B4DDB; } .team-seat.t0 span { background: #1B4DDB; }
+.team-seat.t1 { box-shadow: inset 0 -5px 0 #C2452D; } .team-seat.t1 span { background: #C2452D; }
+.team-badge { display: inline-block; font-family: 'Jua', sans-serif; font-size: 11px; color: #fff; border-radius: 6px; padding: 0 6px; margin-left: 4px; vertical-align: middle; }
+.team-total { display: flex; gap: 8px; }
+.team-total > div { flex: 1; border: 2px solid var(--ink); border-radius: 12px; padding: 8px; text-align: center; background: #fff; }
+.team-total > div.win { background: #FFF4C9; box-shadow: var(--pop); }
+/* 기록·채팅 창 (2026-10-21): 탭 전체·진행·채팅, 접으면 1줄 */
+.logbox { position: absolute; left: 10px; right: 70px; bottom: 200px; z-index: 2; display: flex; flex-direction: column; gap: 4px; }
+.logbox.open { background: rgba(251, 245, 232, 0.96); border: 2px solid var(--ink); border-radius: 12px; padding: 6px; box-shadow: var(--pop-sm); }
+.logbox-lines { position: relative; border: none; background: none; padding: 0; text-align: left; font: inherit; color: inherit; display: flex; flex-direction: column; gap: 3px; }
+.logbox-lines > div { align-self: flex-start; max-width: 100%; background: rgba(251, 245, 232, 0.92); border-radius: 10px; padding: 4px 10px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.logbox.open .logbox-lines > div { white-space: normal; background: none; padding: 2px 4px; }
+.logbox .ticker-toggle { right: -30px; bottom: 2px; }
+.logbox.open .ticker-toggle { right: -4px; top: -2px; bottom: auto; }
+.chat-line { color: #1d5c3b; }
+.logbox-tabs { display: flex; gap: 4px; }
+.logbox-tabs button { flex: 1; min-height: 32px; border-radius: 8px 8px 0 0; border: 2px solid var(--ink); background: #fff; font-family: 'Jua', sans-serif; font-size: 13px; position: relative; }
+.logbox-tabs button.on { background: var(--ink); color: var(--paper); }
+.logbox-tabs em { position: absolute; top: -6px; right: -4px; font-style: normal; font-size: 11px; background: #C2452D; color: #fff; border-radius: 9px; padding: 0 5px; }
+.logbox-input { display: flex; gap: 6px; }
+.logbox-input input { flex: 1; min-width: 0; min-height: 40px; border-radius: 10px; border: 2px solid var(--ink); padding: 0 10px; font: inherit; font-size: 15px; background: #fff; color: var(--ink); }
+.logbox-input button { min-height: 40px; padding: 0 12px; border-radius: 10px; border: 2px solid var(--ink); background: var(--ink); color: var(--paper); font-family: 'Jua', sans-serif; }

@@ -8,7 +8,7 @@ import { Dresser } from './Dresser'
 import { Manual } from './Manual'
 
 export type Speed = 'fast' | 'normal' | 'slow'
-export interface SetupResult { name: string; names: string[]; humans: number; ai: number; difficulty: Difficulty; speed: Speed; outfit: Outfit }
+export interface SetupResult { name: string; names: string[]; humans: number; ai: number; difficulty: Difficulty; speed: Speed; outfit: Outfit; teams?: (0 | 1)[] }
 
 export function Frame({ children }: { children: ReactNode }) {
   return (
@@ -106,6 +106,13 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
   const [manual, setManual] = useState(false)
   const maxAi = 4 - humans
   const aiCount = Math.min(ai, maxAi)
+  // 팀전 (4명일 때): 자리마다 A/B. 처음엔 사람 2·AI 2면 사람 vs AI, 아니면 번갈아 (2026-10-21)
+  const [teamOn, setTeamOn] = useState(false)
+  const [teamPick, setTeamPick] = useState<(0 | 1)[] | null>(null)
+  const four = humans + aiCount === 4
+  const seatNames = [name || '나', ...Array.from({ length: humans - 1 }, (_, i) => names[i] || `친구${i + 1}`), ...Array.from({ length: aiCount }, (_, i) => `AI ${i + 1}`)]
+  const teams: (0 | 1)[] = teamPick && teamPick.length === 4 ? teamPick : humans === 2 ? [0, 0, 1, 1] : [0, 1, 0, 1]
+  const teamOk = teams.filter((t) => t === 0).length === 2
   return (
     <Frame>
       <div className="setup-head">
@@ -132,13 +139,28 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
       <div className="field"><span>AI 수</span>
         <Choice value={aiCount} options={([0, 1, 2, 3] as number[]).filter((n) => n <= maxAi && n + humans >= 2).map((n) => [n, `${n}명`] as [number, string])} onChange={setAi} />
       </div>
+      {four && (
+        <div className="field"><span>팀전 (2 대 2, 팀 점수 합계로 승부)</span>
+          <Choice value={teamOn} options={[[false, '각자'], [true, '팀전']]} onChange={setTeamOn} />
+          {teamOn && (
+            <div className="team-pick">
+              {seatNames.map((n, k) => (
+                <button key={k} className={`team-seat t${teams[k]}`} onClick={() => setTeamPick(teams.map((t, j) => (j === k ? (t ? 0 : 1) : t)) as (0 | 1)[])}>
+                  <b>{n}</b><span>{teams[k] ? 'B팀' : 'A팀'}</span>
+                </button>
+              ))}
+              {!teamOk && <p className="bad">두 명씩 나눠 주세요 (눌러서 팀 바꾸기)</p>}
+            </div>
+          )}
+        </div>
+      )}
       <div className="field"><span>AI 난이도</span>
         <Choice value={difficulty} options={[['easy', '쉬움'], ['normal', '보통'], ['hard', '어려움']]} onChange={setDifficulty} />
       </div>
       <div className="field"><span>AI 차례 속도</span>
         <Choice value={speed} options={[['fast', '빠르게'], ['normal', '보통'], ['slow', '천천히']]} onChange={setSpeed} />
       </div>
-      <button className="wide big" disabled={humans + aiCount < 2} onClick={() => onStart({ name, names: names.slice(0, humans - 1), humans, ai: aiCount, difficulty, speed, outfit })}>게임 시작</button>
+      <button className="wide big" disabled={humans + aiCount < 2 || (four && teamOn && !teamOk)} onClick={() => onStart({ name, names: names.slice(0, humans - 1), humans, ai: aiCount, difficulty, speed, outfit, teams: four && teamOn ? teams : undefined })}>게임 시작</button>
       <button className="wide ghost" onClick={onBack}>뒤로</button>
       {dress && <Dresser value={outfit} onChange={(o) => { setOutfit(o); onOutfit(o) }} onDone={() => setDress(false)} />}
       {manual && <Manual onClose={() => setManual(false)} />}
