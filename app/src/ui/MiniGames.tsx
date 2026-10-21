@@ -31,11 +31,11 @@ const HOW: Record<string, string> = {
   rhythm: '음표 4개가 위에서 떨어져요. 노란 선에 닿을 때 "지금!"을 누르세요.',
   confess: '하트가 콩닥콩닥 커졌다 작아져요. 가장 커졌을 때 "고백!"을 누르세요.',
   dance: '화살표 춤 동작이 하나씩 나와요. 다 본 뒤 같은 순서로 화살표를 누르세요.',
-  oddEven: '주사위 두 개의 합이 홀수일지 짝수일지 고르세요.',
+  oddEven: '주사위 두 개가 구르다가 컵에 덮여요. 컵 속 두 주사위의 합이 홀수일지 짝수일지 맞히세요.',
   highLow: '다음 카드가 지금 카드보다 높을지 낮을지 두 번 맞히세요. 카드는 1~13이에요.',
   slot: '시작을 누르면 릴 3개가 돌아요. 버튼으로 하나씩 멈춰서 같은 그림을 맞추세요.',
-  capital: '나라 이름을 보고 수도를 고르세요.',
-  souvenir: '기념품 상자 3개 중 하나를 고르세요. 무엇이 들었는지는 운이에요.',
+  snap: '랜드마크가 왔다 갔다 해요. 사진 틀 안에 들어왔을 때 "찰칵!"을 누르세요. 3장 중 잘 찍은 사진이 많을수록 좋아요.',
+  pack: '물건이 하나씩 나와요. 여행에 필요한 것은 챙기고, 필요 없는 것은 두고 가세요. 시간 안에 골라야 해요.',
   timing: '바늘이 왔다 갔다 해요. 가운데 초록 구역에 왔을 때 "멈춰!"를 누르세요. 가운데에 가까울수록 점수가 높아요.',
 }
 
@@ -52,7 +52,7 @@ const MINI_THEME: Record<string, string> = {
   memory: 'brain', pairs: 'brain', quickmath: 'brain',
   firstImpression: 'fest', rhythm: 'fest', confess: 'fest', dance: 'fest',
   oddEven: 'casino', highLow: 'casino', slot: 'casino',
-  capital: 'travel', souvenir: 'travel', photo: 'travel',
+  snap: 'travel', pack: 'travel', photo: 'travel',
 }
 const THEME_LANDMARK: Record<string, string> = { sport: '운동회', brain: '두뇌 올림피아드', fest: '축제 거리', casino: '카지노', travel: '세계일주' }
 
@@ -102,9 +102,9 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
       case 'oddEven': return <OddEven level={mini.level} onDone={done} />
       case 'highLow': return <HighLow onDone={done} />
       case 'slot': return <Slot level={mini.level} onDone={done} />
-      case 'capital': return <Capital level={mini.level} seen={seen.current} onDone={done} />
-      case 'souvenir': return <Souvenir onDone={done} />
-      default: return <Souvenir onDone={done} />
+      case 'snap': return <Snap level={mini.level} onDone={done} />
+      case 'pack': return <Pack level={mini.level} onDone={done} />
+      default: return <Pack level={mini.level} onDone={done} />
     }
   })()
   return (
@@ -589,7 +589,7 @@ function Pairs({ level, onDone }: { level: number; onDone: (v: number) => void }
   )
 }
 
-// 빠른 계산 5문제. 지력이 높으면 숫자가 작고 시간이 길다
+// 빠른 계산 5문제. 지력이 높으면 숫자가 작고 시간이 길다. 어느 기기든 눌러서 답함 (2026-10-21 사용자)
 function QuickMath({ level, onDone }: { level: number; onDone: (v: number) => void }) {
   const max = [10, 30, 70][level]
   const qs = useMemo(() => Array.from({ length: 5 }, () => {
@@ -609,15 +609,13 @@ function QuickMath({ level, onDone }: { level: number; onDone: (v: number) => vo
   }, [i, left, right, qs.length, onDone])
   const q = qs[Math.min(i, qs.length - 1)]
   const answer = (o: number) => { if (doneRef.current) return; if (o === q.ans) setRight((r) => r + 1); setI((x) => x + 1) }
-  useKeys({ Digit1: () => answer(q.opts[0]), Digit2: () => answer(q.opts[1]), Digit3: () => answer(q.opts[2]), Numpad1: () => answer(q.opts[0]), Numpad2: () => answer(q.opts[1]), Numpad3: () => answer(q.opts[2]) })
   return (
     <div className="mini-body">
       <p>{Math.min(i + 1, 5)}/5 · 남은 시간 {Math.max(0, left)}초 · 맞힌 수 {right}</p>
       <div className="mini-big jua">{q.a} + {q.b} = ?</div>
       <div className="mini-grid">
-        {q.opts.map((o, k) => <button key={k} onClick={() => answer(o)}>{o}{finePointer() && <small className="key-hint">{k + 1}</small>}</button>)}
+        {q.opts.map((o, k) => <button key={k} onClick={() => answer(o)}>{o}</button>)}
       </div>
-      <KeyHint>숫자 1·2·3으로 골라요</KeyHint>
     </div>
   )
 }
@@ -648,23 +646,42 @@ function FirstImpression({ level, seen, onDone }: { level: number; seen: Seen; o
   )
 }
 
-// 홀짝: 주사위 두 개 합. 운세가 좋으면 이겼을 때 크게 받음
+// 홀짝 (2026-10-21 사용자, 야바위처럼): 주사위 두 개가 구르다 멈추기 직전에 컵이 덮음 → 홀·짝을 고르면 컵을 엶
+// 운세가 좋으면 이겼을 때 크게 받음
+const DIE_FACE = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅']
 function OddEven({ level, onDone }: { level: number; onDone: (v: number) => void }) {
-  const [dice, setDice] = useState<[number, number] | null>(null)
-  const bet = (odd: boolean) => {
-    const d: [number, number] = [rand(6) + 1, rand(6) + 1]
-    setDice(d)
-    const win = ((d[0] + d[1]) % 2 === 1) === odd
-    setTimeout(() => onDone(win ? (level === 0 || d[0] === d[1] ? 2 : 1) : 0), 900)
+  const final = useMemo<[number, number]>(() => [rand(6) + 1, rand(6) + 1], [])
+  const [face, setFace] = useState<[number, number]>([1, 1])
+  const [stage, setStage] = useState<'roll' | 'cover' | 'open'>('roll')
+  const [bet, setBet] = useState<boolean | null>(null)
+  useEffect(() => {
+    const spin = setInterval(() => setFace([rand(6) + 1, rand(6) + 1]), 90)
+    const cover = setTimeout(() => setStage('cover'), 1100) // 멈추기 직전에 컵이 덮음
+    const stop = setTimeout(() => { clearInterval(spin); setFace(final) }, 1400)
+    return () => { clearInterval(spin); clearTimeout(cover); clearTimeout(stop) }
+  }, [final])
+  const ready = stage === 'cover' && face === final
+  const guess = (odd: boolean) => {
+    if (!ready || bet !== null) return
+    setBet(odd)
+    setStage('open')
+    const win = ((final[0] + final[1]) % 2 === 1) === odd
+    setTimeout(() => onDone(win ? (level === 0 || final[0] === final[1] ? 2 : 1) : 0), 1300)
   }
+  useKeys({ ArrowLeft: () => guess(true), ArrowRight: () => guess(false) })
+  const sum = final[0] + final[1]
   return (
     <div className="mini-body">
-      <p>주사위 두 개의 합이 홀일까요, 짝일까요?</p>
-      {dice && <div className="mini-big jua">{dice[0]} + {dice[1]} = {dice[0] + dice[1]}</div>}
-      <div className="mini-grid two">
-        <button disabled={!!dice} onClick={() => bet(true)}>홀</button>
-        <button disabled={!!dice} onClick={() => bet(false)}>짝</button>
+      <p>{stage === 'roll' ? '주사위를 굴리는 중…' : stage === 'cover' ? '컵 속 주사위 두 개의 합은 홀일까요, 짝일까요?' : `${final[0]} + ${final[1]} = ${sum} (${sum % 2 ? '홀' : '짝'})${((sum % 2 === 1) === bet) ? ' 맞혔다!' : ' 틀렸다…'}`}</p>
+      <div className="cup-table">
+        <div className="cup-dice">{face.map((f, i) => <span key={i} className={stage === 'roll' ? 'tumble' : ''}>{DIE_FACE[f - 1]}</span>)}</div>
+        <div className={`cup cup-${stage}`} aria-hidden="true" />
       </div>
+      <div className="mini-grid two">
+        <button disabled={!ready || bet !== null} onClick={() => guess(true)}>홀</button>
+        <button disabled={!ready || bet !== null} onClick={() => guess(false)}>짝</button>
+      </div>
+      <KeyHint>← 홀 · → 짝</KeyHint>
     </div>
   )
 }
@@ -735,51 +752,89 @@ function Slot({ level, onDone }: { level: number; onDone: (v: number) => void })
   )
 }
 
-const CAPITALS: [string, string, number][] = [
-  ['프랑스', '파리', 0], ['일본', '도쿄', 0], ['미국', '워싱턴', 0], ['영국', '런던', 0], ['중국', '베이징', 0],
-  ['이탈리아', '로마', 1], ['독일', '베를린', 1], ['스페인', '마드리드', 1], ['캐나다', '오타와', 1], ['호주', '캔버라', 1],
-  ['브라질', '브라질리아', 2], ['터키', '앙카라', 2], ['스위스', '베른', 2], ['뉴질랜드', '웰링턴', 2], ['베트남', '하노이', 2],
-]
-
-// 세계일주 수도 맞히기 3문제. 지력이 높으면 쉬운 나라가 나옴
-function Capital({ level, seen, onDone }: { level: number; seen: Seen; onDone: (v: number) => void }) {
-  const qs = useMemo(() => {
-    const pool = fresh(CAPITALS.filter((c) => c[2] <= level), (c) => c[0], seen)
-    const picks = shuffle(pool).slice(0, 3)
-    picks.forEach((c) => seen.add(c[0]))
-    return picks.map((c) => ({ country: c[0], ans: c[1], opts: shuffle([c[1], ...shuffle(CAPITALS.filter((x) => x[1] !== c[1])).slice(0, 2).map((x) => x[1])]) }))
-  }, [level, seen])
-  const [i, setI] = useState(0)
-  const [right, setRight] = useState(0)
-  const answer = (o: string) => {
-    const r = right + (o === qs[i].ans ? 1 : 0)
-    setRight(r)
-    if (i + 1 >= qs.length) onDone(r === 3 ? 2 : r >= 2 ? 1 : 0)
-    else setI(i + 1)
+// 세계일주 사진 찍기 (2026-10-21 사용자, 수도 맞히기 대신): 랜드마크가 왔다 갔다, 사진 틀 안에 왔을 때 찰칵 (3장)
+const SNAP_SPOTS = ['🗼', '🗽', '🏯', '🗿', '🕌', '🎡']
+function Snap({ level, onDone }: { level: number; onDone: (v: number) => void }) {
+  const zone = [24, 17, 12][level] // 사진 틀 너비 (%)
+  const speed = [0.6, 0.85, 1.1][level]
+  const spots = useMemo(() => shuffle(SNAP_SPOTS).slice(0, 3), [])
+  const [pos, setPos] = useState(0)
+  const [shots, setShots] = useState<boolean[]>([])
+  const [flash, setFlash] = useState(false)
+  const t0 = useRef(performance.now() - Math.random() * 1000)
+  const posAt = useCallback((now: number) => 50 + Math.sin(((now - t0.current) / 1000) * speed * Math.PI) * 46, [speed])
+  useEffect(() => {
+    if (flash) return
+    let raf = 0
+    const tick = (now: number) => { setPos(posAt(now)); raf = requestAnimationFrame(tick) }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [posAt, flash])
+  const shoot = () => {
+    if (flash || shots.length >= 3) return
+    const at = posAt(performance.now())
+    setPos(at)
+    setFlash(true)
+    const next = [...shots, Math.abs(at - 50) <= zone / 2]
+    setShots(next)
+    setTimeout(() => {
+      if (next.length >= 3) { const n = next.filter(Boolean).length; onDone(n === 3 ? 2 : n === 2 ? 1 : 0); return }
+      t0.current = performance.now() - Math.random() * 1000
+      setFlash(false)
+    }, 700)
   }
-  const q = qs[i]
+  const last = shots[shots.length - 1]
   return (
     <div className="mini-body">
-      <p>{i + 1}/3 · {q.country}의 수도는?</p>
-      <div className="mini-grid">{q.opts.map((o) => <button key={o} onClick={() => answer(o)}>{o}</button>)}</div>
+      <p>{Math.min(shots.length + (flash ? 0 : 1), 3)}/3 · 랜드마크가 <b>사진 틀 안</b>에 왔을 때 찍으세요</p>
+      <div className={`snap-view${flash ? ' flash' : ''}`}>
+        <div className="snap-frame" style={{ left: `${50 - zone / 2}%`, width: `${zone}%` }} />
+        <span className="snap-spot" style={{ left: `${pos}%` }}>{spots[Math.min(shots.length - (flash ? 1 : 0), 2)]}</span>
+      </div>
+      <p className="jua center">{shots.map((ok, i) => <span key={i}>{ok ? '📸' : '🌫️'} </span>)}{flash ? (last ? ' 잘 찍었다!' : ' 흔들렸다…') : ''}</p>
+      <button className="wide big" onPointerDown={(e) => { e.preventDefault(); shoot() }}>찰칵!</button>
+      <SpaceKey run={shoot} />
     </div>
   )
 }
 
-// 기념품 상자 고르기 (순수 운)
-function Souvenir({ onDone }: { onDone: (v: number) => void }) {
-  const prizes = useMemo(() => shuffle([2, 1, 0]), [])
-  const [open, setOpen] = useState<number | null>(null)
+// 세계일주 짐 싸기 (2026-10-21 사용자, 기념품 고르기 대신): 하나씩 나오는 물건을 여행에 챙길지 고르기. 지력이 높으면 시간이 길다
+const PACK_GOOD = ['🛂 여권', '🪥 칫솔', '🔌 충전기', '👕 옷', '🧴 선크림', '📷 카메라', '👛 지갑', '🕶️ 선글라스', '💊 상비약', '🩴 슬리퍼']
+const PACK_BAD = ['🎹 피아노', '🪴 화분', '🛋️ 소파', '🎳 볼링공', '🚲 자전거', '🍉 수박', '🐟 어항', '📺 텔레비전', '🧱 벽돌', '🛁 욕조']
+function Pack({ level, onDone }: { level: number; onDone: (v: number) => void }) {
+  const limit = [2600, 2000, 1500][level]
+  const items = useMemo(() => shuffle([...shuffle(PACK_GOOD).slice(0, 5).map((x) => ({ x, good: true })), ...shuffle(PACK_BAD).slice(0, 3).map((x) => ({ x, good: false }))]), [])
+  const [i, setI] = useState(0)
+  const [right, setRight] = useState(0)
+  const [mark, setMark] = useState<boolean | null>(null)
+  const doneRef = useRef(false)
+  const pick = useCallback((take: boolean | null) => {
+    if (doneRef.current || mark !== null) return
+    const ok = take === items[i].good
+    const r = right + (ok ? 1 : 0)
+    setRight(r)
+    setMark(ok)
+    setTimeout(() => {
+      setMark(null)
+      if (i + 1 >= items.length) { doneRef.current = true; onDone(r >= 8 ? 2 : r >= 6 ? 1 : 0) }
+      else setI(i + 1)
+    }, 350)
+  }, [i, items, mark, right, onDone])
+  useEffect(() => {
+    if (mark !== null || doneRef.current) return
+    const t = setTimeout(() => pick(null), limit) // 시간이 지나면 틀린 것
+    return () => clearTimeout(t)
+  }, [i, mark, limit, pick])
+  useKeys({ ArrowLeft: () => pick(true), ArrowRight: () => pick(false) })
   return (
     <div className="mini-body">
-      <p>기념품 상자 하나를 고르세요</p>
-      <div className="mini-grid three">
-        {prizes.map((p, i) => (
-          <button key={i} disabled={open !== null} onClick={() => { setOpen(i); setTimeout(() => onDone(p), 700) }}>
-            {open === i ? ['꽝', '엽서', '보물'][p] : '상자'}
-          </button>
-        ))}
+      <p>{i + 1}/{items.length} · 여행에 필요한 것만 챙기세요 · 맞힌 수 {right}</p>
+      <div className={`mini-big jua pack-item${mark === null ? '' : mark ? ' ok' : ' no'}`} key={i}>{items[i].x}<i className="pack-timer" style={{ animationDuration: `${limit}ms` }} /></div>
+      <div className="mini-grid two">
+        <button onClick={() => pick(true)}>🧳 챙기기</button>
+        <button onClick={() => pick(false)}>🙅 두고 가기</button>
       </div>
+      <KeyHint>← 챙기기 · → 두고 가기</KeyHint>
     </div>
   )
 }

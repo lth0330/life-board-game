@@ -74,12 +74,12 @@ export const STAGE_DEFS: StageDef[] = [
         { road: 'company', label: '하던 일 계속', desc: '지금 하는 일을 이어 가요. 안정적인 길' },
       ],
     },
-    event: { at: 21, rejoin: 28, len: 9, name: '세계일주', minis: ['capital', 'souvenir', 'photo'], desc: '행복 미니게임 (지력이 높을수록 쉬움)' }, // 2026-10-21 카지노와 자리 바꿈
+    event: { at: 21, rejoin: 28, len: 9, name: '세계일주', minis: ['snap', 'pack', 'photo'], desc: '행복 미니게임 (지력·체력이 높을수록 쉬움)' }, // 2026-10-21 카지노와 자리 바꿈
   },
   {
     id: 'old', name: '노년', ages: [60, 80], rolls: null, length: 22,
     weights: [['card', 40], ['happy', 20], ['money', 20], ['risk', 20]], // 노년 행복 몰림 줄이기 (2026-10-17)
-    stops: {}, points: { 8: 'shop', 18: 'shop' }, // 노년 상점: 쌓인 돈을 여행·선물·기부로 (2026-10-21 밤)
+    stops: {}, points: { 8: 'shop', 18: 'shop' }, // 노년 상점 (여행·선물·기부는 2026-10-21 사용자 요청으로 없앰)
     life: {
       id: 'retire', at: 1, rejoin: 7, title: '은퇴지 고르기', text: '어디서 노후를 보낼까요?',
       roads: [

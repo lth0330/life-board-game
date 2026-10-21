@@ -142,7 +142,7 @@ button.wide.secondary { background: #fff; color: var(--ink); border: 2px solid v
 }
 .ticker > div {
   align-self: flex-start; max-width: 100%;
-  background: rgba(251, 245, 232, 0.92); border-radius: 10px; padding: 4px 10px; font-size: 13px;
+  background: rgba(251, 245, 232, 0.5); border-radius: 10px; padding: 4px 10px; font-size: 13px;
 }
 .ticker > div:not(:last-child) { opacity: 0.75; }
 
@@ -816,11 +816,11 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .team-total { display: flex; gap: 8px; }
 .team-total > div { flex: 1; border: 2px solid var(--ink); border-radius: 12px; padding: 8px; text-align: center; background: #fff; }
 .team-total > div.win { background: #FFF4C9; box-shadow: var(--pop); }
-/* 기록·채팅 창 (2026-10-21): 탭 전체·진행·채팅, 접으면 1줄 */
+/* 기록·채팅 창 (2026-10-21): 탭 진행·채팅, 접으면 1줄, 배경 50% 투명 */
 .logbox { position: absolute; left: 10px; right: 70px; bottom: 200px; z-index: 2; display: flex; flex-direction: column; gap: 4px; }
-.logbox.open { background: rgba(251, 245, 232, 0.96); border: 2px solid var(--ink); border-radius: 12px; padding: 6px; box-shadow: var(--pop-sm); }
+.logbox.open { background: rgba(251, 245, 232, 0.5); border: 2px solid var(--ink); border-radius: 12px; padding: 6px; box-shadow: var(--pop-sm); }
 .logbox-lines { position: relative; border: none; background: none; padding: 0; text-align: left; font: inherit; color: inherit; display: flex; flex-direction: column; gap: 3px; }
-.logbox-lines > div { align-self: flex-start; max-width: 100%; background: rgba(251, 245, 232, 0.92); border-radius: 10px; padding: 4px 10px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.logbox-lines > div { align-self: flex-start; max-width: 100%; background: rgba(251, 245, 232, 0.5); border-radius: 10px; padding: 4px 10px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .logbox.open .logbox-lines > div { white-space: normal; background: none; padding: 2px 4px; }
 .logbox .ticker-toggle { right: -30px; bottom: 2px; }
 .logbox.open .ticker-toggle { right: -4px; top: -2px; bottom: auto; }
@@ -833,3 +833,28 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .logbox-input input { flex: 1; min-width: 0; min-height: 40px; border-radius: 10px; border: 2px solid var(--ink); padding: 0 10px; font: inherit; font-size: 15px; background: #fff; color: var(--ink); }
 .logbox-input button { min-height: 40px; padding: 0 12px; border-radius: 10px; border: 2px solid var(--ink); background: var(--ink); color: var(--paper); font-family: 'Jua', sans-serif; }
 .key-hint { display: block; font-size: 11px; opacity: 0.7; font-family: inherit; }
+/* 내 차례 알림 (2026-10-21) */
+.turn-toast { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); z-index: 30; pointer-events: none; font-size: 34px; color: var(--paper); background: var(--ink); border-radius: 16px; padding: 10px 26px; box-shadow: var(--pop); animation: turn-toast 1.2s ease forwards; }
+@keyframes turn-toast { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.8); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -60%); } }
+.loan-pick { text-align: left; border: 2px solid var(--ink); border-radius: 10px; background: #fff; padding: 8px 10px; font: inherit; color: inherit; }
+.loan-pick.on { background: #FFF4C9; box-shadow: var(--pop-sm); }
+/* 세계일주 사진 찍기·짐 싸기, 야바위 홀짝 (2026-10-21) */
+.snap-view { position: relative; height: 92px; border: 2px solid var(--ink); border-radius: 12px; background: linear-gradient(#BFE3F5, #F3E6C8); overflow: hidden; }
+.snap-view.flash { animation: snap-flash 0.35s ease; }
+@keyframes snap-flash { 0% { background: #fff; } 100% { background: linear-gradient(#BFE3F5, #F3E6C8); } }
+.snap-frame { position: absolute; top: 8px; bottom: 8px; border: 3px dashed var(--ink); border-radius: 8px; background: rgba(255, 255, 255, 0.25); }
+.snap-spot { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 44px; line-height: 1; }
+.pack-item { position: relative; padding-bottom: 10px; border-radius: 12px; }
+.pack-item.ok { background: #DDF2D9; }
+.pack-item.no { background: #F8D9D2; }
+.pack-timer { position: absolute; left: 10%; right: 10%; bottom: 0; height: 5px; border-radius: 3px; background: var(--ink); transform-origin: left; animation: pack-timer linear forwards; }
+@keyframes pack-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.cup-table { position: relative; height: 120px; display: flex; align-items: flex-end; justify-content: center; border-bottom: 4px solid #8B5A2B; }
+.cup-dice { display: flex; gap: 6px; font-size: 48px; line-height: 1; padding-bottom: 4px; }
+.cup-dice .tumble { display: inline-block; animation: tumble 0.18s linear infinite; }
+@keyframes tumble { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+.cup { position: absolute; left: 50%; bottom: 0; width: 150px; height: 110px; margin-left: -75px; background: linear-gradient(90deg, #A0522D, #CD853F 45%, #8B4513); border: 3px solid var(--ink); border-radius: 50% 50% 8px 8px / 30% 30% 8px 8px; transition: transform 0.3s ease-in, opacity 0.3s; }
+.cup-roll { transform: translateY(-140px); opacity: 0; }
+.cup-cover { transform: translateY(0); opacity: 1; }
+.cup-open { transform: translateY(-110px) rotate(-12deg); opacity: 1; transition-duration: 0.5s; }
+@media (prefers-reduced-motion: reduce) { .cup-dice .tumble, .pack-timer { animation: none; } }

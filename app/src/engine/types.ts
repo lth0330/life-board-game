@@ -13,7 +13,7 @@ export type MiniId =
   | 'memory' | 'pairs' | 'quickmath'
   | 'firstImpression' | 'rhythm' | 'confess' | 'dance'
   | 'oddEven' | 'highLow' | 'slot'
-  | 'capital' | 'souvenir' | 'photo'
+  | 'snap' | 'pack' | 'photo'
 export type DuelId = 'dice' | 'rps' | 'timing'
 export type DiceItem = 'twin' | 'even' | 'odd'
 
@@ -152,6 +152,7 @@ export interface Player {
   insuranceCooldown: Record<InsuranceKind, number>
   car: CarTier
   carCharges: number
+  carStage?: number // 차를 산 단계 (능력 횟수는 산 단계부터 단계마다 +1)
   record: { shopBuys: number; spent: number; lotteryWon: number; deeds: number; duelWins: number; stockGain: number; shopSpent: number } // 결산 상 계산용
   celebrated: number[] // 이미 치른 육순(60)·칠순(70)
   jobTenure: number // 지금 직업에서 일한 턴 (퇴직금 계산)

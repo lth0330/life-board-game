@@ -68,7 +68,7 @@ export const SPECIALS: Partial<Record<StageId, SpecialEvent[]>> = {
     {
       id: 'abroad', title: '해외 연수', text: '회사에서 해외 연수 기회가 생겼어요. 비용은 내가 내요.',
       options: [
-        { id: 'go', label: '✈️ 간다', cost: 4, stats: { int: 2 }, happy: 2 },
+        { id: 'go', label: '✈️ 간다', cost: 4, stats: { int: 1 }, happy: 3 },
         { id: 'stay', label: '🏠 안 간다' },
       ],
     },

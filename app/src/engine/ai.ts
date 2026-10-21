@@ -1,7 +1,7 @@
 import { BUSINESSES, DICE_ITEMS, JOBS, SECTORS } from './data'
 import { findEvent, specialValue } from './special'
 import {
-  aiDiceItem, aiWantsCar, passChance, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, loanLimit, loanTotal, repayFriendLoan,
+  aiDiceItem, aiWantsCar, passChance, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, canBankLoan, loanLimit, loanTotal, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, rngOf, salaryOf, scoreOf, stageOf, startSabotage, takeLoan, toggleInsurance,
   tradeStock, playChance, moodLevel, scaleOf,
 } from './game'
@@ -112,7 +112,8 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
     case 'athleteNext': return id === 'coach' ? 2 + p.stats.str / 10 : id === 'biz' ? (per === 'gambler' || per === 'investor' ? 3 : 1.5) : 0.5
     case 'retire': return id === 'city' ? (per === 'gambler' || per === 'investor' ? 3 : 1) : 2
     case 'shop': {
-      if (id === 'pass') return per === 'safe' || per === 'investor' ? 2 : 1
+      // 한 번 들러서 여러 개 살 수 있으니, 이미 산 게 있으면 나가기 쪽으로
+      if (id === 'pass') return (per === 'safe' || per === 'investor' ? 2 : 1) + ((pd.data as { n?: number } | undefined)?.n ?? 0) * 1.2
       if (id.startsWith('mortgage')) {
         const i = +id.slice(8)
         const m = mortgagePlan(s, p, i)
@@ -127,11 +128,6 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
         const k = id.slice(5) as keyof typeof DICE_ITEMS
         if (p.money < DICE_ITEMS[k].price * 5) return 0
         return k === 'twin' ? (per === 'gambler' ? 2.6 : 1.3) : k === 'even' ? 1.4 : 0.9
-      }
-      if (id.startsWith('old_')) { // 노년 상점: 돈이 넉넉하면 쓰기
-        const cost = { old_cruise: 1000, old_gift: 500, old_donate: 2000 }[id] ?? 0
-        if (p.money - cost < 1500) return 0
-        return id === 'old_donate' ? (per === 'family' || per === 'safe' ? 2.8 : 1.2) : id === 'old_gift' ? (per === 'family' ? 2.6 : 1.6) : 2.2
       }
       if (id.startsWith('agency')) {
         const want = !p.spouse && p.suitors.every((x) => x.affinity < 50)
@@ -247,15 +243,15 @@ export function aiPreRoll(s: GameState) {
   // 돈이 마이너스면 주식부터 팔아서 메움
   if (p.money < 0) for (const k of SECTORS) if (p.money < 0 && p.stocks[k]) tradeStock(s, k, -p.stocks[k])
   // 대출: 마이너스면 메우고, 여유 있으면 갚기
-  if (p.money < 0 && !p.creditBad) {
-    const need = Math.min(-p.money + 200, loanLimit(p) - loanTotal(p))
+  if (p.money < 0 && canBankLoan(s, p)) {
+    const need = Math.min(-p.money + 200, loanLimit(s, p))
     if (need > 0) takeLoan(s, Math.round(need))
   }
   if (p.loans.length && p.money > loanTotal(p) + salaryOf(p) * 3) repayLoans(s)
   else if (p.loans.some((l) => l.dueTurn - p.turnsPlayed <= 2) && p.money > 0) repayLoans(s) // 기한이 다가오면 있는 만큼 갚기
   // 친구 돈: 여유 있으면 갚고, 은행이 막히면 친구에게 부탁
   s.friendLoans.forEach((l, i) => { if (l.borrowerId === p.id && p.money > l.owe * 2) repayFriendLoan(s, i) })
-  if (p.money < 0 && (p.creditBad > 0 || loanTotal(p) >= loanLimit(p) - 200)) {
+  if (p.money < 0 && (!canBankLoan(s, p) || loanLimit(s, p) < 200)) {
     const lender = [...s.players].sort((a, b) => b.money - a.money).find((q) => canBorrowFrom(s, p, q))
     if (lender && canAct(s)) requestFriendLoan(s, lender.id, Math.min(Math.round(-p.money + 300), Math.round(lender.money / 3)), 1, 8)
     if (s.pending && !s.players[s.pending.playerId].human) choose(s, aiChoose(s))

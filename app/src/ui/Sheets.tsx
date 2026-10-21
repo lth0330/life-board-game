@@ -3,7 +3,7 @@ import { Character } from '../art/Character'
 import { Trophy } from '../art/More'
 import { CARS, CHANCE_NAMES, DICE_ITEMS, HOUSE_RULES, HOUSES, INSURANCE, JOBS, KIDS, LOTTERY_PRICE, MEDALS, PERSONALITIES, SABOTAGE_NAMES, SAVINGS_RATE, SECTORS } from '../engine/data'
 import {
-  ageOf, moodLevel, moodOf, MOOD_FACES, MOOD_HELP, MOOD_NAMES, MOOD_TURNS, AWARD_POINTS, awardsOf, bankDebt, canBorrowFrom, fortuneName, friendDebt, houseValue, isAdultStage, jobOf, kidAllowance, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
+  ageOf, moodLevel, moodOf, MOOD_FACES, MOOD_HELP, MOOD_NAMES, MOOD_TURNS, AWARD_POINTS, awardsOf, canBankLoan, canBorrowFrom, loanCap, LOAN_RATE, LOAN_TURNS, fortuneName, friendDebt, houseValue, isAdultStage, jobOf, kidAllowance, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
   stars, stocksValue, teamTotals, TEAM_COLORS, TEAM_NAMES, sameTeam,
 } from '../engine/game'
 import type { GameState, InsuranceKind, Player, Sector } from '../engine/types'
@@ -33,7 +33,7 @@ interface FinanceProps {
   onTrade: (k: Sector, q: number) => void
   onInsurance: (k: InsuranceKind) => void
   onLoan: (amount: number) => void
-  onRepay: (amount?: number) => void
+  onRepay: (amount?: number, idx?: number) => void
   onFriendLoan: (lenderId: number, amount: number, rateIdx: number, term: number) => void
   onRepayFriend: (idx: number) => void
   onDeposit: (amount: number) => void
@@ -56,6 +56,7 @@ export function FinanceSheet(f: FinanceProps) {
   const [tab, setTab] = useState<'lottery' | 'stock' | 'ins' | 'loan' | 'save' | 'friend'>('stock')
   const [amount, setAmount] = useState(1000)
   const [repay, setRepay] = useState('')
+  const [loanPick, setLoanPick] = useState(-1) // 갚을 대출 (-1 = 기한이 빠른 것부터)
   const [rateIdx, setRateIdx] = useState(1)
   const [term, setTerm] = useState(10)
   const { s, p } = f
@@ -122,21 +123,30 @@ export function FinanceSheet(f: FinanceProps) {
       )}
       {tab === 'loan' && (
         <div className="list">
-          <p>빌린 돈 <b>{won(loanTotal(p))}</b> · 일반 대출 한도 {won(bankDebt(p))} / {won(loanLimit(p))} · 매 턴 이자 1% · 기한에 한꺼번에 갚기 (못 갚으면 강제 청산)</p>
+          <p>빌린 돈 <b>{won(loanTotal(p))}</b> · 더 빌릴 수 있는 돈 {won(loanLimit(s, p))} (한도 {won(loanCap(s, p))}) · 매 턴 이자 {LOAN_RATE * 100}% · {LOAN_TURNS}턴 뒤 한꺼번에 갚기 (못 갚으면 강제 청산)</p>
+          <p className="note">한도 = 기본 500만 + 집·차·주식 값의 절반. 일반 대출은 다 갚아야 다시 빌릴 수 있어요.</p>
           {p.creditBad > 0 && <p className="bad">신용불량 {p.creditBad}턴: 대출 불가</p>}
+          {p.loans.length >= 2 && <p className="note">갚을 대출을 눌러 고르세요</p>}
           {p.loans.map((l, i) => {
             const left = l.dueTurn - p.turnsPlayed
-            if (l.kind === '주담대') return <div key={i} className={l.missed ? 'bad' : 'muted'}>· 주택담보대출 {won(l.amount)} · 매 턴 {won(l.installment ?? 0)} 자동 상환{l.missed ? ` · 연체 ${l.missed}번 ⚠️ (3번이면 경매)` : ''}</div>
-            return <div key={i} className={left <= 3 ? 'bad' : 'muted'}>· {l.kind ?? '일반'} 대출 {won(l.amount)} · 남은 {Math.max(0, left)}턴{left <= 3 ? ' ⚠️' : ''}</div>
+            const text = l.kind === '주담대'
+              ? `주택담보대출 ${won(l.amount)} · 매 턴 ${won(l.installment ?? 0)} 자동 상환${l.missed ? ` · 연체 ${l.missed}번 ⚠️ (3번이면 경매)` : ''}`
+              : `${l.kind ?? '일반'} 대출 ${won(l.amount)} · 남은 ${Math.max(0, left)}턴${left <= 3 ? ' ⚠️' : ''}`
+            const warn = l.kind === '주담대' ? !!l.missed : left <= 3
+            if (p.loans.length < 2) return <div key={i} className={warn ? 'bad' : 'muted'}>· {text}</div>
+            return <button key={i} className={`loan-pick${loanPick === i ? ' on' : ''}${warn ? ' bad' : ''}`} aria-pressed={loanPick === i} onClick={() => setLoanPick(loanPick === i ? -1 : i)}>{loanPick === i ? '✔ ' : ''}{text}</button>
           })}
           <div className="row">
             {[500, 1000, 3000].map((a) => (
-              <button key={a} disabled={locked || p.creditBad > 0 || bankDebt(p) + a > loanLimit(p)} onClick={() => f.onLoan(a)}>{won(a)} 빌리기</button>
+              <button key={a} disabled={locked || !canBankLoan(s, p) || a > loanLimit(s, p)} onClick={() => f.onLoan(a)}>{won(a)} 빌리기</button>
             ))}
           </div>
           {p.loans.length > 0 && (() => {
             // 갚을 돈을 직접 적기 (만 원 단위, 가진 돈과 남은 빚을 넘지 않게) + 전부 갚기 (2026-10-21 사용자)
-            const total = loanTotal(p)
+            // 대출이 2개 이상이면 고른 대출만 갚을 수 있음 (2026-10-21 사용자)
+            const picked = loanPick >= 0 ? p.loans[loanPick] : undefined
+            const idx = picked ? loanPick : undefined
+            const total = picked ? picked.amount : loanTotal(p)
             const max = Math.max(0, Math.min(p.money, total))
             const amt = Math.min(Math.floor(Number(repay) || 0), max)
             return (
@@ -144,8 +154,8 @@ export function FinanceSheet(f: FinanceProps) {
                 <input className="grow" type="number" inputMode="numeric" min={1} max={max} value={repay} placeholder="얼마 갚을까요?"
                   aria-label="갚을 돈 (만 원)" disabled={locked || max <= 0} onChange={(e) => setRepay(e.target.value.replace(/[^0-9]/g, ''))} />
                 <span>만</span>
-                <button disabled={locked || amt < 1} onClick={() => { f.onRepay(amt); setRepay('') }}>갚기</button>
-                <button disabled={locked || max <= 0} onClick={() => { f.onRepay(); setRepay('') }}>{p.money >= total ? '전부 갚기' : '가진 만큼 갚기'}</button>
+                <button disabled={locked || amt < 1} onClick={() => { f.onRepay(amt, idx); setRepay('') }}>갚기</button>
+                <button disabled={locked || max <= 0} onClick={() => { f.onRepay(picked ? picked.amount : undefined, idx); setRepay(''); setLoanPick(-1) }}>{p.money >= total ? (picked ? '이 대출 다 갚기' : '전부 갚기') : '가진 만큼 갚기'}</button>
               </div>
             )
           })()}

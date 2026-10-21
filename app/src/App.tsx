@@ -43,7 +43,6 @@ const SHOP_CATS = [
   { id: 'pet', icon: '🐶', name: '반려동물', match: (id: string) => id === 'pet' },
   { id: 'item', icon: '🎲', name: '카드·주사위', match: (id: string) => id === 'chance' || id.startsWith('dice_') },
   { id: 'loan', icon: '💳', name: '은행 대출', match: (id: string) => id.startsWith('loan') },
-  { id: 'old', icon: '🌴', name: '노년 즐기기', match: (id: string) => id.startsWith('old_') },
 ]
 const CELEBRATE = ['결혼!', '복권 1등!', '복권 2등!', '아기 탄생', '수능 상위권!', '게임 끝!', '회사 성장!', '감독 도전 성공!', '자녀 대성공!', '금메달!', '은메달!', '동메달!', '육순 잔치', '칠순 잔치']
 
@@ -393,6 +392,17 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
 
   useEffect(() => { setCarMode(false); setItemMode(null) }, [game.turn])
 
+  // 내 차례가 되면 가운데에 잠깐 '내 차례!' (2026-10-21 사용자)
+  const [turnToast, setTurnToast] = useState(false)
+  const toastTurn = useRef(-1)
+  useEffect(() => {
+    if (!myTurn || game.phase !== 'roll' || game.pending || toastTurn.current === game.turn) return
+    toastTurn.current = game.turn
+    setTurnToast(true)
+    const t = setTimeout(() => setTurnToast(false), 1200)
+    return () => clearTimeout(t)
+  }, [myTurn, game.phase, game.pending, game.turn])
+
   // ── 같은 칸 가위바위보: 고르는 동안 머리 위 손이 돌다가, 다 고르면 2.8초 공개 ──
   const rps = game.rpsShow
   const [rpsReveal, setRpsReveal] = useState<Record<number, number> | null>(null)
@@ -527,7 +537,6 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
         </div>
         <div className="hud-row">
           <div className="order">
-            {game.players.map((q) => <i key={q.id} className={q.id === shown.id ? 'now' : ''} style={{ background: q.color }} title={q.name} />)}
             <span className="muted">
               {shown.human ? `${shown.name} 차례` : `${shown.name}(AI) 차례 · 보는 중`}
               {st.rolls ? ` · 남은 주사위 ${shown.rollsLeft}/${st.rolls}` : ' · 골까지 경주'}
@@ -640,7 +649,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
           onLottery={() => run(['buyLottery'])} onCure={() => run(['cureAddiction'])}
           onTrade={(k, q) => run(['tradeStock', k, q])}
           onInsurance={(k) => run(['toggleInsurance', k])}
-          onLoan={(a) => run(['takeLoan', a])} onRepay={(a) => run(['repayLoans', a])}
+          onLoan={(a) => run(['takeLoan', a])} onRepay={(a, i) => run(['repayLoans', a, i])}
           onFriendLoan={(id, a, r, t) => { setSheet(null); run(['requestFriendLoan', id, a, r, t]) }}
           onRepayFriend={(i) => run(['repayFriendLoan', i])}
           onDeposit={(a) => run(['deposit', a])} onWithdraw={(a) => run(['withdraw', a])}
@@ -660,6 +669,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
       {sheet === 'manual' && <Manual onClose={() => setSheet(null)} />}
 
 
+      {turnToast && !banner && <div className="turn-toast jua" role="status">내 차례!</div>}
       {stageBanner && <StageCard title={banner.title} text={banner.text} />}
       {banner && !busy && !stageBanner && (
         <div className={`banner b-${banner.tone}${banner.title.startsWith('복권') ? ' b-lottery' : ''}`} role="status">
