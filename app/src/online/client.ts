@@ -44,17 +44,27 @@ function errText(e: unknown): string {
   return '잠시 뒤 다시 해 주세요'
 }
 
+// 브라우저에 예전 로그인이 남아 있으면 먼저 로그아웃 ('이미 로그인되어 있어요'로 막히지 않게, 2026-10-21)
+async function freshSignIn(username: string, password: string) {
+  try { await signIn({ username, password }) } catch (e) {
+    if ((e as { name?: string })?.name !== 'UserAlreadyAuthenticatedException') throw e
+    await signOut()
+    await signIn({ username, password })
+  }
+}
+
 export async function join(loginId: string, password: string, nick: string): Promise<string | null> {
   try {
+    await signOut().catch(() => {})
     await signUp({ username: loginId, password, options: { userAttributes: { preferred_username: nick } } })
-    await signIn({ username: loginId, password })
+    await freshSignIn(loginId, password)
     return null
   } catch (e) { return errText(e) }
 }
 
 export async function login(loginId: string, password: string): Promise<string | null> {
   try {
-    await signIn({ username: loginId, password })
+    await freshSignIn(loginId, password)
     return null
   } catch (e) { return errText(e) }
 }
