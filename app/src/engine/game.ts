@@ -40,6 +40,7 @@ export const MOOD_HELP = ['운세가 나빠질 확률 40%, 월급 -20%', '운세
 const MOOD_FORTUNE: [number, number][] = [[-1, 0.4], [-1, 0.2], [0, 0], [1, 0.15], [1, 0.3]] // [운세 방향, 확률]
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}만`
 const STATS: StatKey[] = ['int', 'str', 'cha']
+const SCHOOL_GIFT = 10 // 학생 단계 시작 때 모두에게 (만 원)
 
 export function log(s: GameState, playerId: number | null, text: string, tone: 'good' | 'bad' | 'info' = 'info') {
   s.log.push({ turn: s.turn, playerId, text, tone })
@@ -2852,6 +2853,12 @@ function nextStage(s: GameState) {
   }
   log(s, null, `${st.name} 단계 시작! (${st.ages[0]}세)`, 'info')
   s.banner = { title: `${st.name} 단계`, text: `${st.ages[0]}세가 되었어요`, tone: 'info' }
+  // 입학 축하금: 어린 시절엔 벌 곳이 적어 마이너스가 되기 쉬워서 모두에게 (2026-10-21 사용자)
+  if (st.id === 'student') {
+    for (const p of s.players) p.money += SCHOOL_GIFT
+    log(s, null, `입학 축하금! 모두 ${won(SCHOOL_GIFT)}원 받음`, 'good')
+    s.banner.text += ` · 입학 축하금 ${won(SCHOOL_GIFT)}원`
+  }
   s.current = 0
   beginTurn(s)
 }
