@@ -16,7 +16,8 @@ backend.account.addEnvironment('USER_POOL_ID', userPool.userPoolId)
 backend.account.addEnvironment('USER_POOL_CLIENT_ID', userPoolClient.userPoolClientId)
 backend.account.addEnvironment('PROFILE_TABLE', profileTable.tableName)
 backend.account.resources.lambda.addToRolePolicy(new PolicyStatement({
-  actions: ['cognito-idp:ListUsers', 'cognito-idp:ListUsersInGroup', 'cognito-idp:AdminDeleteUser', 'cognito-idp:AdminUpdateUserAttributes', 'cognito-idp:ForgotPassword'],
+  actions: ['cognito-idp:ListUsers', 'cognito-idp:ListUsersInGroup', 'cognito-idp:AdminDeleteUser', 'cognito-idp:AdminUpdateUserAttributes', 'cognito-idp:ForgotPassword',
+    'cognito-idp:AdminSetUserPassword', 'cognito-idp:AdminEnableUser', 'cognito-idp:AdminDisableUser'],
   resources: [userPool.userPoolArn],
 }))
 profileTable.grantReadWriteData(backend.account.resources.lambda)

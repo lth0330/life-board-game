@@ -20,12 +20,13 @@ export function Frame({ children }: { children: ReactNode }) {
 }
 
 // 처음 화면: 로그인 / 회원가입 (온라인 계정) / 로그인 없이 / 설명서
-export function TitleScreen({ notice, onAuth, onGuest, onAdmin }: { notice?: string; onAuth: (mode: 'login' | 'join') => void; onGuest: () => void; onAdmin: () => void }) {
+export function TitleScreen({ notice, gameNotice, onAuth, onGuest, onAdmin }: { notice?: string; gameNotice?: string; onAuth: (mode: 'login' | 'join') => void; onGuest: () => void; onAdmin: () => void }) {
   const [manual, setManual] = useState(false)
   return (
     <Frame>
       <button className="admin-gear" aria-label="관리자 설정" onClick={onAdmin}>⚙️</button>
       <div className="title-logo"><Logo size={340} /></div>
+      {gameNotice && <p className="game-notice">📢 {gameNotice}</p>}
       {notice && <p className="bad center">{notice}</p>}
       <button className="wide big" onClick={() => onAuth('login')}>로그인</button>
       <button className="wide secondary" onClick={() => onAuth('join')}>회원가입</button>
@@ -38,8 +39,8 @@ export function TitleScreen({ notice, onAuth, onGuest, onAdmin }: { notice?: str
 }
 
 // 메뉴: 이어 하기 / 새로 하기
-export function MenuScreen({ profile, slot, onContinue, onNew, onOnline, onLogout, onDress, onAccount }: {
-  profile: Profile | null; slot: SaveSlot | null; onContinue: () => void; onNew: () => void; onOnline: () => void; onLogout: () => void; onDress: () => void; onAccount: () => void
+export function MenuScreen({ profile, slot, gameNotice, onContinue, onNew, onOnline, onLogout, onDress, onAccount }: {
+  profile: Profile | null; slot: SaveSlot | null; gameNotice?: string; onContinue: () => void; onNew: () => void; onOnline: () => void; onLogout: () => void; onDress: () => void; onAccount: () => void
 }) {
   const [manual, setManual] = useState(false)
   const [confirm, setConfirm] = useState(false)
@@ -48,6 +49,7 @@ export function MenuScreen({ profile, slot, onContinue, onNew, onOnline, onLogou
   return (
     <Frame>
       <div className="title-logo"><Logo size={260} /></div>
+      {gameNotice && <p className="game-notice">📢 {gameNotice}</p>}
       <div className="menu-hello">
         {profile && <Character outfit={profile.outfit} size={44} />}
         <div>

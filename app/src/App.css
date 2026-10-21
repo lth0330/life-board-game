@@ -725,3 +725,11 @@ button.wide:not(:disabled):active, .decision .options button:not(:disabled):acti
 button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color: #fff; border: 2px solid var(--ink); border-radius: 10px; min-height: 44px; padding: 0 12px; }
 .account-sheet input { min-height: 44px; border-radius: 10px; border: 2px solid var(--ink); padding: 0 10px; font: inherit; font-size: 16px; background: #fff; color: var(--ink); min-width: 0; }
 .account-sheet .good { color: #2F8F5B; }
+.row button.danger, button.danger { background: #C2452D; color: #fff; } /* .row button(흰 바탕)보다 세게: 흰 글자가 안 보이던 것 */
+.admin-btns { display: flex; gap: 6px; flex-shrink: 0; }
+.admin-btns button { min-height: 44px; padding: 0 10px; border-radius: 10px; border: 2px solid var(--ink); background: #fff; white-space: nowrap; }
+.admin-btns button.danger { background: #C2452D; color: #fff; }
+.admin-tag.locked { background: #C2452D; color: #fff; }
+.notice-input { font: inherit; font-size: 16px; padding: 10px; border-radius: 12px; border: 2px solid var(--ink); background: #fff; color: var(--ink); resize: vertical; }
+.game-notice { background: #FFF4C9; border: 2px solid var(--ink); border-radius: 12px; padding: 10px 12px; font-size: 14px; white-space: pre-wrap; }
+.sheet.account-sheet .good, .login-form .good { color: #2F8F5B; }

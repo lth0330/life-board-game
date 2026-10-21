@@ -38,6 +38,7 @@ function errText(e: unknown): string {
   const name = (e as { name?: string })?.name ?? ''
   const msg = (e as { message?: string })?.message ?? ''
   if (name === 'UsernameExistsException') return '이미 있는 아이디예요'
+  if (name === 'NotAuthorizedException' && /disabled/i.test(msg)) return '관리자가 잠근 계정이에요'
   if (name === 'NotAuthorizedException' || name === 'UserNotFoundException') return '아이디나 비밀번호가 맞지 않아요'
   if (name === 'UserAlreadyAuthenticatedException') return '이미 로그인되어 있어요'
   if (name === 'CodeMismatchException') return '코드가 맞지 않아요'
@@ -107,7 +108,7 @@ export async function changePassword(oldPassword: string, newPassword: string): 
 }
 
 // ───────── 관리자 ─────────
-export interface AdminUser { id: string; nick: string | null; email: string | null; created: string | null; lastSeen: string | null; admin: boolean }
+export interface AdminUser { id: string; nick: string | null; email: string | null; created: string | null; lastSeen: string | null; admin: boolean; enabled: boolean }
 export async function amAdmin(): Promise<boolean> {
   try {
     const t = (await fetchAuthSession()).tokens?.accessToken.payload['cognito:groups']
@@ -122,6 +123,33 @@ export async function adminUsers(): Promise<AdminUser[] | string> {
     return typeof v === 'string' ? parse<AdminUser[]>(v, []) : (v as AdminUser[]) // AWSJSON이 글자로 한 번 더 싸여 올 때도
   } catch (e) { return errText(e) }
 }
+// 회원 고치기: 바꿀 것만 넣음 (닉네임·이메일·새 비밀번호·잠그기/풀기)
+export async function adminUpdateUser(id: string, patch: { nick?: string; email?: string; password?: string; enabled?: boolean }): Promise<string | null> {
+  try {
+    const r = await client.mutations.adminUpdateUser({ id, ...patch })
+    return r.data ? null : r.errors?.[0]?.message ?? '고치지 못했어요'
+  } catch (e) { return errText(e) }
+}
+
+// 게임 설정(공지): 모두 읽고 관리자만 고침. 로그인 전이면 손님 권한으로 읽음
+export async function getNotice(): Promise<string> {
+  for (const authMode of ['userPool', 'identityPool'] as const) {
+    try {
+      const r = await client.models.Setting.list({ authMode })
+      if (!r.errors?.length) return r.data[0]?.notice ?? ''
+    } catch { /* 다음 방법으로 */ }
+  }
+  return ''
+}
+export async function setNotice(notice: string): Promise<string | null> {
+  try {
+    const r = await client.models.Setting.list()
+    const row = r.data[0]
+    const w = row ? await client.models.Setting.update({ id: row.id, notice }) : await client.models.Setting.create({ notice })
+    return w.data ? null : w.errors?.[0]?.message ?? '저장하지 못했어요'
+  } catch (e) { return errText(e) }
+}
+
 export async function adminDeleteUser(id: string): Promise<string | null> {
   try {
     const r = await client.mutations.adminDeleteUser({ id })

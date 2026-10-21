@@ -1,5 +1,5 @@
 import {
-  AdminDeleteUserCommand, AdminUpdateUserAttributesCommand, CognitoIdentityProviderClient, ForgotPasswordCommand,
+  AdminDeleteUserCommand, AdminDisableUserCommand, AdminEnableUserCommand, AdminSetUserPasswordCommand, AdminUpdateUserAttributesCommand, CognitoIdentityProviderClient, ForgotPasswordCommand,
   ListUsersCommand, ListUsersInGroupCommand, type UserType,
 } from '@aws-sdk/client-cognito-identity-provider'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
@@ -81,8 +81,30 @@ export const handler = async (ev: Ev) => {
       return users.map((u) => ({
         id: u.Username, nick: attr(u, 'preferred_username'), email: attr(u, 'email'),
         created: u.UserCreateDate?.toISOString() ?? null, lastSeen: seen.get(u.Username ?? '') || null,
-        admin: adminNames.has(u.Username),
+        admin: adminNames.has(u.Username), enabled: u.Enabled !== false,
       }))
+    }
+    // 관리자: 회원 정보 고치기 (닉네임·이메일·비밀번호 초기화·잠그기/풀기). 관리자 계정은 못 건드림
+    case 'adminUpdateUser': {
+      if (!isAdmin(ev)) throw new Error('관리자만 쓸 수 있어요')
+      const { id, nick, email, password, enabled } = ev.arguments as Record<string, string | boolean | null | undefined> as { id?: string; nick?: string | null; email?: string | null; password?: string | null; enabled?: boolean | null }
+      if (!id) return false
+      const admins = await cognito.send(new ListUsersInGroupCommand({ UserPoolId: POOL, GroupName: 'admin' }))
+      if ((admins.Users ?? []).some((u) => u.Username === id) && id !== ev.identity?.username) throw new Error('다른 관리자 계정은 고칠 수 없어요')
+      const attrs = []
+      if (nick != null && nick.trim()) attrs.push({ Name: 'preferred_username', Value: nick.trim().slice(0, 8) })
+      if (email != null && email.trim()) {
+        if (!EMAIL_OK.test(email.trim())) throw new Error('이메일을 확인해 주세요')
+        attrs.push({ Name: 'email', Value: email.trim().toLowerCase() }, { Name: 'email_verified', Value: 'true' })
+      }
+      if (attrs.length) await cognito.send(new AdminUpdateUserAttributesCommand({ UserPoolId: POOL, Username: id, UserAttributes: attrs }))
+      if (password != null && password) {
+        if (!/^[!-~]{6,32}$/.test(password) || /[A-Z]/.test(password)) throw new Error('비밀번호는 소문자·숫자·특수기호 6자 이상이에요')
+        await cognito.send(new AdminSetUserPasswordCommand({ UserPoolId: POOL, Username: id, Password: password, Permanent: true }))
+      }
+      if (enabled === true) await cognito.send(new AdminEnableUserCommand({ UserPoolId: POOL, Username: id }))
+      if (enabled === false && id !== ev.identity?.username) await cognito.send(new AdminDisableUserCommand({ UserPoolId: POOL, Username: id }))
+      return true
     }
     // 관리자: 계정 삭제 + 그 사람 저장(옷차림·혼자 하던 게임)
     case 'adminDeleteUser': {

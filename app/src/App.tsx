@@ -58,6 +58,8 @@ export default function App() {
   const [speed, setSpeed] = useState<Speed>(savedSpeed) // 새로고침해도 그대로
   const [dress, setDress] = useState(false)
   const [myAccount, setMyAccount] = useState(false)
+  const [gameNotice, setGameNotice] = useState('') // 관리자 공지 (처음 화면·메뉴)
+  useEffect(() => { account().then((a) => a.getNotice()).then(setGameNotice).catch(() => {}) }, [screen === 'title' || screen === 'menu']) // eslint-disable-line react-hooks/exhaustive-deps
   const [resumeRoom, setResumeRoom] = useState<string | null>(null) // 새로고침 전에 있던 온라인 방
   const outfit = profile?.outfit ?? DEFAULT_OUTFIT
   const profileRef = useRef(profile)
@@ -152,7 +154,7 @@ export default function App() {
 
   if (booting) return <Frame><p className="center muted">계정 불러오는 중…</p></Frame>
   if (screen === 'title') {
-    return <TitleScreen notice={notice} onAuth={(m) => askLogin(m, 'menu')} onGuest={() => { setProfile(null); setScreen('menu') }} onAdmin={() => setScreen('admin')} />
+    return <TitleScreen notice={notice} gameNotice={gameNotice} onAuth={(m) => askLogin(m, 'menu')} onGuest={() => { setProfile(null); setScreen('menu') }} onAdmin={() => setScreen('admin')} />
   }
   if (screen === 'admin') {
     return <Suspense fallback={<Frame><p className="center muted">불러오는 중…</p></Frame>}><AdminScreen onBack={() => setScreen('title')} /></Suspense>
@@ -170,6 +172,7 @@ export default function App() {
         <MenuScreen
           profile={profile}
           slot={profile ? slot : null}
+          gameNotice={gameNotice}
           onContinue={() => { if (slot) { setGame(slot.state); setScreen('play') } }}
           onNew={() => {
             if (profile) { deleteLocalGame(profile.loginId); pending.current = null; flush(); setSlot(null) }
