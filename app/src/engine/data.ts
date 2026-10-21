@@ -19,34 +19,34 @@ export const AI_NAMES = ['민트', '보리', '자두', '호두', '살구', '앵�
 
 // 돈 단위: 만 원. 단계마다 칸 효과 크기
 // 2026-10-21 사용자: 성인 돈이 모자라서 월급(아래 JOBS)·보너스 칸 1.5배, 성과급·적금 추가, 점수는 100만당 1점
-export const SCORE_PER_POINT = 100 // 자산 100만당 1점 (2026-10-15 50만 → 2026-10-21 100만)
-export const ADULT_BONUS_MULT = 1.5 // 성인 보너스 칸
+export const SCORE_PER_POINT = 150 // 자산 150만당 1점 (2026-10-15 50만 → 10-21 100만 → 10-21 저녁 돈 1.5배와 함께 150만)
+export const ADULT_BONUS_MULT = 2.25 // 성인 보너스 칸 (1.5배 → 2026-10-21 저녁 또 1.5배)
 export const PERF_BONUS = { chance: [0.04, 0.07, 0.1, 0.13, 0.16], salaries: 2 } // 성과급: 운세(대흉~대길)별 매 턴 확률, 월급 몇 배
 export const SAVINGS_RATE = 0.015 // 적금 매 턴 이자
 export const STAGE_SCALE: Record<StageId, number> = { child: 2, student: 5, young: 60, middle: 90, old: 70 }
 
 export const JOBS: JobDef[] = [
-  { id: 'office', name: '회사원', boom: false, req: { int: 2 }, college: false, salary: 240, ranks: ['신입', '부장', '임원'], key: 'int', note: '무난함' },
-  { id: 'civil', name: '공무원', boom: false, req: { int: 3 }, college: false, salary: 180, ranks: ['주무관', '과장', '국장'], key: 'int', pension: true, note: '연금, 해고 위기에 강함' },
-  { id: 'teacher', name: '교사', boom: false, req: { int: 3, cha: 2 }, college: true, salary: 240, ranks: ['일반 교사', '학년 부장', '교장'], key: 'cha', pension: true, note: '연금, 방학 행복' },
-  { id: 'dev', name: '개발자', boom: false, req: { int: 4 }, college: false, salary: 300, ranks: ['주니어', '시니어', 'CTO'], key: 'int', sector: 'IT', note: '승진 빠름' },
-  { id: 'police', name: '경찰', boom: false, req: { str: 4, int: 2 }, college: false, salary: 240, ranks: ['순경', '형사', '경찰서장'], key: 'str', pension: true, note: '연금, 행복' },
-  { id: 'fire', name: '소방관', boom: false, req: { str: 4, int: 2 }, college: false, salary: 240, ranks: ['대원', '팀장', '소방서장'], key: 'str', pension: true, note: '연금, 행복' },
-  { id: 'chef', name: '요리사', boom: false, req: { str: 2, cha: 2 }, college: false, salary: 240, ranks: ['보조', '셰프', '오너 셰프'], key: 'cha', note: '창업 성공률 크게↑' },
-  { id: 'scientist', name: '과학자', boom: false, req: { int: 5 }, college: true, salary: 360, ranks: ['연구원', '책임연구원', '연구소장'], key: 'int', sector: '화학', note: '연구 성과 → 분야 주가↑' },
-  { id: 'lawyer', name: '변호사', boom: false, req: { int: 5, cha: 3 }, college: true, salary: 450, ranks: ['변호사', '파트너', '대표 변호사'], key: 'int', note: '높은 등급 배우자↑' },
-  { id: 'doctor', name: '의사', boom: false, req: { int: 7, str: 3 }, college: true, salary: 540, ranks: ['레지던트', '전문의', '병원장'], key: 'int', sector: '의료', note: '병원비 위기↓, 높은 등급 배우자↑' },
-  { id: 'athlete', name: '운동선수', boom: true, req: { str: 5 }, college: false, salary: 390, ranks: ['2군', '주전', '국가대표'], key: 'str', note: '중년에 은퇴' },
-  { id: 'idol', name: '아이돌', boom: true, req: { cha: 6 }, college: false, salary: 420, ranks: ['연습생', '신인', '톱스타'], key: 'cha', sector: '엔터', note: '중년에 은퇴 → 배우·유튜버 전직 또는 창업' },
-  { id: 'youtuber', name: '유튜버', boom: true, req: { cha: 3 }, college: false, salary: 270, ranks: ['구독자 1만', '10만', '100만'], key: 'cha', sector: '엔터', note: '떡상·떡락' },
-  { id: 'ceo', name: '사업가', boom: true, req: {}, college: false, salary: 450, ranks: ['소기업', '중소기업', '중견기업'], key: 'int', note: '중년 창업으로만' },
-  { id: 'actor', name: '배우', boom: true, req: {}, college: false, salary: 420, ranks: ['단역', '조연', '주연'], key: 'cha', sector: '엔터', note: '아이돌 출신만 (중년에 전직, 2026-10-21)' },
-  { id: 'coach', name: '감독', boom: false, req: {}, college: false, salary: 300, ranks: ['코치', '감독', '국가대표 감독'], key: 'str', note: '운동선수 출신만 (은퇴 때 도전)' },
+  { id: 'office', name: '회사원', boom: false, req: { int: 2 }, college: false, salary: 360, ranks: ['신입', '부장', '임원'], key: 'int', note: '무난함' },
+  { id: 'civil', name: '공무원', boom: false, req: { int: 3 }, college: false, salary: 270, ranks: ['9급', '7급', '5급'], key: 'int', pension: true, note: '연금, 해고 위기에 강함' },
+  { id: 'teacher', name: '교사', boom: false, req: { int: 3, cha: 2 }, college: true, salary: 360, ranks: ['일반 교사', '학년 부장', '교장'], key: 'cha', pension: true, note: '연금, 방학 행복' },
+  { id: 'dev', name: '개발자', boom: false, req: { int: 4 }, college: false, salary: 450, ranks: ['주니어', '시니어', 'CTO'], key: 'int', sector: 'IT', note: '승진 빠름' },
+  { id: 'police', name: '경찰', boom: false, req: { str: 4, int: 2 }, college: false, salary: 360, ranks: ['순경', '형사', '경찰서장'], key: 'str', pension: true, note: '연금, 행복' },
+  { id: 'fire', name: '소방관', boom: false, req: { str: 4, int: 2 }, college: false, salary: 360, ranks: ['대원', '팀장', '소방서장'], key: 'str', pension: true, note: '연금, 행복' },
+  { id: 'chef', name: '요리사', boom: false, req: { str: 2, cha: 2 }, college: false, salary: 360, ranks: ['보조', '셰프', '오너 셰프'], key: 'cha', note: '창업 성공률 크게↑' },
+  { id: 'scientist', name: '과학자', boom: false, req: { int: 5 }, college: true, salary: 540, ranks: ['연구원', '책임연구원', '연구소장'], key: 'int', sector: '화학', note: '연구 성과 → 분야 주가↑' },
+  { id: 'lawyer', name: '변호사', boom: false, req: { int: 5, cha: 3 }, college: true, salary: 675, ranks: ['변호사', '파트너', '대표 변호사'], key: 'int', note: '높은 등급 배우자↑' },
+  { id: 'doctor', name: '의사', boom: false, req: { int: 7, str: 3 }, college: true, salary: 810, ranks: ['레지던트', '전문의', '병원장'], key: 'int', sector: '의료', note: '병원비 위기↓, 높은 등급 배우자↑' },
+  { id: 'athlete', name: '운동선수', boom: true, req: { str: 5 }, college: false, salary: 585, ranks: ['2군', '주전', '국가대표'], key: 'str', note: '중년에 은퇴' },
+  { id: 'idol', name: '아이돌', boom: true, req: { cha: 6 }, college: false, salary: 630, ranks: ['연습생', '신인', '톱스타'], key: 'cha', sector: '엔터', note: '중년에 은퇴 → 배우·유튜버 전직 또는 창업' },
+  { id: 'youtuber', name: '유튜버', boom: true, req: { cha: 3 }, college: false, salary: 405, ranks: ['구독자 1만', '10만', '100만'], key: 'cha', sector: '엔터', note: '떡상·떡락' },
+  { id: 'ceo', name: '사업가', boom: true, req: {}, college: false, salary: 675, ranks: ['소기업', '중소기업', '중견기업'], key: 'int', note: '중년 창업으로만' },
+  { id: 'actor', name: '배우', boom: true, req: {}, college: false, salary: 630, ranks: ['단역', '조연', '주연'], key: 'cha', sector: '엔터', note: '아이돌 출신만 (중년에 전직, 2026-10-21)' },
+  { id: 'coach', name: '감독', boom: false, req: {}, college: false, salary: 450, ranks: ['코치', '감독', '국가대표 감독'], key: 'str', note: '운동선수 출신만 (은퇴 때 도전)' },
 ]
 
 export const PRESTIGE_JOBS = ['lawyer', 'doctor', 'athlete']
 
-export const TAX_RATE = (salary: number) => (salary >= 450 ? 0.15 : salary >= 300 ? 0.1 : 0.06) // 월급 1.5배와 같이 구간도 1.5배 (2026-10-21)
+export const TAX_RATE = (salary: number) => (salary >= 675 ? 0.15 : salary >= 450 ? 0.1 : 0.06) // 월급 1.5배와 같이 구간도 1.5배 (2026-10-21)
 
 export const HOUSES = [
   { name: '없음', price: 0, happy: 0 },

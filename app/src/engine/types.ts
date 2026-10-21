@@ -4,7 +4,7 @@ export type StageId = 'child' | 'student' | 'young' | 'middle' | 'old'
 export type StatKey = 'int' | 'str' | 'cha'
 export type TileKind = 'good' | 'money' | 'grow' | 'happy' | 'risk' | 'card' | 'stop' | 'date' | 'mini' | 'rest' | 'goal' | 'campus' | 'uni'
 export type UniEvent = 'study' | 'club' | 'love' | 'parttime' | 'exam' | 'party' | 'scholar'
-export type StopEvent = 'club' | 'job' | 'jobfair' | 'middleBranch' | 'promotion'
+export type StopEvent = 'club' | 'job' | 'middleBranch' | 'promotion'
 // 갈라지는 길의 테마 (칸 효과가 그 길답게 바뀜)
 export type RoadId = 'main' | 'academy' | 'play' | 'college' | 'work' | 'startup' | 'company' | 'city' | 'country' | 'event' | 'campus'
 export type ForkId = 'academy' | 'college' | 'startup' | 'retire' | 'event'
@@ -115,6 +115,7 @@ export interface MiniState {
   playerId: number // 지금 미니게임을 하는 사람
   level: number // 0 쉬움 ~ 2 어려움 (능력치가 높을수록 쉬움)
   stake?: number // 카지노 판돈
+  target?: string // 축제 거리에서 고른 상대 ('old:이름:등급' 또는 'new')
   duel?: { ids: number[]; results: Record<number, number>; queue?: number[] } // queue: 아직 안 한 사람 (온라인)
 }
 
@@ -132,7 +133,7 @@ export interface Player {
   happy: number
   stats: Record<StatKey, number>
   fortune: number // 0 최악 ~ 5 대대길
-  fortuneTurns?: number // 운세가 마지막으로 바뀐 뒤 지난 차례 (6이면 평 쪽으로)
+  luckPts?: number // 운세 포인트 -5~5 (평→길 2, 길→대길 5). 2026-10-21
   careerDue?: boolean // 새 단계 첫 차례에 커리어 주사위를 직접 굴림 (사람)
   savings?: number // 적금 (2026-10-21, 예전 저장엔 없음)
   charmTurns: number

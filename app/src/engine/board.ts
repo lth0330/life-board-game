@@ -65,15 +65,16 @@ export const STAGE_DEFS: StageDef[] = [
     id: 'middle', name: '중년', ages: [40, 59], rolls: 8, length: 40,
     weights: [['money', 25], ['risk', 25], ['happy', 20], ['card', 20], ['grow', 10], ['date', 20]],
     // 12: 승진 심사 (능력치 조건만 맞으면 무조건 한 단계 승진, 2026-10-17 사용자)
-    stops: { 12: 'promotion', 15: 'middleBranch', 20: 'jobfair' }, points: { 13: 'marriage', 17: 'shop' }, dateUntil: 13,
+    // 20 취업 박람회는 2026-10-21 없앰 (창업은 인생 2막 갈림길에서 누구나)
+    stops: { 12: 'promotion', 15: 'middleBranch' }, points: { 13: 'marriage', 17: 'shop' }, dateUntil: 13,
     life: {
-      id: 'startup', at: 5, rejoin: 11, title: '인생 2막', text: '앞으로 어떻게 살까요? (창업 길은 백수만. 직장인은 중년 중반 취업 박람회에서 창업)',
+      id: 'startup', at: 5, rejoin: 11, title: '인생 2막', text: '앞으로 어떻게 살까요? (창업하면 지금 직업은 그만두고 퇴직금을 받아요)',
       roads: [
-        { road: 'startup', label: '카페 창업 길', desc: '동네 카페 → 유명 카페 → 인스타 유명 카페. 큰돈과 위기가 섞인 길' },
+        { road: 'startup', label: '창업 길', desc: '직업에 맞는 회사(백수는 카페)를 차려요. 큰돈과 위기가 섞인 길' },
         { road: 'company', label: '하던 일 계속', desc: '지금 하는 일을 이어 가요. 안정적인 길' },
       ],
     },
-    event: { at: 21, rejoin: 28, len: 9, name: '카지노', minis: ['oddEven', 'highLow', 'slot'], desc: '돈·운세 미니게임 (운세가 좋을수록 유리, 도박중독 주의)' },
+    event: { at: 21, rejoin: 28, len: 9, name: '세계일주', minis: ['capital', 'souvenir', 'photo'], desc: '행복 미니게임 (지력이 높을수록 쉬움)' }, // 2026-10-21 카지노와 자리 바꿈
   },
   {
     id: 'old', name: '노년', ages: [60, 80], rolls: null, length: 22,
@@ -86,7 +87,7 @@ export const STAGE_DEFS: StageDef[] = [
         { road: 'country', label: '시골 길', desc: '매 턴 행복 +2, 행복 칸이 많아요' },
       ],
     },
-    event: { at: 10, rejoin: 16, len: 8, name: '세계일주', minis: ['capital', 'souvenir', 'photo'], desc: '행복 미니게임 (지력이 높을수록 쉬움)' },
+    event: { at: 10, rejoin: 16, len: 8, name: '카지노', minis: ['oddEven', 'highLow', 'slot'], desc: '마지막 역전 기회! 가진 돈의 10~50%를 걸어요 (운세가 좋을수록 유리, 도박중독 주의)' },
   },
 ]
 

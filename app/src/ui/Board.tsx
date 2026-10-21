@@ -28,7 +28,7 @@ const UNI_LOOK: Record<string, { bg: string; icon: string }> = {
   parttime: { bg: '#2F8F5B', icon: 'money' }, exam: { bg: '#C9553B', icon: 'risk' }, party: { bg: '#E8742C', icon: 'happy' }, scholar: { bg: '#E2B85C', icon: 'money' },
 }
 
-const STOP_LABEL: Record<string, string> = { club: '동아리', job: '직업', jobfair: '박람회', middleBranch: '새 가족', promotion: '승진 심사' }
+const STOP_LABEL: Record<string, string> = { club: '동아리', job: '직업', middleBranch: '새 가족', promotion: '승진 심사' }
 
 export function tileLook(t: Tile) {
   const base = TILE_STYLE[t.kind]

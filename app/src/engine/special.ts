@@ -115,21 +115,21 @@ export const SPECIALS: Partial<Record<StageId, SpecialEvent[]>> = {
 }
 
 
-// 양심 선택 (2026-10-21 사용자): 착한 선택은 운세 ↑, 이기적인 선택은 운세 ↓ 대신 돈·행복. '좋은 일' 칸에서 나옴
+// 양심 선택 (2026-10-21 사용자): 착한 선택은 운세 ↑, 이기적인 선택은 운세 ↓ 대신 돈과 행복 둘 다 (저녁: 내린 만큼 이득이 확실하게). '좋은 일' 칸에서 나옴
 export const DILEMMAS: Partial<Record<StageId, SpecialEvent[]>> = {
   child: [
     {
       id: 'snack', title: '마지막 간식', text: '맛있는 간식이 딱 하나 남았어요. 친구도 먹고 싶어 해요.',
       options: [
         { id: 'share', label: '🤝 반씩 나눠 먹기', happy: 1, luck: 1 },
-        { id: 'mine', label: '😋 혼자 다 먹기', happy: 3, luck: -1 },
+        { id: 'mine', label: '😋 혼자 다 먹기', happy: 3, gain: 2, luck: -1 },
       ],
     },
     {
       id: 'lostToy', title: '주운 장난감', text: '놀이터에서 멋진 장난감을 주웠어요.',
       options: [
         { id: 'give', label: '🙋 선생님께 드리기', luck: 1 },
-        { id: 'keep', label: '🧸 몰래 갖기', happy: 3, luck: -1 },
+        { id: 'keep', label: '🧸 몰래 갖기', happy: 3, gain: 3, luck: -1 },
       ],
     },
   ],
@@ -138,7 +138,7 @@ export const DILEMMAS: Partial<Record<StageId, SpecialEvent[]>> = {
       id: 'peek', title: '보이는 답안지', text: '시험 중에 옆 친구 답안지가 다 보여요…',
       options: [
         { id: 'honest', label: '✋ 내 실력으로', happy: -1, luck: 1 },
-        { id: 'peek', label: '👀 슬쩍 보기', happy: 3, luck: -1 },
+        { id: 'peek', label: '👀 슬쩍 보기', happy: 3, gain: 2, luck: -1 },
       ],
     },
     {
@@ -154,7 +154,7 @@ export const DILEMMAS: Partial<Record<StageId, SpecialEvent[]>> = {
       id: 'credit', title: '대박 난 프로젝트', text: '팀 프로젝트가 대박 났어요. 공은 누구 몫일까요?',
       options: [
         { id: 'team', label: '🙌 팀 모두의 덕', happy: 2, luck: 1 },
-        { id: 'me', label: '😎 내 덕이라고 하기', gain: 3, luck: -1 },
+        { id: 'me', label: '😎 내 덕이라고 하기', gain: 5, happy: 3, luck: -1 },
       ],
     },
     {
@@ -168,7 +168,7 @@ export const DILEMMAS: Partial<Record<StageId, SpecialEvent[]>> = {
       id: 'change', title: '거스름돈', text: '편의점 알바생이 거스름돈을 너무 많이 줬어요.',
       options: [
         { id: 'back', label: '🙏 돌려준다', luck: 1 },
-        { id: 'keep', label: '🤫 모른 척', gain: 1, luck: -1 },
+        { id: 'keep', label: '🤫 모른 척', gain: 2, happy: 2, luck: -1 },
       ],
     },
   ],
@@ -184,7 +184,7 @@ export const DILEMMAS: Partial<Record<StageId, SpecialEvent[]>> = {
     {
       id: 'insider', title: '솔깃한 정보', text: '아는 사람이 회사 내부 정보를 몰래 알려 줬어요.',
       options: [
-        { id: 'use', label: '💰 몰래 투자', gain: 4, luck: -1 },
+        { id: 'use', label: '💰 몰래 투자', gain: 6, happy: 2, luck: -1 },
         { id: 'no', label: '🙅 듣지 않은 걸로', happy: 1, luck: 1 },
       ],
     },
@@ -200,7 +200,7 @@ export const DILEMMAS: Partial<Record<StageId, SpecialEvent[]>> = {
     {
       id: 'gossip', title: '동네 소문', text: '이웃집 이야기를 들었어요. 말하면 다들 재밌어할 텐데…',
       options: [
-        { id: 'talk', label: '🗣️ 소문낸다', happy: 3, luck: -1 },
+        { id: 'talk', label: '🗣️ 소문낸다', happy: 3, gain: 1, luck: -1 },
         { id: 'quiet', label: '🤐 입을 다문다', luck: 1 },
       ],
     },

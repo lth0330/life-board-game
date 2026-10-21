@@ -176,6 +176,7 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
     case 'agencyMatch': return id === 'yes' ? (p.money > 600 ? 2 : 0.5) : 1
     case 'rps': return rng.next()
     case 'sector': return rng.next()
+    case 'festTarget': return id === 'new' ? 1 : 1.5 + rng.next()
     case 'wallet': return id === 'return' ? (per === 'family' || per === 'safe' ? 2 : 1.2) : per === 'gambler' ? 2 : 0.8
     case 'stray': return id === 'yes' ? (per === 'family' || per === 'safe' ? 2 : 0.8) : 1
     case 'loanRequest': return id === 'yes' ? 1 : 1.2
