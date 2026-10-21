@@ -339,6 +339,32 @@ function OnlineGame({ me, room, isHost, renderPlay, onLeave }: { me: Me; room: R
   ownersNow.current = isHost ? ownersRef.current : owners
   // 채팅 (2026-10-21): 행동 기록으로 주고받음. 새로고침하면 지난 채팅은 사라짐 (하루 뒤 서버에서도 지워짐)
   const [chat, setChat] = useState<ChatMsg[]>([])
+  // 새로고침·다시 들어오기: 서버에 남은 이 방 채팅(하루 동안)을 최근 20개까지 다시 불러옴
+  useEffect(() => {
+    let alive = true
+    void (async () => {
+      const found: { id: string; name: string; text: string; userId: string; at: string }[] = []
+      let token: string | null | undefined
+      for (let page = 0; page < 10; page++) {
+        const r = await client.models.Action.listActionByRoomId({ roomId: room.id }, { filter: { kind: { eq: 'chat' } }, nextToken: token, limit: 500 }).catch(() => null)
+        if (!r) break
+        for (const a of r.data) {
+          const p = parse<ActionPayload & { text?: string } | null>(a.payload, null)
+          const text = typeof p?.text === 'string' ? p.text.trim().slice(0, CHAT_MAX) : ''
+          if (p && text) found.push({ id: a.id, name: a.name ?? '?', text, userId: p.userId, at: a.createdAt })
+        }
+        token = r.nextToken
+        if (!token) break
+      }
+      if (!alive || !found.length) return
+      const old = found.sort((x, y) => x.at.localeCompare(y.at)).slice(-20).map((x) => {
+        const player = ownersNow.current.indexOf(x.userId)
+        return { id: x.id, name: x.name, text: x.text, player: player >= 0 ? player : null, mine: x.userId === me.userId }
+      })
+      setChat((c) => [...old.filter((o) => !c.some((x) => x.id === o.id)), ...c].slice(-50))
+    })()
+    return () => { alive = false }
+  }, [room.id, me.userId])
   useEffect(() => {
     const sub = client.models.Action.onCreate({ filter: { roomId: { eq: room.id } } }).subscribe({
       next: (a) => {
