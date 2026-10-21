@@ -24,7 +24,7 @@ export function TitleScreen({ notice, onAuth, onGuest }: { notice?: string; onAu
   const [manual, setManual] = useState(false)
   return (
     <Frame>
-      <div className="title-logo"><Logo size={260} /></div>
+      <div className="title-logo"><Logo size={340} /></div>
       <div className="title-cast" aria-hidden="true">
         <Character outfit={{ ...DEFAULT_OUTFIT, hat: 'cap', hatColor: '#C2452D' }} size={46} />
         <Character outfit={{ ...DEFAULT_OUTFIT, gender: 'f', hair: 'long', hairColor: '#A8692E', top: 'dress', topColor: '#F3A3C0', acc: 'bag', accColor: '#2F8F5B' }} size={46} />
@@ -51,7 +51,7 @@ export function MenuScreen({ profile, slot, onContinue, onNew, onOnline, onLogou
   const p0 = st?.players[0]
   return (
     <Frame>
-      <div className="title-logo"><Logo size={200} /></div>
+      <div className="title-logo"><Logo size={260} /></div>
       <div className="menu-hello">
         {profile && <Character outfit={profile.outfit} size={44} />}
         <div>

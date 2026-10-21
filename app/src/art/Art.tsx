@@ -1,5 +1,6 @@
 // 기본 그림 모음 (칸 아이콘, 건물, 로고, 주사위 면). 기본 버전 — 아트 단계에서 다시 그린다 (docs/12-art.md)
 import type { ReactElement } from 'react'
+import titleArt from '../assets/title-art.webp'
 
 // ───── 칸 아이콘 (viewBox 0 0 48 48). 2026-10-17 다시 그림: 잉크 테두리 + 밝은 색, 캐릭터·종이 보드게임 UI와 같은 느낌 ─────
 const K = '#2A2118'
@@ -184,16 +185,15 @@ export function Tree({ variant = 0 }: { variant?: number }) {
 }
 
 // ───── 로고 ─────
+// 2026-10-21 사용자가 고른 그림(AI 그림 도구 시안 ②보드게임 길)에 제목 글자를 얹음. 그림은 위 하늘이 제목 자리
 export function Logo({ size = 280 }: { size?: number }) {
   return (
-    <svg viewBox="0 0 320 120" width={size} height={size * 0.375} role="img" aria-label="데굴데굴 라이프">
-      <g transform="rotate(-12 50 60)">
-        <rect x="18" y="26" width="64" height="64" rx="14" fill="#fff" stroke="#2A2118" strokeWidth="5" />
-        <circle cx="36" cy="44" r="6" fill="#2A2118" /><circle cx="50" cy="58" r="6" fill="#C2452D" /><circle cx="64" cy="72" r="6" fill="#2A2118" />
-      </g>
-      <text x="100" y="58" fontFamily="Jua, sans-serif" fontSize="40" fill="#C2452D">데굴데굴</text>
-      <text x="102" y="102" fontFamily="Jua, sans-serif" fontSize="40" fill="#2A2118">라이프</text>
-    </svg>
+    <div className="logo-art" style={{ width: size }} role="img" aria-label="데굴데굴 라이프">
+      <img src={titleArt} alt="" width={960} height={575} />
+      <svg viewBox="0 0 320 70" aria-hidden="true">
+        <text x="160" y="40" textAnchor="middle" fontFamily="Jua, sans-serif" fontSize="40" fill="#C2452D" stroke="#fbf5e8" strokeWidth="8" paintOrder="stroke" strokeLinejoin="round">데굴데굴 <tspan fill="#2A2118">라이프</tspan></text>
+      </svg>
+    </div>
   )
 }
 

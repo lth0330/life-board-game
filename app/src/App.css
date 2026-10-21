@@ -708,3 +708,8 @@ button.wide:not(:disabled):active, .decision .options button:not(:disabled):acti
 .hud.mini .hud-row:first-child { padding-right: 0; }
 .hud.mini .gear { margin-left: 4px; }
 .hud.mini ~ .side-buttons { top: 88px; } /* 접으면 오른쪽 버튼도 위로 */
+
+/* ───── 로고 그림 (2026-10-21) ───── */
+.logo-art { position: relative; max-width: 100%; border: var(--line); border-radius: 18px; overflow: hidden; box-shadow: var(--pop); background: #fbf5e8; }
+.logo-art img { display: block; width: 100%; height: auto; }
+.logo-art svg { position: absolute; left: 6%; right: 6%; top: 3%; width: 88%; height: auto; }
