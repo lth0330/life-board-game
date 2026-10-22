@@ -132,7 +132,7 @@ export function FinanceSheet(f: FinanceProps) {
       {tab === 'loan' && (
         <div className="list">
           <p>빌린 돈 <b>{won(loanTotal(p))}</b> · 더 빌릴 수 있는 돈 {won(loanLimit(s, p))} (한도 {won(loanCap(s, p))}) · 매 턴 이자 {LOAN_RATE * 100}% · {LOAN_TURNS}턴 뒤 한꺼번에 갚기 (못 갚으면 강제 청산)</p>
-          <p className="note">한도 = 기본 500만 + 집·차·주식 값의 절반. 일반 대출은 다 갚아야 다시 빌릴 수 있어요.</p>
+          <p className="note">한도 = 기본 500만 + 집·차·주식 값의 절반 (청년은 적어도 3,000만). 일반 대출은 다 갚아야 다시 빌릴 수 있어요.</p>
           {p.creditBad > 0 && <p className="bad">신용불량 {p.creditBad}턴: 대출 불가</p>}
           {p.loans.length >= 2 && <p className="note">갚을 대출을 눌러 고르세요</p>}
           {p.loans.map((l, i) => {
@@ -251,7 +251,7 @@ export function CardsSheet({ p, canUse, onUseChance, onSabotage, onClose }: {
           {p.sabotage && <button disabled={!canUse} onClick={onSabotage}>상대 고르기</button>}
         </div>
       </div>
-      <p className="note">찬스·방해 카드는 한 장씩만 가질 수 있어요. 랜덤이벤트 칸, 이벤트 맵, 상점에서 얻어요.</p>
+      <p className="note">찬스·방해 카드는 한 장씩만 가질 수 있어요. 찬스 카드는 랜덤이벤트 칸·미니게임 대성공·휴식 칸·상점, 방해 카드는 청년부터 랜덤이벤트 칸에서 얻어요.</p>
     </Sheet>
   )
 }

@@ -1807,11 +1807,11 @@ export function miniGuide(s: GameState, game: MiniId | DuelId, duel: boolean): {
   const stat = k === 'fortune' ? '운세가 좋을수록 유리해요' : k ? `${STAT_NAMES[k]}이 높을수록 쉬워요` : '운에 맡겨요'
   const chance = ' · 대성공이면 가끔 찬스 카드'
   let reward: string
-  if (['race', 'tug', 'throw'].includes(game)) reward = '대성공 체력 +1·행복 +3 / 성공 체력 +1 / 실패 행복 -1'
+  if (['race', 'tug', 'throw'].includes(game)) reward = '대성공 체력 +1·행복 +3 / 성공 체력 +1·행복 +1 / 실패 행복 -1'
   else if (['memory', 'pairs', 'quickmath'].includes(game)) reward = '대성공 지력 +1·행복 +2 / 성공 지력 +1 / 실패 없음'
   else if (['firstImpression', 'rhythm', 'confess', 'dance'].includes(game) && stageOf(s).id === 'student') reward = '대성공 매력 +1·행복 +2 / 성공 매력 +1 / 실패 행복 -1'
   else if (['firstImpression', 'rhythm', 'confess', 'dance'].includes(game)) reward = '대성공 매력 +1·호감도 +30 (없으면 새 사람) / 성공 호감도 +15 / 실패 행복 -2'
-  else if (CASINO.includes(game as MiniId)) reward = '대박 판돈의 2배 / 조금 따면 절반 / 지면 판돈을 잃어요'
+  else if (CASINO.includes(game as MiniId)) reward = '대박 판돈의 2배를 더 받음 / 조금 따면 절반 / 지면 판돈을 잃어요'
   else reward = '대성공 행복 +8 / 성공 +4 / 실패 +1'
   return { stat, reward: reward + chance }
 }

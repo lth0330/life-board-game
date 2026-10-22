@@ -370,7 +370,6 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
   const busy = rolling || diceShow !== null || walking || popShow !== null || hold !== null || summaryOpen || wheel !== null
   const p = cur(game)
   const shown = walking ? game.players[game.pathPlayer] : hold !== null ? game.players[hold] : p
-  const pending = busy ? null : game.pending
   const myTurn = isMine(p.id) && canAct(game) && !busy
   const st = stageOf(game)
   useEffect(() => { setBgmStage(st.id) }, [st.id])
@@ -399,6 +398,8 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
     return () => clearTimeout(t)
   }, [game.speech])
   const [banner, setBanner] = useState(game.banner)
+  // 단계 카드('중년 단계' 등)가 떠 있는 동안은 선택 창을 띄우지 않음 → 카드가 사라진 뒤에 뜸 (2026-10-22 사용자)
+  const pending = busy || banner?.title.endsWith('단계') ? null : game.pending
   useEffect(() => {
     if (!game.banner) return
     setBanner(game.banner)
