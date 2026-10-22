@@ -12,7 +12,7 @@ import type { DiceItem, GameState } from './engine/types'
 import { deleteLocalGame, dropOldProfiles, lastAccount, lastWhere, makeSlot, rememberAccount, rememberWhere, saveLocalGame, savedSpeed, saveSpeed, type Profile, type SaveSlot } from './storage'
 import type { Me } from './online/client'
 import { BannerArt, EventArt, EventPopup, Roulette } from './art/More'
-import { setSoundPrefs, sfx, soundPrefs, unlockAudio } from './sound'
+import { setBgmStage, setSoundPrefs, sfx, soundPrefs, unlockAudio } from './sound'
 import { Board, FullMap } from './ui/Board'
 import { Dresser } from './ui/Dresser'
 import { LogBox } from './ui/LogBox'
@@ -293,6 +293,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
     if (!game.dice || game.dice.id === lastDiceId.current) return
     lastDiceId.current = game.dice.id
     setDiceShow({ value: game.dice.value, second: game.dice.second })
+    sfx('diceLand')
     // 수능처럼 주사위 바로 뒤에 룰렛이 오면 주사위를 1초 보여 준 뒤 룰렛 (2026-10-21 사용자)
     const wheelNext = !!game.roulette && game.roulette.id !== lastWheel.current
     const t = setTimeout(() => setDiceShow(null), wheelNext ? DICE_BEFORE_WHEEL_MS : DICE_SHOW_MS)
@@ -370,6 +371,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
   const pending = busy ? null : game.pending
   const myTurn = isMine(p.id) && canAct(game) && !busy
   const st = stageOf(game)
+  useEffect(() => { setBgmStage(st.id) }, [st.id])
 
   // ── AI 진행 ──
   useEffect(() => {
@@ -398,7 +400,8 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
   useEffect(() => {
     if (!game.banner) return
     setBanner(game.banner)
-    sfx(CELEBRATE.includes(game.banner.title) ? 'fanfare' : game.banner.title.startsWith('복권') ? 'win' : game.banner.tone === 'bad' ? 'bad' : 'pop')
+    const t = game.banner.title
+    sfx(t === '결혼!' ? 'bell' : CELEBRATE.includes(t) ? 'fanfare' : t.startsWith('복권') ? 'win' : t === '강제 청산' || t === '집 경매' ? 'bigBad' : t.startsWith('대출') && game.banner.tone === 'bad' ? 'warn' : game.banner.tone === 'bad' ? 'bad' : 'pop')
   }, [game.banner])
   useEffect(() => { if (game.phase === 'gameover') sfx('fanfare') }, [game.phase])
   useEffect(() => {
@@ -416,6 +419,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
     if (!myTurn || game.phase !== 'roll' || game.pending || toastTurn.current === game.turn) return
     toastTurn.current = game.turn
     setTurnToast(true)
+    sfx('myTurn')
     const t = setTimeout(() => setTurnToast(false), 2000)
     return () => clearTimeout(t)
   }, [myTurn, game.phase, game.pending, game.turn])
@@ -707,6 +711,12 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
               <button className={sound.sfx ? 'on' : ''} aria-pressed={sound.sfx} onClick={() => { setSoundPrefs({ sfx: !sound.sfx }); setSound(soundPrefs()); sfx('click') }}>🔊 효과음 {sound.sfx ? '켜짐' : '꺼짐'}</button>
               <button className={sound.bgm ? 'on' : ''} aria-pressed={sound.bgm} onClick={() => { unlockAudio(); setSoundPrefs({ bgm: !sound.bgm }); setSound(soundPrefs()) }}>🎵 배경음 {sound.bgm ? '켜짐' : '꺼짐'}</button>
             </div>
+            <label className="sound-vol">
+              <span>소리 크기 {Math.round(sound.vol * 100)}</span>
+              <input type="range" min={0} max={100} step={5} value={Math.round(sound.vol * 100)} aria-label="소리 크기"
+                onChange={(e) => { setSoundPrefs({ vol: +e.target.value / 100 }); setSound(soundPrefs()) }}
+                onPointerUp={() => sfx('pop')} onKeyUp={() => sfx('pop')} />
+            </label>
             <button className="wide" onClick={() => setMenu(false)}>계속하기</button>
             <button className="wide secondary" onClick={() => { setMenu(false); setSheet('manual') }}>게임 설명서</button>
             <button className="wide secondary" onClick={onQuit}>메뉴로 나가기</button>

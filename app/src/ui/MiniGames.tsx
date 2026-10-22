@@ -656,7 +656,7 @@ function OddEven({ level, onDone }: { level: number; onDone: (v: number) => void
   const [bet, setBet] = useState<boolean | null>(null)
   useEffect(() => {
     const spin = setInterval(() => setFace([rand(6) + 1, rand(6) + 1]), 90)
-    const cover = setTimeout(() => setStage('cover'), 1100) // 멈추기 직전에 컵이 덮음
+    const cover = setTimeout(() => { setStage('cover'); sfx('cupDown') }, 1100) // 멈추기 직전에 컵이 덮음
     const stop = setTimeout(() => { clearInterval(spin); setFace(final) }, 1400)
     return () => { clearInterval(spin); clearTimeout(cover); clearTimeout(stop) }
   }, [final])
@@ -665,6 +665,7 @@ function OddEven({ level, onDone }: { level: number; onDone: (v: number) => void
     if (!ready || bet !== null) return
     setBet(odd)
     setStage('open')
+    sfx('cupUp')
     const win = ((final[0] + final[1]) % 2 === 1) === odd
     setTimeout(() => onDone(win ? (level === 0 || final[0] === final[1] ? 2 : 1) : 0), 1300)
   }
@@ -775,6 +776,7 @@ function Snap({ level, onDone }: { level: number; onDone: (v: number) => void })
     const at = posAt(performance.now())
     setPos(at)
     setFlash(true)
+    sfx('snap')
     const next = [...shots, Math.abs(at - 50) <= zone / 2]
     setShots(next)
     setTimeout(() => {

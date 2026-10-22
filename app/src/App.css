@@ -860,3 +860,6 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 @media (prefers-reduced-motion: reduce) { .cup-dice .tumble, .pack-timer { animation: none; } }
 .hud-loan { font-size: 13px; padding: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hud-loan.warn { color: #C2452D; }
+.sound-vol { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; font-family: 'Jua', sans-serif; }
+.sound-vol span { min-width: 92px; }
+.sound-vol input { flex: 1; accent-color: var(--ink); min-height: 32px; }
