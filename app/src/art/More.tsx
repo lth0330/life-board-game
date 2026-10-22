@@ -1,15 +1,26 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react'
 import { sfx } from '../sound'
+import { awning, box, door, gable, sideWin } from './Art'
 
 // 추가 그림 (기본 버전 — 아트 단계에서 다시 그림, docs/12-art.md)
 // 이벤트 길 입구 랜드마크, 결정 창 그림
 
-const S = { width: '100%', height: '100%', 'aria-hidden': true } as const
-const sign = (name: string, bg: string, y = 228) => (
-  <g>
-    <rect x="30" y={y} width="200" height="38" rx="10" fill={bg} />
-    <text x="130" y={y + 27} textAnchor="middle" fontSize="24" fontFamily="Jua, sans-serif" fill="#fff">{name}</text>
-  </g>
+// 이벤트 길 입구 랜드마크 (viewBox 0 0 260 270). 2026-10-22 건물과 같은 '장난감 입체' 그림체로 다시 그림
+const INK = '#2A2118', GLASS = '#CFE7F5'
+const lmPlate = (name: string, bg: string) => {
+  const w = Math.min(240, name.length * 22 + 44)
+  return (
+    <g>
+      <rect x={130 - w / 2} y="230" width={w} height="34" rx="9" fill={bg} strokeWidth="4" />
+      <text x="130" y="254" textAnchor="middle" fontSize="21" fontFamily="Jua, sans-serif" fill="#fff" stroke="none">{name}</text>
+    </g>
+  )
+}
+const lmShadow = (rx: number) => <ellipse cx="134" cy="226" rx={rx} ry="11" fill={INK} opacity="0.2" stroke="none" />
+const toy = (body: ReactElement) => (
+  <svg viewBox="0 0 260 270" width="100%" height="100%" aria-hidden="true">
+    <g stroke={INK} strokeWidth="5" strokeLinejoin="round" strokeLinecap="round">{body}</g>
+  </svg>
 )
 
 // 이벤트 길 이름 → 입구 랜드마크
@@ -17,62 +28,87 @@ const LANDMARKS = ['운동회', '두뇌 올림피아드', '축제 거리', '카�
 export function Landmark({ name }: { name: string }) {
   switch (name.includes('학교 축제') ? '축제 거리' : LANDMARKS.find((k) => name.includes(k))) {
     case '운동회':
-      return (
-        <svg viewBox="0 0 260 270" {...S}>
-          <ellipse cx="130" cy="200" rx="120" ry="44" fill="#C9553B" />
-          <ellipse cx="130" cy="200" rx="92" ry="28" fill="#6DBB5A" />
-          <path d="M60 200h140" stroke="#fff" strokeWidth="4" strokeDasharray="10 8" />
-          <path d="M40 60v110M220 60v110" stroke="#7a5232" strokeWidth="6" />
-          <path d="M40 60h180" stroke="#7a5232" strokeWidth="4" />
-          <g>{['#E34B4B', '#F2C230', '#2E6FD8', '#2F8F5B', '#F3A3C0', '#6F45BD', '#E34B4B'].map((c, i) => <path key={i} d={`M${50 + i * 25} 62l12 0-6 16z`} fill={c} />)}</g>
-          {sign('운동회', '#C9553B')}
-        </svg>
+      // 운동장 트랙 + 만국기 + 출발 아치
+      return toy(
+        <g>
+          <ellipse cx="130" cy="186" rx="122" ry="44" fill="#E07A52" />
+          <ellipse cx="130" cy="186" rx="88" ry="26" fill="#7FCB8A" />
+          <path d="M70 186h120" stroke="#fff" strokeWidth="4" strokeDasharray="10 8" />
+          <path d="M28 168V40M232 168V40" strokeWidth="6" />
+          <path d="M28 46q102 34 204 0" fill="none" strokeWidth="3" />
+          {['#E34B4B', '#F2C230', '#2E6FD8', '#2F8F5B', '#F3A3C0', '#6F45BD', '#E34B4B', '#F2C230'].map((c, i) => {
+            const x = 40 + i * 25, y = 50 + Math.sin(((i + 0.5) / 8) * Math.PI) * 15
+            return <path key={i} d={`M${x} ${y}h16l-8 16z`} fill={c} strokeWidth="2.5" />
+          })}
+          {box(94, 108, 64, 44, '#FFFDF6', true)}
+          <path d="M104 152v-28h44v28" fill="#E2553B" strokeWidth="4" />
+          <text x="126" y="122" textAnchor="middle" fontSize="13" fontFamily="Jua, sans-serif" fill={INK} stroke="none">START</text>
+          {lmPlate('운동회', '#C9553B')}
+        </g>,
       )
     case '두뇌 올림피아드':
-      return (
-        <svg viewBox="0 0 260 270" {...S}>
-          <rect x="40" y="100" width="180" height="128" fill="#EDE6FA" />
-          <path d="M28 104L130 40l102 64z" fill="#6F45BD" />
-          {[60, 100, 140, 180].map((x) => <rect key={x} x={x} y="112" width="16" height="116" fill="#fff" />)}
-          <circle cx="130" cy="78" r="18" fill="#F3A3C0" />
-          <path d="M120 72q10-12 20 0M118 82q12 8 24 0" stroke="#B0476F" strokeWidth="3" fill="none" />
-          {sign('두뇌 올림피아드', '#6F45BD')}
-        </svg>
+      // 기둥 있는 전당 + 지붕에 전구(아이디어)
+      return toy(
+        <g>
+          {lmShadow(110)}
+          {box(30, 112, 160, 112, '#EDE6FA', false, '#CFC3EA')}
+          {gable(30, 160, 112, 60, '#6F45BD')}
+          <circle cx="110" cy="84" r="15" fill="#FFE07A" strokeWidth="3.5" />
+          <path d="M104 100h12M105 106h10" strokeWidth="3" />
+          <path d="M104 86q6-8 12 0" fill="none" strokeWidth="2.5" />
+          {[44, 76, 128, 160].map((x) => <rect key={x} x={x} y="128" width="14" height="96" fill="#fff" />)}
+          {door(96, 164, 28, 60, '#6F45BD')}
+          {sideWin(200, 140, 20, 34)}
+          {lmPlate('두뇌 올림피아드', '#6F45BD')}
+        </g>,
       )
     case '축제 거리':
-      return (
-        <svg viewBox="0 0 260 270" {...S}>
-          <path d="M20 40q110 50 220 0" stroke="#7a5232" strokeWidth="3" fill="none" />
-          {[0, 1, 2, 3, 4, 5, 6].map((i) => <circle key={i} cx={40 + i * 30} cy={52 + Math.sin(i / 2) * 12} r="10" fill={['#E34B4B', '#F2C230', '#F3A3C0', '#2E6FD8'][i % 4]} />)}
-          <rect x="50" y="130" width="160" height="98" fill="#F7D774" />
-          <path d="M40 130h180l-14-34H54z" fill="#E34B4B" />
-          <path d="M90 228v-50h80v50" fill="#B5452F" />
-          <path d="M115 150l8 16 18 2-13 12 3 18-16-9-16 9 3-18-13-12 18-2z" fill="#fff" />
-          {sign('축제 거리', '#E34B4B')}
-        </svg>
+      // 무대 + 줄 전구 + 별
+      return toy(
+        <g>
+          {lmShadow(116)}
+          <path d="M14 34q116 46 232 0" fill="none" strokeWidth="3" />
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => <circle key={i} cx={30 + i * 28} cy={40 + Math.sin(((i + 0.5) / 8) * Math.PI) * 16} r="8" fill={['#E34B4B', '#F2C230', '#F3A3C0', '#2E6FD8'][i % 4]} strokeWidth="2.5" />)}
+          {box(36, 126, 148, 98, '#F7D774', false, '#D9B85A')}
+          {awning(36, 148, 104, '#E34B4B')}
+          <path d="M60 224v-56h100v56" fill="#B5452F" />
+          <path d="M110 160l8 15 17 2-12 12 3 17-16-8-16 8 3-17-12-12 17-2z" fill="#fff" strokeWidth="3" />
+          {sideWin(196, 150, 18, 40)}
+          {lmPlate('축제 거리', '#E34B4B')}
+        </g>,
       )
     case '카지노':
-      return (
-        <svg viewBox="0 0 260 270" {...S}>
-          <rect x="30" y="80" width="200" height="148" fill="#1E2A44" />
-          <rect x="30" y="66" width="200" height="22" fill="#E2B85C" />
-          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => <circle key={i} cx={42 + i * 25} cy="77" r="5" fill={i % 2 ? '#fff' : '#E34B4B'} />)}
-          <rect x="70" y="110" width="120" height="60" rx="8" fill="#2F8F5B" stroke="#E2B85C" strokeWidth="4" />
-          <text x="130" y="152" textAnchor="middle" fontSize="34" fontFamily="Jua, sans-serif" fill="#F2C230">777</text>
-          <path d="M110 228v-40h40v40" fill="#E2B85C" />
-          {sign('카지노', '#B5452F')}
-        </svg>
+      // 남색 건물 + 금색 전광판 + 777
+      return toy(
+        <g>
+          {lmShadow(116)}
+          {box(26, 90, 168, 134, '#2B3A5E', false, '#1E2A44')}
+          {box(26, 72, 168, 20, '#E2B85C', true)}
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => <circle key={i} cx={40 + i * 24} cy="82" r="4.5" fill={i % 2 ? '#fff' : '#E34B4B'} strokeWidth="2" />)}
+          <rect x="54" y="108" width="112" height="56" rx="8" fill="#2F8F5B" stroke="#E2B85C" strokeWidth="5" />
+          <text x="110" y="148" textAnchor="middle" fontSize="32" fontFamily="Jua, sans-serif" fill="#F2C230" stroke="none">777</text>
+          <path d="M90 224v-44h40v44" fill="#E2B85C" strokeWidth="4" />
+          <path d="M110 180v44" strokeWidth="3" />
+          {sideWin(204, 112, 22, 30)}{sideWin(204, 160, 22, 30)}
+          {lmPlate('카지노', '#B5452F')}
+        </g>,
       )
     case '세계일주':
-      return (
-        <svg viewBox="0 0 260 270" {...S}>
-          <rect x="20" y="140" width="220" height="88" fill="#DDEBF5" />
-          <path d="M20 140q110-46 220 0" fill="#9CC3E0" />
-          <rect x="190" y="70" width="24" height="70" fill="#C9D8E4" /><rect x="180" y="58" width="44" height="18" rx="4" fill="#4E7FA8" />
-          <path d="M40 90l60-6 20-22 10 2-10 22 40 0 10-10h8l-4 14 4 14h-8l-10-10-40 0 10 22-10 2-20-22-60-6z" fill="#fff" stroke="#4E7FA8" strokeWidth="3" />
-          {[40, 80, 120, 160, 200].map((x) => <rect key={x} x={x} y="170" width="24" height="30" fill="#fff" />)}
-          {sign('세계일주 공항', '#2E6FD8')}
-        </svg>
+      // 공항: 둥근 지붕 터미널 + 관제탑 + 비행기
+      return toy(
+        <g>
+          {lmShadow(118)}
+          {box(160, 70, 26, 80, '#E8EEF4', false, '#C5D0DB')}
+          {box(150, 52, 46, 20, '#4E7FA8', true)}
+          <rect x="156" y="56" width="34" height="12" fill={GLASS} strokeWidth="3" />
+          {box(14, 150, 186, 74, '#DDEBF5', false, '#B9CFE0')}
+          <path d="M200 150L244 132Q222 108 178 126Z" fill="#6E9BC2" />
+          <path d="M14 150Q107 104 200 150Z" fill="#9CC3E0" />
+          {[28, 64, 100, 136].map((x) => <rect key={x} x={x} y="168" width="26" height="30" rx="3" fill={GLASS} strokeWidth="3.5" />)}
+          {door(170, 176, 22, 48, '#4E7FA8')}
+          <path d="M22 70l60-6 20-22 10 2-10 22h40l10-10h8l-4 14 4 14h-8l-10-10h-40l10 22-10 2-20-22-60-6z" fill="#fff" strokeWidth="3.5" />
+          {lmPlate('세계일주 공항', '#2E6FD8')}
+        </g>,
       )
     default:
       return null

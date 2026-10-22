@@ -36,6 +36,8 @@ export function TileIcon({ kind, size = 44 }: { kind: string; size?: number }) {
 }
 
 // ───── 건물 (viewBox 0 0 220 270) ─────
+// 2026-10-22 다시 그림 (사용자가 견본 3가지 중 '장난감 입체' 선택): 잉크 테두리 + 앞면·옆면·지붕 윗면이 보이는 장난감 집.
+// 평평한 지붕은 윗면을 꼭 그림 (안 그리면 하늘이 비쳐 구멍처럼 보임). 이름판은 평평하게
 export type BuildingKind = 'house' | 'school' | 'shop' | 'chapel' | 'office' | 'hospital' | 'cafe' | 'park' | 'apartment' | 'gym' | 'library' | 'flower'
 
 const BUILDING_FOR: Record<string, BuildingKind> = {
@@ -46,129 +48,270 @@ const BUILDING_FOR: Record<string, BuildingKind> = {
   상점: 'shop', 결혼식장: 'chapel',
 }
 
-export function Building({ name, color = '#B5452F' }: { name: string; color?: string }) {
-  const kind = BUILDING_FOR[name] ?? 'house'
-  const sign = (bg: string) => (
+// 옆면 깊이: 오른쪽으로 DX, 위로 DY
+const DX = 44, DY = 18
+const GLASS = '#CFE7F5', GLASS_SIDE = '#A9CDE2', WOOD = '#8A5A3B'
+// 색을 어둡게(f<1)·밝게(f>1)
+export function shade(hex: string, f: number) {
+  const n = parseInt(hex.slice(1), 16)
+  const c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.max(0, Math.min(255, Math.round(f < 1 ? v * f : v + (255 - v) * (f - 1)))))
+  return `#${c.map((v) => v.toString(16).padStart(2, '0')).join('')}`
+}
+// 상자: 앞면 + 오른쪽 옆면 (+ 평평한 지붕이면 윗면)
+export function box(x: number, y: number, w: number, h: number, front: string, top = false, side = shade(front, 0.82)) {
+  return (
     <g>
-      <rect x="40" y="128" width="140" height="40" rx="10" fill={bg} />
-      <text x="110" y="157" textAnchor="middle" fontSize="26" fontFamily="Jua, sans-serif" fill="#fff">{name}</text>
+      <path d={`M${x + w} ${y}L${x + w + DX} ${y - DY}V${y + h - DY}L${x + w} ${y + h}Z`} fill={side} />
+      {top && <path d={`M${x} ${y}L${x + DX} ${y - DY}H${x + w + DX}L${x + w} ${y}Z`} fill={shade(front, 1.25)} />}
+      <rect x={x} y={y} width={w} height={h} fill={front} />
     </g>
   )
-  const win = (x: number, y: number, w = 30, h = 30) => <rect x={x} y={y} width={w} height={h} rx="3" fill="#CFE7F5" stroke="#fff" strokeWidth="4" />
+}
+// 박공지붕: 앞 삼각형 + 오른쪽 지붕면 (처마는 양쪽으로 10씩)
+export function gable(x: number, w: number, y: number, rise: number, color: string) {
+  const cx = x + w / 2, l = x - 10, r = x + w + 10, ey = y + 8
+  return (
+    <g>
+      <path d={`M${cx} ${y - rise}L${cx + DX} ${y - rise - DY}L${r + DX} ${ey - DY}L${r} ${ey}Z`} fill={shade(color, 0.78)} />
+      <path d={`M${l} ${ey}L${cx} ${y - rise}L${r} ${ey}Z`} fill={color} />
+      <path d={`M${l + 20} ${ey - 10}L${cx - 4} ${y - rise + 14}`} stroke="#fff" strokeWidth="6" opacity="0.5" fill="none" />
+    </g>
+  )
+}
+// 차양: 앞면 줄무늬 + 옆면
+export function awning(x: number, w: number, y: number, color: string) {
+  const n = Math.max(3, Math.round(w / 34)), sw = w / n
+  return (
+    <g>
+      <path d={`M${x + w + 8} ${y}L${x + w + 8 + DX} ${y - DY}L${x + w + DX} ${y + 34 - DY}L${x + w} ${y + 34}Z`} fill={shade(color, 0.75)} />
+      <path d={`M${x - 8} ${y}H${x + w + 8}L${x + w} ${y + 34}H${x}Z`} fill={color} />
+      <path d={Array.from({ length: n }, (_, i) => `M${x - 6 + i * sw + sw / 2} ${y}l-2 34h${sw / 2}l2-34z`).join('')} fill="#fff" stroke="none" />
+      <path d={`M${x - 8} ${y}H${x + w + 8}L${x + w} ${y + 34}H${x}Z`} fill="none" />
+    </g>
+  )
+}
+export const win = (x: number, y: number, w = 28, h = 28, cross = false) => (
+  <g>
+    <rect x={x} y={y} width={w} height={h} rx="4" fill={GLASS} strokeWidth="3.5" />
+    {cross && <path d={`M${x + w / 2} ${y}v${h}M${x} ${y + h / 2}h${w}`} strokeWidth="2.5" />}
+  </g>
+)
+// 옆면 창문 (평행사변형)
+export const sideWin = (x: number, y: number, w = 20, h = 24) => <path d={`M${x} ${y}l${w} ${(-w * DY) / DX}v${h}l${-w} ${(w * DY) / DX}z`} fill={GLASS_SIDE} strokeWidth="3" />
+export const door = (x: number, y: number, w = 28, h = 64, color = WOOD) => (
+  <g>
+    <rect x={x} y={y} width={w} height={h} rx="5" fill={color} />
+    <circle cx={x + w - 7} cy={y + h / 2 + 2} r="3" fill="#FFD45C" strokeWidth="2" />
+  </g>
+)
+const shadow = (cx: number, rx: number) => <ellipse cx={cx} cy="226" rx={rx} ry="10" fill={INK} opacity="0.2" stroke="none" />
+const INK = '#2A2118'
+
+export function Building({ name, color = '#B5452F' }: { name: string; color?: string }) {
+  const kind = BUILDING_FOR[name] ?? 'house'
+  // 이름판: 평평하게, 글자 수에 맞춰 너비
+  const pw = Math.min(200, Math.max(110, name.length * 24 + 44))
+  const plate = (bg: string) => (
+    <g>
+      <rect x={110 - pw / 2} y="230" width={pw} height="34" rx="9" fill={bg} strokeWidth="4" />
+      <text x="110" y="254" textAnchor="middle" fontSize="22" fontFamily="Jua, sans-serif" fill="#fff" stroke="none">{name}</text>
+    </g>
+  )
+  let body: ReactElement
   switch (kind) {
     case 'chapel':
-      return (
-        <svg viewBox="0 0 220 270" width="100%" height="100%" aria-hidden="true">
-          <rect x="40" y="110" width="140" height="160" fill="#FFF5F8" />
-          <path d="M30 116L110 40l80 76z" fill="#E9A3BC" />
-          <rect x="98" y="0" width="24" height="60" fill="#FFF5F8" /><path d="M92 10l18-10 18 10v10H92z" fill="#E9A3BC" />
-          <path d="M110 12v20M102 20h16" stroke="#E2B85C" strokeWidth="4" />
-          <path d="M94 270v-50a16 16 0 0 1 32 0v50z" fill="#B0476F" />
-          {sign('#B0476F')}
-          <path d="M150 196a8 8 0 0 1 16 0c0 8-8 12-8 12s-8-4-8-12z" fill="#F3A3C0" />
-        </svg>
+      body = (
+        <g>
+          {shadow(114, 104)}
+          <path d="M128 40L144 34V96L128 102Z" fill="#F3D7E2" />
+          <rect x="92" y="40" width="36" height="62" fill="#FFF5F8" />
+          <path d="M134 42L110 8L150 36Z" fill="#D96A93" />
+          <path d="M86 42L110 8L134 42Z" fill="#F28CB1" />
+          <path d="M101 80q0-18 9-18q9 0 9 18z" fill="#FFD45C" strokeWidth="3" />
+          {box(40, 110, 128, 114, '#FFF5F8', false, '#F3D7E2')}
+          <path d="M104 68L134 56L210 106L180 118Z" fill="#D96A93" />
+          <path d="M28 118L104 68L180 118Z" fill="#F28CB1" />
+          <path d="M40 118q32 20 64 0q32 20 64 0" fill="none" stroke="#FF7AA2" strokeWidth="4" />
+          <path d="M104 160c-13-8-17-15-17-21a8 8 0 0 1 17-4a8 8 0 0 1 17 4c0 6-4 13-17 21z" fill="#FF7AA2" strokeWidth="3" />
+          <path d="M54 206v-22a10 10 0 0 1 20 0v22z" fill={GLASS} strokeWidth="3" />
+          <path d="M134 206v-22a10 10 0 0 1 20 0v22z" fill={GLASS} strokeWidth="3" />
+          <path d="M84 224V190a20 20 0 0 1 40 0V224Z" fill="#C2457A" />
+          <path d="M104 172V224" strokeWidth="3" />
+          {sideWin(178, 152, 12, 24)}
+          <circle cx="26" cy="208" r="17" fill="#7FCB8A" />
+          <circle cx="20" cy="202" r="4" fill="#FF7AA2" strokeWidth="2" /><circle cx="32" cy="212" r="4" fill="#fff" strokeWidth="2" />
+          {plate('#C2457A')}
+        </g>
       )
+      break
     case 'shop':
-      return (
-        <svg viewBox="0 0 220 270" width="100%" height="100%" aria-hidden="true">
-          <rect x="20" y="70" width="180" height="200" fill="#fff" />
-          <path d="M14 70h192l-10 40H24z" fill="#2C5E8A" />
-          <g fill="#fff" opacity="0.9">{[0, 1, 2, 3, 4].map((i) => <path key={i} d={`M${34 + i * 36} 70l-6 40h18l6-40z`} />)}</g>
-          {win(36, 190, 50, 50)}{win(134, 190, 50, 50)}
-          {sign('#2C5E8A')}
-        </svg>
+      body = (
+        <g>
+          {shadow(114, 98)}
+          {box(22, 100, 128, 124, '#FFFDF6', false, '#E3DDD0')}
+          {box(22, 86, 128, 14, '#2C5E8A', true)}
+          <rect x="52" y="40" width="68" height="40" rx="7" fill="#FFD45C" />
+          <rect x="74" y="52" width="24" height="22" rx="3" fill="#E2553B" strokeWidth="3" />
+          <path d="M79 52q7-11 14 0" fill="none" strokeWidth="3" />
+          {awning(22, 128, 100, '#4C8FD6')}
+          <rect x="34" y="150" width="62" height="52" rx="5" fill={GLASS} />
+          <circle cx="50" cy="190" r="8" fill="#E2553B" strokeWidth="3" /><circle cx="70" cy="190" r="8" fill="#FFD45C" strokeWidth="3" />
+          {door(106, 150, 36, 74, '#4C8FD6')}
+          {sideWin(162, 152, 22, 40)}
+          {plate('#2C5E8A')}
+        </g>
       )
+      break
     case 'school':
-      return (
-        <svg viewBox="0 0 220 270" width="100%" height="100%" aria-hidden="true">
-          <rect x="10" y="90" width="200" height="180" fill="#F2E2C4" />
-          <path d="M0 96L110 40l110 56z" fill={color} />
-          <rect x="92" y="50" width="36" height="36" rx="18" fill="#fff" stroke="#5A3A21" strokeWidth="4" />
-          <path d="M110 58v10l7 5" stroke="#5A3A21" strokeWidth="3" fill="none" />
-          {win(26, 186)}{win(66, 186)}{win(124, 186)}{win(164, 186)}
-          {sign('#5A3A21')}
-        </svg>
+      body = (
+        <g>
+          {shadow(110, 106)}
+          {box(8, 104, 150, 120, '#F2E2C4')}
+          {box(2, 90, 162, 16, color, true)}
+          <path d="M150 74V20" strokeWidth="4" /><path d="M150 22L176 31L150 40Z" fill="#E2553B" strokeWidth="3" />
+          <path d="M45 94L83 56L121 94Z" fill={shade(color, 1.25)} />
+          <circle cx="83" cy="80" r="12" fill="#fff" strokeWidth="3.5" />
+          <path d="M83 73v7l5 4" fill="none" strokeWidth="3" />
+          {win(18, 124, 24, 26)}{win(46, 124, 24, 26)}{win(100, 124, 24, 26)}{win(128, 124, 24, 26)}
+          {win(18, 172, 24, 26)}{win(128, 172, 24, 26)}
+          <rect x="66" y="162" width="34" height="62" rx="5" fill={WOOD} /><path d="M83 162v62" strokeWidth="3" />
+          {sideWin(168, 132, 18, 26)}{sideWin(168, 176, 18, 26)}
+          {plate(shade(color, 0.75))}
+        </g>
       )
-    case 'hospital':
-      return (
-        <svg viewBox="0 0 220 270" width="100%" height="100%" aria-hidden="true">
-          <rect x="30" y="40" width="160" height="230" fill="#fff" />
-          <rect x="88" y="54" width="44" height="44" rx="6" fill="#C2452D" />
-          <path d="M110 62v28M96 76h28" stroke="#fff" strokeWidth="8" />
-          {win(46, 186)}{win(86, 186)}{win(126, 186)}
-          {sign('#C2452D')}
-        </svg>
-      )
+      break
     case 'office':
-    case 'apartment':
-      return (
-        <svg viewBox="0 0 220 270" width="100%" height="100%" aria-hidden="true">
-          <rect x="40" y="10" width="140" height="260" fill={kind === 'office' ? '#8FB3D9' : '#E9DFC8'} />
-          {[30, 70, 110, 180, 220].map((y) => [56, 96, 136].map((x) => <rect key={`${x}${y}`} x={x} y={y} width="28" height="24" fill="#CFE7F5" stroke="#fff" strokeWidth="3" />))}
-          {sign(kind === 'office' ? '#2C5E8A' : '#7A5232')}
-        </svg>
+    case 'apartment': {
+      const off = kind === 'office'
+      const wall = off ? '#8FB3D9' : '#E9DFC8'
+      body = (
+        <g>
+          {shadow(118, 90)}
+          {box(46, 46, 110, 178, wall, true)}
+          {off ? <path d="M120 28V8M114 10h12" strokeWidth="4" fill="none" /> : <rect x="112" y="18" width="22" height="16" fill="#C98F5B" />}
+          {[64, 100, 136].map((y) => [56, 88, 120].map((x) => <g key={`${x}-${y}`}>{win(x, y, 24, 22)}{!off && <path d={`M${x - 3} ${y + 26}h30`} strokeWidth="3" />}</g>))}
+          {[56, 120].map((x) => <g key={x}>{win(x, 172, 24, 22)}</g>)}
+          {door(86, 176, 30, 48, off ? '#2C5E8A' : WOOD)}
+          {[60, 100, 140, 180].map((y) => <g key={y}>{sideWin(166, y, 22, 20)}</g>)}
+          {plate(off ? '#2C5E8A' : '#7A5232')}
+        </g>
       )
+      break
+    }
+    case 'hospital':
+      body = (
+        <g>
+          {shadow(116, 96)}
+          {box(30, 64, 130, 160, '#FFFFFF', true, '#DCE3EA')}
+          <rect x="75" y="76" width="40" height="40" rx="7" fill="#C2452D" />
+          <path d="M95 84v24M83 96h24" stroke="#fff" strokeWidth="7" />
+          {win(42, 130, 26, 24)}{win(82, 130, 26, 24)}{win(122, 130, 26, 24)}
+          {win(42, 172, 26, 24)}{win(122, 172, 26, 24)}
+          <rect x="80" y="170" width="30" height="54" rx="4" fill={GLASS_SIDE} /><path d="M95 170v54" strokeWidth="3" />
+          {sideWin(170, 92, 22, 22)}{sideWin(170, 136, 22, 22)}{sideWin(170, 180, 22, 22)}
+          {plate('#C2452D')}
+        </g>
+      )
+      break
     case 'cafe':
-      return (
-        <svg viewBox="0 0 220 270" width="100%" height="100%" aria-hidden="true">
-          <rect x="30" y="90" width="160" height="180" fill="#F4EBD6" />
-          <path d="M20 90h180l-8 34H28z" fill={color} />
-          <g fill="#fff" opacity="0.85">{[0, 1, 2, 3].map((i) => <path key={i} d={`M${40 + i * 40} 90l-4 34h16l4-34z`} />)}</g>
-          {win(46, 190, 50, 50)}{win(124, 190, 50, 50)}
-          {sign('#5A3A21')}
-        </svg>
+      body = (
+        <g>
+          {shadow(114, 96)}
+          {box(30, 110, 124, 114, '#F4EBD6', false, '#D9CBAE')}
+          {box(30, 98, 124, 12, shade(color, 0.85), true)}
+          <circle cx="92" cy="62" r="24" fill="#fff" />
+          <path d="M80 56h20v12a8 8 0 0 1-8 8h-4a8 8 0 0 1-8-8z" fill="#8A5A3B" strokeWidth="3" />
+          <path d="M100 60h3a5 5 0 0 1 0 10h-3" fill="none" strokeWidth="3" />
+          <path d="M86 50q-3-5 0-8M94 50q-3-5 0-8" fill="none" strokeWidth="2.5" />
+          {awning(30, 124, 110, color)}
+          {win(42, 156, 46, 46, true)}
+          {door(104, 156, 34, 68)}
+          {sideWin(166, 156, 20, 36)}
+          {plate('#5A3A21')}
+        </g>
       )
+      break
     case 'park':
-      return (
-        <svg viewBox="0 0 220 270" width="100%" height="100%" aria-hidden="true">
-          <circle cx="60" cy="150" r="46" fill="#3F8A4F" /><rect x="54" y="180" width="12" height="90" fill="#7A5232" />
-          <circle cx="160" cy="140" r="52" fill="#4F9A5E" /><rect x="154" y="176" width="12" height="94" fill="#7A5232" />
-          <rect x="70" y="230" width="80" height="10" rx="4" fill="#7A5232" /><rect x="76" y="240" width="6" height="20" fill="#5A3A21" /><rect x="138" y="240" width="6" height="20" fill="#5A3A21" />
-          <g transform="translate(0 -60)">{sign('#2F8F5B')}</g>
-        </svg>
+      body = (
+        <g>
+          <ellipse cx="110" cy="206" rx="104" ry="26" fill="#7FCB8A" />
+          <path d="M18 206q20 12 50 16" stroke="#5DAA6C" strokeWidth="3" fill="none" />
+          <rect x="52" y="128" width="12" height="80" rx="3" fill="#7A5232" />
+          <circle cx="58" cy="112" r="40" fill="#4F9A5E" /><path d="M36 100q6-16 22-20" stroke="#fff" strokeWidth="5" opacity="0.45" fill="none" />
+          <rect x="156" y="118" width="12" height="84" rx="3" fill="#7A5232" />
+          <circle cx="162" cy="100" r="44" fill="#3F8A4F" /><path d="M138 88q6-18 24-22" stroke="#fff" strokeWidth="5" opacity="0.45" fill="none" />
+          <path d="M80 196l12-8h46l-12 8z" fill="#C98F5B" strokeWidth="4" />
+          <path d="M80 196h46v8H80z" fill="#B47A48" strokeWidth="4" />
+          <path d="M86 204v14M120 204v14M132 194v14" strokeWidth="4" />
+          <path d="M80 182l12-8h46l-12 8z" fill="#C98F5B" strokeWidth="4" />
+          <path d="M196 214V150" strokeWidth="4" /><circle cx="196" cy="146" r="8" fill="#FFE07A" strokeWidth="3" />
+          {plate('#2F8F5B')}
+        </g>
       )
+      break
     case 'gym':
-      return (
-        <svg viewBox="0 0 220 270" width="100%" height="100%" aria-hidden="true">
-          <rect x="20" y="90" width="180" height="180" fill="#E5ECF2" />
-          <rect x="20" y="80" width="180" height="20" fill="#2E6FD8" />
-          <rect x="40" y="186" width="140" height="70" fill="#9CC3E0" stroke="#fff" strokeWidth="4" />
-          <g fill="#3a2a1f"><rect x="62" y="52" width="96" height="10" rx="4" /><rect x="50" y="38" width="16" height="38" rx="4" /><rect x="154" y="38" width="16" height="38" rx="4" /></g>
-          {sign('#2E6FD8')}
-        </svg>
+      body = (
+        <g>
+          {shadow(112, 100)}
+          {box(20, 100, 140, 124, '#E5ECF2', false, '#C2CEDA')}
+          {box(20, 86, 140, 16, '#2E6FD8', true)}
+          <g fill={INK}><rect x="54" y="46" width="72" height="10" rx="4" /><rect x="42" y="32" width="16" height="38" rx="4" /><rect x="122" y="32" width="16" height="38" rx="4" /></g>
+          <rect x="34" y="122" width="112" height="64" rx="5" fill="#9CC3E0" /><path d="M71 122v64M108 122v64" strokeWidth="3" />
+          {door(74, 190, 32, 34, '#2E6FD8')}
+          {sideWin(170, 120, 22, 50)}
+          {plate('#2E6FD8')}
+        </g>
       )
+      break
     case 'library':
-      return (
-        <svg viewBox="0 0 220 270" width="100%" height="100%" aria-hidden="true">
-          <rect x="24" y="100" width="172" height="170" fill="#F4ECDD" />
-          <path d="M14 104L110 50l96 54z" fill="#8A6A4A" />
-          {[40, 80, 124, 164].map((x) => <rect key={x} x={x} y="176" width="16" height="94" fill="#fff" />)}
-          <g transform="translate(86 62)"><path d="M0 8q12-6 24 2v20q-12-8-24-2z" fill="#6F45BD" /><path d="M48 8q-12-6-24 2v20q12-8 24-2z" fill="#8A6BD0" /></g>
-          {sign('#8A6A4A')}
-        </svg>
+      body = (
+        <g>
+          {shadow(114, 98)}
+          {box(26, 112, 128, 112, '#F4ECDD', false, '#D8CBB3')}
+          {gable(26, 128, 112, 64, '#8A6A4A')}
+          <g transform="translate(72 64)"><path d="M0 8q9-5 18 2v18q-9-7-18-2z" fill="#6F45BD" strokeWidth="2.5" /><path d="M36 8q-9-5-18 2v18q9-7 18-2z" fill="#8A6BD0" strokeWidth="2.5" /></g>
+          {[38, 66, 106, 134].map((x) => <rect key={x} x={x} y="128" width="12" height="96" fill="#fff" />)}
+          {door(76, 160, 28, 64)}
+          {sideWin(164, 140, 22, 30)}
+          {plate('#8A6A4A')}
+        </g>
       )
+      break
     case 'flower':
-      return (
-        <svg viewBox="0 0 220 270" width="100%" height="100%" aria-hidden="true">
-          <rect x="30" y="100" width="160" height="170" fill="#FFF5F8" />
-          <path d="M22 100h176l-12 34H34z" fill="#F3A3C0" />
-          <rect x="44" y="186" width="132" height="70" fill="#CFE7F5" stroke="#fff" strokeWidth="4" />
-          {[0, 1, 2, 3, 4].map((i) => <circle key={i} cx={56 + i * 27} cy="240" r="11" fill={['#E34B4B', '#F2C230', '#F3A3C0', '#6F45BD', '#E34B4B'][i]} />)}
-          <g transform="translate(0 -40)">{sign('#B0476F')}</g>
-        </svg>
+      body = (
+        <g>
+          {shadow(114, 96)}
+          {box(30, 110, 124, 114, '#FFF5F8', false, '#EED5DF')}
+          {box(30, 98, 124, 12, '#E9A3BC', true)}
+          <g transform="translate(80 52)"><circle cx="12" cy="12" r="9" fill="#FF7AA2" strokeWidth="3" /><circle cx="24" cy="12" r="9" fill="#FFD45C" strokeWidth="3" /><circle cx="18" cy="3" r="9" fill="#F3A3C0" strokeWidth="3" /><path d="M18 20v18" strokeWidth="3" /></g>
+          {awning(30, 124, 110, '#F3A3C0')}
+          {win(42, 156, 56, 40)}
+          {door(110, 156, 30, 68, '#B0476F')}
+          {[0, 1, 2, 3].map((i) => <g key={i}><rect x={40 + i * 16} y="204" width="12" height="16" rx="2" fill="#C98F5B" strokeWidth="2.5" /><circle cx={46 + i * 16} cy="200" r="6" fill={['#E34B4B', '#F2C230', '#FF7AA2', '#8A6BD0'][i]} strokeWidth="2.5" /></g>)}
+          {sideWin(166, 156, 20, 36)}
+          {plate('#B0476F')}
+        </g>
       )
+      break
     default:
-      return (
-        <svg viewBox="0 0 220 270" width="100%" height="100%" aria-hidden="true">
-          <rect x="30" y="110" width="160" height="160" fill="#F2E2C4" />
-          <path d="M14 116L110 40l96 76z" fill={color} />
-          <rect x="146" y="50" width="22" height="44" fill="#7A5232" />
-          <path d="M92 270v-56h36v56z" fill="#7A5232" />
-          {win(46, 196)}{win(146, 196)}
-          {sign('#5A3A21')}
-        </svg>
+      body = (
+        <g>
+          {shadow(116, 98)}
+          {box(26, 112, 124, 112, '#F6E3BE', false, '#DDBF8E')}
+          {gable(26, 124, 112, 68, color)}
+          <path d="M120 58l14-6v24l-14 6z" fill={shade(color, 0.65)} strokeWidth="4" />
+          {win(36, 140, 28, 28, true)}{win(112, 140, 28, 28, true)}
+          {door(74, 160, 28, 64)}
+          {sideWin(162, 144, 22, 24)}
+          {plate(shade(color, 0.85))}
+        </g>
       )
   }
+  return (
+    <svg viewBox="0 0 220 270" width="100%" height="100%" aria-hidden="true">
+      <g stroke={INK} strokeWidth="5" strokeLinejoin="round" strokeLinecap="round">{body}</g>
+    </svg>
+  )
 }
 
 export function Tree({ variant = 0 }: { variant?: number }) {
