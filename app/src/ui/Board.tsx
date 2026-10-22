@@ -111,8 +111,9 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
     const small = look.label.length > 3
     items.push(
       <div key={`t${i}`} className={`tile${t.kind === 'mini' ? ' tile-mini' : ''}${t.kind === 'stop' ? ' tile-stop' : ''}`} style={{ left: xAt(t), top: yAt(t), background: look.bg, color: look.fg }}>
-        <TileIcon kind={t.stop ? 'stop' : t.uni ? UNI_LOOK[t.uni].icon : t.kind === 'campus' ? 'grow' : t.kind} size={50} />
-        <span className="tile-label" style={{ fontSize: look.label.length > 4 ? 14 : small ? 17 : 21 }}>{look.label}</span>
+        <TileIcon kind={t.stop ? 'stop' : t.uni ? UNI_LOOK[t.uni].icon : t.kind === 'campus' ? 'grow' : t.kind} size={46} />
+        {/* 멀리 있는 칸도 읽히게 글씨를 키움 (2026-10-22) */}
+        <span className="tile-label" style={{ fontSize: look.label.length > 5 ? 16 : look.label.length > 4 ? 19 : small ? 22 : 27 }}>{look.label}</span>
         {step && <span className="tile-step">{step}</span>}
       </div>,
     )

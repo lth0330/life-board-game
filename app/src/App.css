@@ -130,10 +130,10 @@ button.wide.secondary { background: #fff; color: var(--ink); border: 2px solid v
 .order i.now { width: 20px; height: 20px; outline: 3px solid var(--ink); outline-offset: 1px; }
 .gear { width: 44px; height: 44px; border: none; background: transparent; color: var(--ink-soft); display: flex; align-items: center; justify-content: center; }
 
-.side-buttons { position: absolute; right: 10px; top: 132px; display: flex; flex-direction: column; gap: 8px; }
+.side-buttons { position: absolute; right: 8px; top: 132px; display: flex; flex-direction: column; gap: 6px; }
 .side-buttons button {
-  width: 52px; height: 48px; border-radius: 12px; border: 2px solid var(--paper);
-  background: var(--night); color: var(--paper); font-family: 'Jua', sans-serif; font-size: 13px;
+  width: 48px; height: 44px; border-radius: 12px; border: 2px solid var(--paper);
+  background: rgba(42, 33, 24, 0.62); color: var(--paper); font-family: 'Jua', sans-serif; font-size: 12px;
 }
 
 .ticker {
@@ -462,7 +462,7 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
 .emote-picker button:active { background: var(--paper-2); }
 .hud-who { display: flex; align-items: center; gap: 6px; }
 .hud-face { width: 30px; height: 30px; border-radius: 50%; border: 3px solid; overflow: hidden; background: var(--sky); display: flex; justify-content: center; }
-.hud-face svg { margin-top: 2px; }
+.hud-face svg { margin-top: 0; }
 
 /* ───── 주사위 던지기 연출 ───── */
 .dice-throw { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
@@ -718,7 +718,7 @@ button.wide:not(:disabled):active, .decision .options button:not(:disabled):acti
 .row.repay input { min-height: 44px; min-width: 0; width: 100%; border-radius: 10px; border: 2px solid var(--ink); padding: 0 10px; font: inherit; font-size: 17px; background: #fff; color: var(--ink); }
 
 /* 관리자·내 계정 (2026-10-21) */
-.admin-gear { position: absolute; top: 10px; right: 10px; z-index: 2; width: 44px; height: 44px; border: none; background: transparent; font-size: 20px; opacity: 0.55; }
+.admin-gear { position: fixed; top: 8px; right: 8px; z-index: 2; width: 44px; height: 44px; border: none; background: transparent; font-size: 20px; opacity: 0.55; }
 .admin-list { display: flex; flex-direction: column; gap: 8px; max-height: 55vh; overflow-y: auto; }
 .admin-user { display: flex; gap: 8px; align-items: center; padding: 10px; border: 2px solid var(--paper-2); border-radius: 12px; background: #fff; font-size: 14px; }
 .admin-tag { margin-left: 6px; font-style: normal; font-size: 12px; background: var(--ink); color: var(--paper); padding: 1px 6px; border-radius: 6px; }
@@ -738,7 +738,8 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 /* 정보 칸 접기 손잡이: 가운데 → 오른쪽 */
 .hud-fold { left: auto; right: 18px; transform: none; }
 /* 설정: 오른쪽 버튼 줄의 톱니 버튼 */
-.side-buttons .gear-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; color: var(--ink); }
+.side-buttons .gear-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; color: var(--paper); }
+.side-buttons .gear-btn svg { width: 20px; height: 20px; }
 .side-buttons .gear-btn small { font-size: 11px; line-height: 1; }
 /* AI 말: 그 캐릭터 머리 위 */
 .say-on-board {
@@ -863,3 +864,18 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .sound-vol { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; font-family: 'Jua', sans-serif; }
 .sound-vol span { min-width: 92px; }
 .sound-vol input { flex: 1; accent-color: var(--ink); min-height: 32px; }
+/* 재테크 주식 줄: 정보 위, 버튼 5개 아래 한 줄 (2026-10-22) */
+.stock-row { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; border-bottom: 1px dashed rgba(42, 33, 24, 0.2); }
+.stock-btns { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.stock-btns button { min-height: 40px; padding: 0; }
+/* 넓은 화면(노트북·컴퓨터): 판을 넓게, 정보 칸·기록 창은 왼쪽에 폰 너비로 (2026-10-22) */
+@media (min-width: 900px) and (min-height: 560px) {
+  .play { max-width: 1400px; }
+  .hud { right: auto; width: 500px; }
+  .logbox { right: auto; width: 460px; }
+  .hud.mini ~ .side-buttons, .side-buttons { top: 16px; }
+}
+/* 넓은 화면에서 잔디가 판 밖에서 끊기지 않게 양옆으로 늘림 (2026-10-22) */
+.plane::before { content: ''; position: absolute; top: 0; bottom: 0; left: -2400px; right: -2400px; background: var(--grass); pointer-events: none; }
+.side-buttons button { white-space: nowrap; }
+.side-buttons > button:not(.emote-btn) { width: 52px; font-size: 11.5px; letter-spacing: -0.3px; }

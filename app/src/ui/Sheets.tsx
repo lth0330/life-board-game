@@ -62,9 +62,15 @@ export function FinanceSheet(f: FinanceProps) {
   const { s, p } = f
   const adult = isAdultStage(s)
   const locked = !f.canUse || !adult
+  // 청년 전에는 쓸 수 없는 버튼을 늘어놓지 않고 안내만 (2026-10-22)
+  if (!adult) return (
+    <Sheet title="재테크" onClose={f.onClose}>
+      <p className="note">재테크는 청년(성인)부터 할 수 있어요.</p>
+      <p className="muted">청년이 되면 여기서 주식·적금·복권·보험·대출을 하고, 다른 사람과 돈을 빌리고 빌려줄 수 있어요.</p>
+    </Sheet>
+  )
   return (
     <Sheet title="재테크" onClose={f.onClose}>
-      {!adult && <p className="note">재테크는 청년(성인)부터 할 수 있어요.</p>}
       {adult && !f.canUse && <p className="note">지금은 구경만 할 수 있어요 (내 차례, 주사위 던지기 전에 사용).</p>}
       <div className="tabs" role="tablist">
         {([['stock', '주식'], ['save', '적금'], ['lottery', '복권'], ['ins', '보험'], ['loan', '대출'], ['friend', '친구']] as const).map(([k, l]) => (
@@ -75,16 +81,18 @@ export function FinanceSheet(f: FinanceProps) {
         <div className="list">
           <p className="note">주가는 바퀴가 끝날 때 뉴스와 함께 오르내려요. 미리 알 방법은 없어요.</p>
           {SECTORS.map((k) => (
-            <div key={k} className="row">
-              <div className="grow">
+            <div key={k} className="stock-row">
+              <div>
                 <b>{k}</b> <span className="muted">{won(s.stockPrice[k])}/주</span> <StockChange now={s.stockPrice[k]} prev={s.stockPrev?.[k] ?? s.stockPrice[k]} />
                 <div className="muted">보유 {p.stocks[k]}주 · {won(p.stocks[k] * s.stockPrice[k])}{p.stocks[k] > 0 && <> · 평균 {won(p.stockCost[k] / p.stocks[k])}에 삼 · 지금 팔면 <ProfitText v={p.stocks[k] * s.stockPrice[k] - p.stockCost[k]} /></>}</div>
               </div>
-              <button disabled={locked || p.money < s.stockPrice[k]} onClick={() => f.onTrade(k, 1)}>+1</button>
-              <button disabled={locked || p.money < s.stockPrice[k] * 10} onClick={() => f.onTrade(k, 10)}>+10</button>
-              <button disabled={locked || p.stocks[k] < 1} onClick={() => f.onTrade(k, -1)}>-1</button>
-              <button disabled={locked || p.stocks[k] < 10} onClick={() => f.onTrade(k, -10)}>-10</button>
-              <button disabled={locked || p.stocks[k] < 1} onClick={() => f.onTrade(k, -p.stocks[k])}>전부</button>
+              <div className="stock-btns">
+                <button disabled={locked || p.money < s.stockPrice[k]} onClick={() => f.onTrade(k, 1)}>+1</button>
+                <button disabled={locked || p.money < s.stockPrice[k] * 10} onClick={() => f.onTrade(k, 10)}>+10</button>
+                <button disabled={locked || p.stocks[k] < 1} onClick={() => f.onTrade(k, -1)}>-1</button>
+                <button disabled={locked || p.stocks[k] < 10} onClick={() => f.onTrade(k, -10)}>-10</button>
+                <button disabled={locked || p.stocks[k] < 1} onClick={() => f.onTrade(k, -p.stocks[k])}>전부</button>
+              </div>
             </div>
           ))}
           <p className="muted">주식 평가액 {won(stocksValue(s, p))}</p>
