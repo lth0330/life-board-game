@@ -1,6 +1,6 @@
 // 아래쪽 기록 창 (2026-10-21 사용자, 게임 채팅창처럼 탭): 진행(게임 기록) · 채팅(온라인 사람끼리)
 // 늘 보이고, 줄 부분을 누르면 1줄 ↔ 5줄. 채팅은 온라인에서만. 전체 탭은 없앰 (2026-10-21 사용자)
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { GameState, LogEntry } from '../engine/types'
 import type { ChatMsg } from '../online/Online'
 
@@ -8,7 +8,8 @@ const CHAT_MAX = 60
 type Tab = 'log' | 'chat'
 type Line = { key: string; kind: 'log'; l: LogEntry } | { key: string; kind: 'chat'; c: ChatMsg }
 
-export function LogBox({ game, chat, onSend }: { game: GameState; chat?: ChatMsg[]; onSend?: (text: string) => boolean }) {
+// hold: 룰렛처럼 결과를 아직 보여 주면 안 될 때 기록을 잠깐 멈춤 (2026-10-22: 룰렛 전에 '불합격'이 먼저 보였음)
+export function LogBox({ game, chat, onSend, hold = false }: { game: GameState; chat?: ChatMsg[]; onSend?: (text: string) => boolean; hold?: boolean }) {
   const online = !!onSend
   const [open, setOpen] = useState(() => { try { return localStorage.getItem('dgl:logOpen') === '1' } catch { return false } })
   const [tab, setTab] = useState<Tab>('log')
@@ -21,7 +22,10 @@ export function LogBox({ game, chat, onSend }: { game: GameState; chat?: ChatMsg
   useEffect(() => { if (tab !== 'chat' && chatLen) setUnread((u) => u + 1) }, [chatLen]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (tab === 'chat') setUnread(0) }, [tab])
 
-  const lines: Line[] = tab === 'log' ? game.log.slice(-5).map((l, i) => ({ key: `t${game.logCount}-${i}`, kind: 'log', l }))
+  const frozen = useRef<Line[]>([])
+  const logLines: Line[] = hold ? frozen.current : game.log.slice(-5).map((l, i) => ({ key: `t${game.logCount}-${i}`, kind: 'log', l }))
+  if (!hold) frozen.current = logLines
+  const lines: Line[] = tab === 'log' ? logLines
     : (chat ?? []).slice(-5).map((c) => ({ key: `c${c.id}`, kind: 'chat', c }))
   const shown = open ? lines : lines.slice(-1)
   const send = () => { if (onSend?.(text)) setText('') }

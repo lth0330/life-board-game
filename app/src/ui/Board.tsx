@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactElement } from 'react'
 import { Building, TileIcon, Tree } from '../art/Art'
+import { DECOR_KINDS, GroundDecor, SkyScenery } from '../art/Scenery'
 import { Landmark } from '../art/More'
 import { Character, type Expr } from '../art/Character'
 import { EmoteBubble, RpsBubble } from './Emotes'
@@ -77,6 +78,7 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
   const zig = useMemo(() => zigOffsets(st), [st])
   const xAt = (t: Tile) => tileX(t, zig) // 좁은 옆길은 지그재그 (칸끼리 안 겹치게)
   const yAt = (t: Tile) => tileY(t) // 칸 위치는 고정. 카메라(.track)가 fd만큼 움직임
+  const maxLane = useMemo(() => Math.max(1, ...st.tiles.map((x) => Math.abs(x.lane))), [st])
   const visible = (t: Tile) => t.d >= fd + panD - 2.5 && t.d <= fd + panD + 11
   const steps = showSteps ? distancesFrom(st, focusPos, 6) : new Map<number, number>()
   const items: ReactElement[] = []
@@ -95,6 +97,17 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
       const len = Math.hypot(bx - ax, by - ay)
       const ang = (Math.atan2(by - ay, bx - ax) * 180) / Math.PI
       ground.push(<div key={`road${i}-${n}`} className={`road-seg road-${b.road === 'main' ? 'main' : b.road === 'event' ? 'event' : 'side'}`} style={{ left: ax, top: ay - 38, width: len, transform: `rotate(${ang}deg)` }} />)
+    }
+    // 길에서 멀리 떨어진 양옆 잔디: 덤불·꽃밭·연못·울타리·바위·풀 (넓은 화면에서도 비어 보이지 않게, 2026-10-22)
+    if (t.road === 'main') {
+      for (const side of [-1, 1] as const) for (const band of [0, 1]) {
+        const seed = (i * 31 + (side + 1) * 17 + band * 53) % 97
+        const far = LANE * (maxLane + 1) + 320 + band * 520 + (seed % 4) * 90 // 건물·나무(길에서 ~650px)보다 바깥
+        const kind = DECOR_KINDS[seed % DECOR_KINDS.length]
+        const flat = kind === 'pond' || kind === 'flowers' // 연못·꽃밭은 땅에 눕고, 나머지는 서 있음
+        if (band === 0 && seed % 3 === 0) ground.push(<div key={`fn${i}-${side}`} className="far-decor" style={{ left: xAt(t) + 60 + side * (520 + (seed % 4) * 40) - (side < 0 ? 200 : 0), top: yAt(t) + 30 }}><GroundDecor kind="flowers" /></div>) // 가까운 쪽 잔디에도 꽃밭·풀 (땅에 눕힘)
+        items.push(<div key={`fd${i}-${side}-${band}`} className="far-decor" style={{ ...(flat ? {} : stand), left: xAt(t) + 60 + side * far - (side < 0 ? 260 : 0), top: yAt(t) - 60 + (seed % 3) * 40 }}><GroundDecor kind={kind} /></div>)
+      }
     }
     if (t.road === 'main') {
       for (const [k, side] of [[0, -1], [1, 1]] as const) {
@@ -231,9 +244,8 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
   return (
     <div className={`world stage-${st.id}${canPan ? ' can-pan' : ''}`} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onDragStart={(e) => e.preventDefault()}>
       <div className="sky-deco">
-        <div className="sun" /><div className="hill a" /><div className="hill b" />
+        <SkyScenery />
         <div className="ground" />
-        <div className="cloud a" /><div className="cloud b" /><div className="cloud c" />
       </div>
       <div className="camera">
         <div className="plane" style={{ transform: `rotateX(${TILT}deg)` }}>

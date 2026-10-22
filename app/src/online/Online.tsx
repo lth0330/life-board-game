@@ -67,7 +67,7 @@ function OnlineHome({ me, outfit, onOutfit, onRoom, onBack }: { me: Me; outfit: 
     onRoom(room.id)
   }
   return (
-    <Frame>
+    <Frame onBack={onBack}>
       <div className="menu-hello">
         <Character outfit={outfit} size={44} />
         <b className="jua">{me.nick}님, 어서 오세요</b>
@@ -160,7 +160,7 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
 
   if ((closed && !isHost) || missing) {
     return (
-      <Frame>
+      <Frame onBack={onLeave}>
         <p className="center">{missing ? '방이 없어졌어요' : '방장이 방을 닫았어요'}</p>
         <button className="wide big" onClick={onLeave}>돌아가기</button>
       </Frame>
@@ -168,7 +168,7 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
   }
   if (netErr && !room) {
     return (
-      <Frame>
+      <Frame onBack={onLeave}>
         <p className="center">방을 불러오지 못했어요. 인터넷 연결을 확인해 주세요</p>
         <button className="wide big" onClick={() => setTryNo((n) => n + 1)}>다시 시도</button>
         <button className="wide ghost" onClick={onLeave}>돌아가기</button>
@@ -219,7 +219,7 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
   }
 
   return (
-    <Frame>
+    <Frame onBack={() => void leave()}>
       <p className="muted center">방 코드 · 친구에게 알려 주세요</p>
       <div className="room-code jua">{room.code}</div>
       <div className="seats">

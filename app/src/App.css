@@ -21,6 +21,7 @@
 .setup-card p { margin: 0; }
 .field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--ink-soft); }
 .field input {
+  width: 100%; min-width: 0; box-sizing: border-box;
   font: inherit; font-size: 17px; padding: 10px 12px; border-radius: 12px;
   border: 2px solid var(--ink); background: #fff; color: var(--ink);
 }
@@ -383,7 +384,7 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
 .setup-head h1 { font-size: 32px; }
 .ghost-btn { min-height: 44px; padding: 0 14px; border-radius: 12px; border: 2px solid var(--ink); background: #fff; font-family: 'Jua', sans-serif; }
 .setup-me { display: flex; gap: 12px; align-items: flex-end; }
-.setup-me .grow { flex: 1; }
+.setup-me .grow { flex: 1; min-width: 0; } /* 폰에서 이름 칸이 밖으로 넘치던 것 */
 .me-preview {
   display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 10px; min-width: 76px;
   border-radius: 14px; border: 2px dashed var(--ink); background: #fff; font-family: 'Jua', sans-serif; font-size: 13px;
@@ -573,17 +574,24 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
 .sound-row button { min-height: 44px; border-radius: 12px; font-family: 'Jua', sans-serif; }
 .sound-row button.on { background: var(--ink); color: var(--paper); }
 
-/* 룰렛 */
-.roulette-pop { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); z-index: 8; width: min(320px, calc(100% - 32px));
-  background: var(--paper); border: 4px solid var(--ink); border-radius: 22px; padding: 14px; display: flex; flex-direction: column; align-items: center; gap: 4px; font: inherit; color: var(--ink);
-  box-shadow: 0 14px 34px rgba(0,0,0,0.35); animation: pop 0.3s ease-out; }
-.roulette-pop > b { font-size: 24px; }
-.wheel-wrap { position: relative; width: 200px; height: 210px; }
-.wheel { position: absolute; left: 0; top: 10px; width: 200px; height: 200px; transition: transform 2.6s cubic-bezier(.15,.85,.25,1); }
-.needle { position: absolute; left: 90px; top: 0; width: 20px; height: 24px; }
-.roulette-result { font-size: 30px; }
+/* 룰렛 (2026-10-22 다시: 크게, 금테·불빛·바늘 핀, 직접 돌리기) */
+.roulette-pop { position: absolute; left: 50%; top: 47%; transform: translate(-50%, -50%); z-index: 8; width: min(360px, calc(100% - 24px));
+  background: var(--paper); border: 4px solid var(--ink); border-radius: 24px; padding: 16px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--ink);
+  box-shadow: 0 8px 0 var(--ink), 0 18px 40px rgba(0,0,0,0.35); animation: pop 0.3s ease-out; }
+.roulette-pop > b { font-size: 26px; }
+.roulette-sub { font-size: 14px; color: var(--ink-soft); } .roulette-sub b { color: var(--ink); font-size: 16px; }
+.wheel-wrap { position: relative; width: min(290px, 74vw); aspect-ratio: 1; margin-top: 18px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.wheel-wrap.can-spin { cursor: grab; }
+.wheel-wrap.can-spin:active { cursor: grabbing; }
+.wheel { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 6px 0 rgba(42, 33, 24, 0.35)); }
+.needle { position: absolute; left: 50%; top: -26px; width: 34px; height: 46px; margin-left: -17px; filter: drop-shadow(0 3px 0 rgba(42, 33, 24, 0.35)); }
+.roulette-btn { margin-top: 6px; }
+.roulette-hint { font-size: 13px; color: var(--ink-soft); }
+.roulette-result { font-size: 32px; border: none; background: none; padding: 4px 12px; min-height: 48px; }
 .roulette-result.ok { color: var(--good); } .roulette-result.no { color: var(--bad); }
-@media (prefers-reduced-motion: reduce) { .wheel { transition: none; } }
+.wheel-wrap.can-spin .wheel { animation: wheel-idle 2.4s ease-in-out infinite; }
+@keyframes wheel-idle { 0%, 100% { scale: 1; } 50% { scale: 1.015; } }
+@media (prefers-reduced-motion: reduce) { .wheel { transition: none !important; } .wheel-wrap.can-spin .wheel { animation: none; } }
 
 /* 미니게임 주제별 배경 */
 .sheet.mini { position: relative; overflow: hidden; }
@@ -913,3 +921,31 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 @keyframes ball-x { from { left: 9%; } }
 @keyframes ball-y { 0% { transform: translateY(-34px); } 40% { transform: translateY(-62px); } 100% { transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .racer.go svg, .racer.go .leg-l, .racer.go .leg-r, .throw-ball, .throw-ball i { animation: none; } }
+.dance-stage { position: relative; }
+.dance-step { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-family: 'Jua', sans-serif; font-size: 13px; background: var(--ink); color: var(--paper); border-radius: 999px; padding: 2px 10px; z-index: 1; white-space: nowrap; }
+/* 뒤로 가기 버튼: 왼쪽 위 같은 자리 (2026-10-22) */
+.back-fab { position: fixed; left: max(8px, env(safe-area-inset-left)); top: max(8px, env(safe-area-inset-top)); z-index: 60; width: 44px; height: 44px; border-radius: 14px; border: 3px solid var(--ink); background: var(--paper); color: var(--ink); display: flex; align-items: center; justify-content: center; padding: 0; box-shadow: 0 4px 0 var(--ink); }
+.back-fab:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.setup.has-back { padding-top: 64px; }
+.play .hud { left: 62px; }
+.speed-row { display: flex; align-items: center; gap: 10px; font-family: 'Jua', sans-serif; }
+.speed-row .seg { flex: 1; }
+.speed-row .seg button.on { background: var(--ink); color: var(--paper); }
+/* 배경 그림 (2026-10-22) */
+.setup .scenery { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.sky-deco .sky-scenery { position: absolute; left: 0; top: 0; width: 100%; height: 19%; }
+.sky-deco .sun, .sky-deco .hill, .sky-deco .cloud { display: none; }
+.drift { animation: drift 38s linear infinite alternate; }
+.drift.slow { animation-duration: 60s; }
+@keyframes drift { from { transform: translateX(-30px); } to { transform: translateX(40px); } }
+.sun-rays { transform-origin: center; transform-box: fill-box; animation: sun-pulse 4s ease-in-out infinite; }
+@keyframes sun-pulse { 50% { transform: scale(1.12); } }
+.world { --sun: #FFD45C; --sun-glow: #FFE9A0; --mtn-far: #A9C8E8; --mtn-near: #7FB8A0; }
+.world.stage-middle { --sun: #FFB85C; --sun-glow: #FFD8A0; --mtn-far: #D9B4C8; --mtn-near: #A7B58A; }
+.world.stage-old { --sun: #FF9A6B; --sun-glow: #FFC7A8; --mtn-far: #C9A3C0; --mtn-near: #9AA77E; }
+.sky-sun { fill: var(--sun); } .sky-sun-glow { fill: var(--sun-glow); opacity: 0.55; }
+.sky-mtn-far { fill: var(--mtn-far); } .sky-mtn-near { fill: var(--mtn-near); }
+@media (prefers-reduced-motion: reduce) { .drift, .sun-rays { animation: none; } }
+.far-decor { position: absolute; pointer-events: none; }
+/* 잔디 결 (아주 옅은 무늬) */
+.plane::before { background: radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.07) 0 2px, transparent 3px) 0 0 / 46px 46px, radial-gradient(circle at 70% 60%, rgba(42, 33, 24, 0.06) 0 2px, transparent 3px) 0 0 / 58px 58px, var(--grass); }

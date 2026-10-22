@@ -4,16 +4,28 @@ import { Character } from '../art/Character'
 import type { Outfit } from '../engine/outfit'
 import type { Difficulty } from '../engine/types'
 import { savedSpeed, type Profile, type SaveSlot } from '../storage'
+import { TitleScenery } from '../art/Scenery'
 import { Dresser } from './Dresser'
 import { Manual } from './Manual'
 
 export type Speed = 'fast' | 'normal' | 'slow'
 export interface SetupResult { name: string; names: string[]; humans: number; ai: number; difficulty: Difficulty; speed: Speed; outfit: Outfit; teams?: (0 | 1)[] }
 
-export function Frame({ children }: { children: ReactNode }) {
+// 왼쪽 위에 늘 같은 자리에 있는 뒤로 가기 버튼 (2026-10-22 사용자: 모든 화면에서)
+export function BackButton({ onClick, label = '뒤로 가기' }: { onClick: () => void; label?: string }) {
   return (
-    <div className="setup">
-      <div className="setup-scene" aria-hidden="true"><div className="hill a" /><div className="hill b" /><div className="cloud a" /><div className="cloud b" /></div>
+    <button className="back-fab" onClick={onClick} aria-label={label} title={label}>
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 4L7 12l8 8" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+    </button>
+  )
+}
+
+// onBack이 있으면 왼쪽 위에 뒤로 가기 버튼
+export function Frame({ children, onBack }: { children: ReactNode; onBack?: () => void }) {
+  return (
+    <div className={`setup${onBack ? ' has-back' : ''}`}>
+      <TitleScenery />
+      {onBack && <BackButton onClick={onBack} />}
       <div className="setup-card">{children}</div>
     </div>
   )
@@ -47,7 +59,7 @@ export function MenuScreen({ profile, slot, gameNotice, onContinue, onNew, onOnl
   const st = slot?.state
   const p0 = st?.players[0]
   return (
-    <Frame>
+    <Frame onBack={profile ? undefined : onLogout}>
       <div className="title-logo"><Logo size={260} /></div>
       {gameNotice && <p className="game-notice">📢 {gameNotice}</p>}
       <div className="menu-hello">
@@ -65,11 +77,11 @@ export function MenuScreen({ profile, slot, gameNotice, onContinue, onNew, onOnl
       )}
       {confirm ? (
         <div className="note">
-          <p>새로 하면 지금 저장된 게임은 지워져요. 새로 할까요?</p>
+          <p>새 게임을 시작하면 지금 저장된 게임은 지워져요. 새로 할까요?</p>
           <div className="row"><button className="grow" onClick={onNew}>새로 하기</button><button className="grow" onClick={() => setConfirm(false)}>취소</button></div>
         </div>
       ) : (
-        <button className={`wide ${st ? 'secondary' : 'big'}`} onClick={() => (st ? setConfirm(true) : onNew())}>새로 하기</button>
+        <button className={`wide ${st ? 'secondary' : 'big'}`} onClick={() => (st ? setConfirm(true) : onNew())}>혼자 플레이</button>
       )}
       <button className="wide secondary" onClick={onOnline}>🌐 온라인으로 하기</button>
       {profile && <button className="wide secondary" onClick={onDress}>캐릭터 꾸미기</button>}
@@ -114,9 +126,9 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
   const teams: (0 | 1)[] = teamPick && teamPick.length === 4 ? teamPick : humans === 2 ? [0, 0, 1, 1] : [0, 1, 0, 1]
   const teamOk = teams.filter((t) => t === 0).length === 2
   return (
-    <Frame>
+    <Frame onBack={onBack}>
       <div className="setup-head">
-        <h1 className="jua">새 게임</h1>
+        <h1 className="jua">혼자 플레이</h1>
         <button className="ghost-btn" onClick={() => setManual(true)}>설명서</button>
       </div>
       <div className="setup-me">

@@ -470,6 +470,7 @@ function Dance({ level, outfit, age, onDone }: { level: number; outfit: Outfit; 
     <div className="mini-body">
       <p>{showing ? '춤 동작을 잘 보세요' : '본 순서대로 따라 하세요!'}</p>
       <div className="dance-stage" key={shown}>
+        {showing && <span className="dance-step">{shown + 1}번째 / {len}</span>}
         {showing
           ? <Character outfit={outfit} age={age} pose={POSE_OF[seq[shown]]} expr="happy" size={70} title={POSE_NAME[seq[shown]]} />
           : picked.length < len ? <Character outfit={outfit} age={age} pose="idle" size={70} title="따라 할 차례" /> : <b className="jua mini-big">끝!</b>}

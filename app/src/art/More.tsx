@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { sfx } from '../sound'
 import { awning, box, door, gable, sideWin } from './Art'
 
@@ -217,42 +217,139 @@ export function Trophy({ size = 40 }: { size?: number }) {
   return <svg viewBox="0 0 120 100" width={size} height={size * 0.83} aria-hidden="true">{ART.trophy('')}</svg>
 }
 
-// 룰렛: 성공 칸(초록)이 확률만큼. 3바퀴 돌고 결과 칸에 멈춤
-export function Roulette({ title, chance, ok, who, onDone }: { title: string; chance: number; ok: boolean; who: string; onDone: () => void }) {
+// 룰렛 (대학 합격·감독 도전). 2026-10-22 다시 만듦 (사용자: 더 크고 세련되게, 직접 돌리기)
+// 내 룰렛이면 버튼을 누르거나 룰렛을 누르기·끌어서 돌림. AI·다른 사람 것은 저절로 돎
+// 결과(ok)는 게임이 이미 정함 → 얼마나 세게 돌리든 바늘이 성공·실패 칸 안에 멈추도록 마지막 각도를 맞춤
+const WHEEL_R = 46
+const polar = (deg: number, r = WHEEL_R) => [50 + r * Math.sin((deg * Math.PI) / 180), 50 - r * Math.cos((deg * Math.PI) / 180)]
+function arc(from: number, to: number, r = WHEEL_R) {
+  const [x1, y1] = polar(from, r), [x2, y2] = polar(to, r)
+  return `M50 50 L${x1} ${y1} A${r} ${r} 0 ${to - from > 180 ? 1 : 0} 1 ${x2} ${y2} Z`
+}
+export function Roulette({ title, chance, ok, who, manual, onDone }: { title: string; chance: number; ok: boolean; who: string; manual: boolean; onDone: () => void }) {
   const [angle, setAngle] = useState(0)
-  const [stopped, setStopped] = useState(false)
-  const target = useMemo(() => {
-    // 바늘은 위(0°). 성공 칸은 0 ~ chance×360°. 그 안이나 밖의 한 점이 위로 오게 돌림
-    const span = chance * 360
-    const inside = span * (0.2 + Math.random() * 0.6)
-    const outside = span + (360 - span) * (0.2 + Math.random() * 0.6)
-    return 360 * 4 + (360 - (ok ? inside : outside))
-  }, [chance, ok])
+  const [phase, setPhase] = useState<'ready' | 'drag' | 'spin' | 'stopped'>('ready')
+  const [dur, setDur] = useState(3000)
+  const drag = useRef<{ start: number; from: number; last: { t: number; a: number }[]; moved: number } | null>(null)
+  const wrap = useRef<HTMLDivElement>(null)
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([])
+  useEffect(() => () => timers.current.forEach(clearTimeout), [])
+  const span = Math.max(0, Math.min(360, chance * 360))
+  // 바늘(위)이 가리킬 룰렛 위의 자리: 성공 칸(0~span) 안쪽 또는 밖
+  const spot = useMemo(() => (ok ? span * (0.2 + Math.random() * 0.6) : span + (360 - span) * (0.2 + Math.random() * 0.6)), [ok, span])
+
+  const spin = useCallback((from: number, dir: 1 | -1, power: number) => {
+    const turns = Math.max(3, Math.min(8, Math.round(3 + power * 3)))
+    const rest = ((360 - spot) % 360 + 360) % 360 // 이 각도(360으로 나눈 나머지)에서 바늘이 spot을 가리킴
+    const off = dir > 0 ? (((rest - from) % 360) + 360) % 360 : -((((from - rest) % 360) + 360) % 360)
+    const to = from + dir * turns * 360 + off
+    const d = Math.round(Math.max(2400, Math.min(4200, 2400 + power * 900)))
+    setDur(d)
+    setPhase('spin')
+    requestAnimationFrame(() => setAngle(to))
+    // 똑딱 소리: 처음엔 빠르게, 점점 느리게
+    let t = 0, gap = 60
+    while (t < d - 250) { timers.current.push(setTimeout(() => sfx('tick'), t)); t += gap; gap *= 1.09 }
+    timers.current.push(setTimeout(() => { setPhase('stopped'); sfx(ok ? 'fanfare' : 'lose') }, d + 60))
+    timers.current.push(setTimeout(onDone, d + 1900))
+  }, [spot, ok, onDone])
+
+  // AI·다른 사람 룰렛은 잠깐 보여 주고 저절로
   useEffect(() => {
-    const t0 = setTimeout(() => setAngle(target), 50)
-    const tick = setInterval(() => sfx('spin'), 120)
-    const t1 = setTimeout(() => { clearInterval(tick); setStopped(true); sfx(ok ? 'fanfare' : 'lose') }, 2650)
-    const t2 = setTimeout(onDone, 4300)
-    return () => { clearTimeout(t0); clearTimeout(t1); clearTimeout(t2); clearInterval(tick) }
-  }, [target, ok, onDone])
-  const big = chance > 0.5 ? 1 : 0
-  const a = chance * 2 * Math.PI
-  const x = 50 + 46 * Math.sin(a), y = 50 - 46 * Math.cos(a)
+    if (manual) return
+    const t = setTimeout(() => spin(0, 1, 0.6), 500)
+    return () => clearTimeout(t)
+  }, [manual, spin])
+
+  const pointerAngle = (e: React.PointerEvent) => {
+    const r = wrap.current!.getBoundingClientRect()
+    return (Math.atan2(e.clientX - (r.left + r.width / 2), -(e.clientY - (r.top + r.height / 2))) * 180) / Math.PI
+  }
+  const onDown = (e: React.PointerEvent) => {
+    if (!manual || phase !== 'ready') return
+    e.currentTarget.setPointerCapture(e.pointerId)
+    const a = pointerAngle(e)
+    drag.current = { start: a, from: angle, last: [{ t: performance.now(), a: angle }], moved: 0 }
+    setPhase('drag')
+  }
+  const onMove = (e: React.PointerEvent) => {
+    const d = drag.current
+    if (!d || phase !== 'drag') return
+    let delta = pointerAngle(e) - d.start
+    if (delta > 180) delta -= 360
+    if (delta < -180) delta += 360
+    const a = d.last[d.last.length - 1].a + delta
+    d.start = pointerAngle(e)
+    d.moved += Math.abs(delta)
+    d.last = [...d.last.slice(-5), { t: performance.now(), a }]
+    setAngle(a)
+  }
+  const onUp = () => {
+    const d = drag.current
+    if (!d || phase !== 'drag') return
+    drag.current = null
+    const now = performance.now()
+    const recent = d.last.filter((x) => now - x.t < 120)
+    const first = recent[0] ?? d.last[0], last = d.last[d.last.length - 1]
+    const v = (last.a - first.a) / Math.max(16, last.t - first.t) // 도/ms
+    // 거의 안 움직였으면(누르기) 보통 세기, 끌었으면 끈 방향·속도대로
+    const dir: 1 | -1 = d.moved < 8 || v >= 0 ? 1 : -1
+    spin(last.a, dir, d.moved < 8 ? 0.6 : Math.min(2, Math.abs(v) * 1.5))
+  }
+
+  // 손을 룰렛 밖에서 떼도 돌도록 화면 전체에서도 받음
+  const upRef = useRef(onUp)
+  upRef.current = onUp
+  useEffect(() => {
+    if (phase !== 'drag') return
+    const up = () => upRef.current()
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', up)
+    window.addEventListener('mouseup', up)
+    window.addEventListener('touchend', up)
+    return () => { window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); window.removeEventListener('mouseup', up); window.removeEventListener('touchend', up) }
+  }, [phase])
+  const lights = Array.from({ length: 16 }, (_, i) => polar(i * 22.5, 49.5))
+  const okMid = polar(span / 2, 30), noMid = polar(span + (360 - span) / 2, 30)
   return (
-    <button className="roulette-pop" onClick={() => stopped && onDone()} aria-label={`${title}: ${stopped ? (ok ? '성공' : '실패') : '돌아가는 중'}`}>
+    <div className="roulette-pop" role="dialog" aria-label={`${title}: ${phase === 'stopped' ? (ok ? '성공' : '실패') : '룰렛'}`}>
       <b className="jua">{title}</b>
-      <span className="muted">{who} · 성공 확률 {Math.round(chance * 100)}%</span>
-      <div className="wheel-wrap">
-        <svg className="wheel" viewBox="0 0 100 100" style={{ transform: `rotate(${angle}deg)` }} aria-hidden="true">
-          <circle cx="50" cy="50" r="46" fill="#E07A5F" stroke="#2A2118" strokeWidth="3" />
-          {chance >= 0.999 ? <circle cx="50" cy="50" r="46" fill="#6DBB5A" /> : <path d={`M50 50 L50 4 A46 46 0 ${big} 1 ${x} ${y} Z`} fill="#6DBB5A" />}
-          {Array.from({ length: 12 }, (_, i) => <path key={i} d={`M50 50 L${50 + 46 * Math.sin(i * Math.PI / 6)} ${50 - 46 * Math.cos(i * Math.PI / 6)}`} stroke="rgba(255,255,255,0.5)" strokeWidth="1" />)}
-          <circle cx="50" cy="50" r="7" fill="#2A2118" />
+      <span className="roulette-sub">{who} · 성공 확률 <b>{Math.round(chance * 100)}%</b></span>
+      <div
+        className={`wheel-wrap${manual && phase === 'ready' ? ' can-spin' : ''}`} ref={wrap}
+        onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
+      >
+        <svg className="wheel" viewBox="0 0 100 100" aria-hidden="true"
+          style={{ transform: `rotate(${angle}deg)`, transition: phase === 'spin' ? `transform ${dur}ms cubic-bezier(.12,.75,.18,1)` : 'none' }}>
+          <defs>
+            <radialGradient id="wheelOk" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#9BE6A5" /><stop offset="100%" stopColor="#3FA45B" /></radialGradient>
+            <radialGradient id="wheelNo" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#FFB4A2" /><stop offset="100%" stopColor="#D9573E" /></radialGradient>
+          </defs>
+          <circle cx="50" cy="50" r="49.5" fill="#E2B85C" stroke="#2A2118" strokeWidth="1.6" />
+          <circle cx="50" cy="50" r={WHEEL_R} fill="url(#wheelNo)" stroke="#2A2118" strokeWidth="1.4" />
+          {span >= 359.9 ? <circle cx="50" cy="50" r={WHEEL_R} fill="url(#wheelOk)" /> : span > 0 && <path d={arc(0, span)} fill="url(#wheelOk)" />}
+          {Array.from({ length: 24 }, (_, i) => <path key={i} d={`M50 50 L${polar(i * 15).join(' ')}`} stroke="rgba(255,255,255,0.35)" strokeWidth="0.5" />)}
+          {span > 0 && span < 359.9 && <path d={`M${polar(span).join(' ')} L50 50 L50 4`} stroke="#2A2118" strokeWidth="1.4" fill="none" />}
+          {span >= 40 && <text x={okMid[0]} y={okMid[1] + 2.5} textAnchor="middle" fontSize="7.5" fontFamily="Jua, sans-serif" fill="#fff" stroke="#1E6B35" strokeWidth="0.6" paintOrder="stroke" transform={`rotate(${span / 2} ${okMid[0]} ${okMid[1]})`}>성공</text>}
+          {span <= 320 && <text x={noMid[0]} y={noMid[1] + 2.5} textAnchor="middle" fontSize="7.5" fontFamily="Jua, sans-serif" fill="#fff" stroke="#8E2F1E" strokeWidth="0.6" paintOrder="stroke" transform={`rotate(${span + (360 - span) / 2} ${noMid[0]} ${noMid[1]})`}>실패</text>}
+          {lights.map(([x, y], i) => <circle key={i} cx={x} cy={y} r="1.3" fill={i % 2 ? '#FFF7D6' : '#FF7A59'} stroke="#2A2118" strokeWidth="0.4" />)}
+          <circle cx="50" cy="50" r="9" fill="#FBF5E8" stroke="#2A2118" strokeWidth="1.6" />
+          <path d="M50 44l1.8 3.7 4 .5-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.8 4-.5z" fill="#E2B85C" stroke="#2A2118" strokeWidth="0.6" />
         </svg>
-        <svg className="needle" viewBox="0 0 20 24" aria-hidden="true"><path d="M10 24L0 0h20z" fill="#2A2118" /></svg>
+        <svg className="needle" viewBox="0 0 30 40" aria-hidden="true">
+          <path d="M15 38L4 12a11 11 0 1 1 22 0z" fill="#E2553B" stroke="#2A2118" strokeWidth="2.6" strokeLinejoin="round" />
+          <circle cx="15" cy="11" r="4" fill="#FBF5E8" stroke="#2A2118" strokeWidth="2" />
+        </svg>
       </div>
-      {stopped && <b className={`jua roulette-result ${ok ? 'ok' : 'no'}`}>{ok ? '성공!' : '아쉬워요…'}</b>}
-    </button>
+      {phase === 'stopped'
+        ? <button className={`jua roulette-result ${ok ? 'ok' : 'no'}`} onClick={onDone}>{ok ? '성공!' : '아쉬워요…'}</button>
+        : manual
+          ? <>
+              <button className="wide big roulette-btn" disabled={phase !== 'ready'} onClick={() => spin(angle, 1, 0.6)}>{phase === 'ready' ? '🎯 룰렛 돌리기' : '돌아가는 중…'}</button>
+              {phase === 'ready' && <span className="roulette-hint">룰렛을 손가락이나 마우스로 끌어서 돌려도 돼요</span>}
+            </>
+          : <span className="roulette-hint">{who} 차례 · 돌아가는 중…</span>}
+    </div>
   )
 }
 

@@ -30,7 +30,7 @@ export default function AuthScreen({ initial = 'login', onDone, onBack }: { init
   }
   if (mode === 'find') return <FindAccount onBack={() => go('login')} onDone={(newId) => { setId(newId); setPw(''); go('login') }} />
   return (
-    <Frame>
+    <Frame onBack={onBack}>
       <h2 className="jua center">{mode === 'login' ? '로그인' : '회원가입'}</h2>
       <div className="seg">
         <button className={mode === 'login' ? 'on' : ''} onClick={() => go('login')}>로그인</button>
@@ -92,7 +92,7 @@ function FindAccount({ onBack, onDone }: { onBack: () => void; onDone: (id: stri
     setOk('비밀번호를 바꿨어요. 새 비밀번호로 로그인해 주세요')
   }
   return (
-    <Frame>
+    <Frame onBack={onBack}>
       <h2 className="jua center">아이디·비밀번호 찾기</h2>
       {ok ? (
         <>

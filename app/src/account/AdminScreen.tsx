@@ -47,7 +47,7 @@ export default function AdminScreen({ onBack }: { onBack: () => void }) {
   if (state === 'checking') return <Frame><p className="center muted">확인하는 중…</p></Frame>
   if (state === 'login') {
     return (
-      <Frame>
+      <Frame onBack={onBack}>
         <h2 className="jua center">⚙️ 관리자</h2>
         <p className="muted center">관리자 계정으로만 들어갈 수 있어요</p>
         <form className="login-form" onSubmit={(e) => { e.preventDefault(); void signIn() }}>
@@ -61,7 +61,7 @@ export default function AdminScreen({ onBack }: { onBack: () => void }) {
     )
   }
   return (
-    <Frame>
+    <Frame onBack={() => void leave()}>
       <h2 className="jua center">⚙️ 관리자</h2>
       <div className="seg">
         <button className={tab === 'users' ? 'on' : ''} onClick={() => setTab('users')}>회원 관리</button>

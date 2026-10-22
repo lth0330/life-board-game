@@ -21,7 +21,7 @@ import { autoEmote, EMOTE_COOLDOWN_MS, EMOTE_MS, EmotePicker } from './ui/Emotes
 import { Confetti, DiceThrow, StageCard } from './ui/Effects'
 import { Manual } from './ui/Manual'
 import { MiniGame } from './ui/MiniGames'
-import { Frame, MenuScreen, SetupScreen, TitleScreen, type Speed } from './ui/Screens'
+import { BackButton, Frame, MenuScreen, SetupScreen, TitleScreen, type Speed } from './ui/Screens'
 import { CardsSheet, FinanceSheet, GameOver, MyInfoSheet, PeopleSheet, playerLine, StageSummary, won, TeamBadge } from './ui/Sheets'
 
 // 온라인 화면(AWS 연결 포함)은 '온라인으로 하기'를 눌렀을 때만 내려받음 (혼자 하기는 가볍게)
@@ -36,7 +36,7 @@ const SPEED_MS: Record<Speed, number> = { fast: 450, normal: 1000, slow: 1700 }
 const WALK_MS = 230
 const DICE_ROLL_MS = 750
 const DICE_SHOW_MS = 650
-const DICE_BEFORE_WHEEL_MS = 1000
+const DICE_BEFORE_WHEEL_MS = 1600
 // 상점 카테고리 (물건 id로 나눔)
 const SHOP_CATS = [
   { id: 'home', icon: '🏠', name: '집·차', match: (id: string) => id.startsWith('house') || id.startsWith('mortgage') || id.startsWith('car') },
@@ -236,7 +236,7 @@ export default function App() {
     )
   }
   return (
-    <Play game={game} setGame={setGame} speed={speed} saving={!!profile} onQuit={() => {
+    <Play game={game} setGame={setGame} speed={speed} onSpeed={(v) => { setSpeed(v); saveSpeed(v) }} saving={!!profile} onQuit={() => {
       flush()
       if (profile) setSlot(game.phase === 'gameover' ? null : makeSlot(game))
       setGame(null)
@@ -257,10 +257,12 @@ export interface OnlinePlay {
   sendChat?: (text: string) => boolean
 }
 
-export function Play({ game, setGame, speed, saving, onQuit, online }: { game: GameState; setGame: (g: GameState) => void; speed: Speed; saving: boolean; onQuit: () => void; online?: OnlinePlay }) {
+// onSpeed: 게임 안 설정에서 AI 속도 바꾸기 (혼자 하기만, 바꾸면 다음 게임에도 그대로 2026-10-22)
+export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: { game: GameState; setGame: (g: GameState) => void; speed: Speed; onSpeed?: (v: Speed) => void; saving: boolean; onQuit: () => void; online?: OnlinePlay }) {
   const [sheet, setSheet] = useState<SheetKind>(null)
   const [rolling, setRolling] = useState(false)
   const [menu, setMenu] = useState(false)
+  const [leaveAsk, setLeaveAsk] = useState(false) // 뒤로 가기: 게임에서 나갈지 물음
   // 위쪽 정보 칸 접기 (폰에서 판을 넓게). 이 기기에 기억
   const [hudMini, setHudMini] = useState(() => { try { return localStorage.getItem('dgl:hudMini') === '1' } catch { return false } })
   const toggleHud = () => { const v = !hudMini; setHudMini(v); try { localStorage.setItem('dgl:hudMini', v ? '1' : '0') } catch { /* 무시 */ } }
@@ -291,12 +293,14 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
   const [diceShow, setDiceShow] = useState<{ value: number; second?: number } | null>(null)
   const lastDiceId = useRef(game.dice?.id ?? 0)
   const lastWheel = useRef(game.roulette?.id ?? 0)
+  const diceAt = useRef(0) // 주사위 결과가 나온 시각 (룰렛을 그 뒤에 띄우려고)
   useEffect(() => {
     if (!game.dice || game.dice.id === lastDiceId.current) return
     lastDiceId.current = game.dice.id
+    diceAt.current = Date.now()
     setDiceShow({ value: game.dice.value, second: game.dice.second })
     sfx('diceLand')
-    // 수능처럼 주사위 바로 뒤에 룰렛이 오면 주사위를 1초 보여 준 뒤 룰렛 (2026-10-21 사용자)
+    // 수능처럼 주사위 바로 뒤에 룰렛이 오면 주사위를 1.6초 보여 준 뒤 룰렛 (2026-10-21·22 사용자)
     const wheelNext = !!game.roulette && game.roulette.id !== lastWheel.current
     const t = setTimeout(() => setDiceShow(null), wheelNext ? DICE_BEFORE_WHEEL_MS : DICE_SHOW_MS)
     return () => clearTimeout(t)
@@ -343,11 +347,15 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
   }, [popVisible, popShow, game.players, suspense])
   // 룰렛 연출 (대학 합격·감독 도전)
   const [wheel, setWheel] = useState<GameState['roulette']>(null)
+  // 주사위 결과와 같은 순간에 오면, 주사위가 나온 시각부터 재서 기다렸다가 돌림
+  // (diceShow 상태로 확인하면 같은 순간엔 아직 null이라 바로 돌아 버렸음, 2026-10-22)
   useEffect(() => {
-    if (!game.roulette || game.roulette.id === lastWheel.current || diceShow !== null) return // 주사위가 사라진 뒤에 돌림
-    lastWheel.current = game.roulette.id
-    setWheel(game.roulette)
-  }, [game.roulette, diceShow])
+    if (!game.roulette || game.roulette.id === lastWheel.current) return
+    const r = game.roulette
+    const t = setTimeout(() => { lastWheel.current = r.id; setWheel(r) }, Math.max(0, diceAt.current + DICE_BEFORE_WHEEL_MS - Date.now()))
+    return () => clearTimeout(t)
+  }, [game.roulette])
+  const wheelWaiting = !!game.roulette && game.roulette.id !== lastWheel.current // 룰렛 차례를 기다리는 중엔 선택 창도 안 띄움
   const closeWheel = useCallback(() => setWheel(null), [])
   // 상점 카테고리
   const [shopCat, setShopCat] = useState<string | null>(null)
@@ -367,9 +375,14 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
     return () => clearTimeout(t)
   }, [hold, walking, diceShow, popShow])
 
-  const busy = rolling || diceShow !== null || walking || popShow !== null || hold !== null || summaryOpen || wheel !== null
+  const busy = rolling || diceShow !== null || walking || popShow !== null || hold !== null || summaryOpen || wheel !== null || wheelWaiting
   const p = cur(game)
   const shown = walking ? game.players[game.pathPlayer] : hold !== null ? game.players[hold] : p
+  // 룰렛을 기다리거나 돌리는 동안은 정보 칸도 그 전 모습 그대로 (학자금 대출이 먼저 보여 합격을 미리 알 수 있었음, 2026-10-22)
+  const hudHeld = useRef(shown)
+  const holdHud = wheel !== null || wheelWaiting
+  if (!holdHud) hudHeld.current = shown
+  const hudP = holdHud ? hudHeld.current : shown
   const myTurn = isMine(p.id) && canAct(game) && !busy
   const st = stageOf(game)
   useEffect(() => { setBgmStage(st.id) }, [st.id])
@@ -553,23 +566,23 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
       <header className={`hud${hudMini ? ' mini' : ''}`}>
         <div className="hud-row">
           <div className="hud-who">
-            <span className="hud-face" style={{ borderColor: shown.color }}><Character outfit={shown.outfit} size={26} age={ageOf(game, shown)} crop="head" /></span>
-            <div className="jua hud-stage">{st.name} · {ageOf(game, shown)}세{game.settings.teams && <TeamBadge team={shown.team} />}</div>
+            <span className="hud-face" style={{ borderColor: hudP.color }}><Character outfit={hudP.outfit} size={26} age={ageOf(game, hudP)} crop="head" /></span>
+            <div className="jua hud-stage">{st.name} · {ageOf(game, hudP)}세{game.settings.teams && <TeamBadge team={hudP.team} />}</div>
           </div>
-          <div className="hud-money"><span aria-label="돈">💰</span><b>{won(shown.money)}</b>{turnIncome(game, shown) ? <span className={turnIncome(game, shown) > 0 ? 'inc-up' : 'inc-down'} title="매 턴 들어오고 나가는 돈"> ({turnIncome(game, shown) > 0 ? '+' : ''}{won(turnIncome(game, shown))})</span> : null} · 행복 <b>{shown.happy}</b></div>
-          <div className={`fortune f${shown.fortune}`} title="운세 (착한 일 ↑, 이기적인 일 ↓)">{fortuneName(shown.fortune)}</div>
+          <div className="hud-money"><span aria-label="돈">💰</span><b>{won(hudP.money)}</b>{turnIncome(game, hudP) ? <span className={turnIncome(game, hudP) > 0 ? 'inc-up' : 'inc-down'} title="매 턴 들어오고 나가는 돈"> ({turnIncome(game, hudP) > 0 ? '+' : ''}{won(turnIncome(game, hudP))})</span> : null} · 행복 <b>{hudP.happy}</b></div>
+          <div className={`fortune f${hudP.fortune}`} title="운세 (착한 일 ↑, 이기적인 일 ↓)">{fortuneName(hudP.fortune)}</div>
         </div>
         <div className="hud-row">
           <div className="order">
             <span className="muted">
-              {shown.human ? `${shown.name} 차례` : `${shown.name}(AI) 차례 · 보는 중`}
-              {st.rolls ? ` · 남은 주사위 ${shown.rollsLeft}/${st.rolls}` : ' · 골까지 경주'}
+              {hudP.human ? `${hudP.name} 차례` : `${hudP.name}(AI) 차례 · 보는 중`}
+              {st.rolls ? ` · 남은 주사위 ${hudP.rollsLeft}/${st.rolls}` : ' · 골까지 경주'}
             </span>
           </div>
-          <span className="hud-mood">기분 <span className="mood" title={`기분 ${MOOD_NAMES[moodLevel(shown)]}: ${MOOD_HELP[moodLevel(shown)]}`} aria-label={`기분 ${MOOD_NAMES[moodLevel(shown)]}`}>{MOOD_FACES[moodLevel(shown)]}</span></span>
+          <span className="hud-mood">기분 <span className="mood" title={`기분 ${MOOD_NAMES[moodLevel(hudP)]}: ${MOOD_HELP[moodLevel(hudP)]}`} aria-label={`기분 ${MOOD_NAMES[moodLevel(hudP)]}`}>{MOOD_FACES[moodLevel(hudP)]}</span></span>
         </div>
-        {shown.loans.length > 0 && <LoanLine p={shown} />}
-        <div className="hud-sub muted">{playerLine(game, shown)} · <b className="hud-stats">지력 {shown.stats.int} · 체력 {shown.stats.str} · 매력 {shown.stats.cha}</b></div>
+        {hudP.loans.length > 0 && <LoanLine p={hudP} />}
+        <div className="hud-sub muted">{playerLine(game, hudP)} · <b className="hud-stats">지력 {hudP.stats.int} · 체력 {hudP.stats.str} · 매력 {hudP.stats.cha}</b></div>
         <button className="hud-fold" aria-label={hudMini ? '정보 펼치기' : '정보 접기'} aria-expanded={!hudMini} onClick={toggleHud}>{hudMini ? '▼' : '▲'}</button>
       </header>
 
@@ -586,7 +599,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
       </div>
       {picker && emoteId !== undefined && <EmotePicker outfit={game.players[emoteId].outfit} age={ageOf(game, game.players[emoteId])} onPick={pickEmote} onClose={() => setPicker(false)} />}
 
-      <LogBox game={game} chat={online?.chat} onSend={online?.sendChat} />
+      <LogBox game={game} chat={online?.chat} onSend={online?.sendChat} hold={wheel !== null || wheelWaiting} />
 
       {(showCar || heldItems.length > 0 || showSeek) && (
         <div className="roll-mods">
@@ -653,7 +666,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
 
       {summaryOpen && !walking && <StageSummary s={game} onClose={() => (online ? setClosedSummary(game.stageIdx) : act((s) => { s.summary = null }))} />}
 
-      {wheel && <Roulette title={wheel.title} chance={wheel.chance} ok={wheel.ok} who={game.players[wheel.playerId].name} onDone={closeWheel} />}
+      {wheel && <Roulette title={wheel.title} chance={wheel.chance} ok={wheel.ok} who={game.players[wheel.playerId].name} manual={isMine(wheel.playerId) && game.players[wheel.playerId].human} onDone={closeWheel} />}
 
       {popVisible && popShow && (
         suspense
@@ -705,6 +718,23 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
       )}
       {banner && !busy && CELEBRATE.includes(banner.title) && <Confetti key={banner.title + game.turn} />}
 
+      {/* 왼쪽 위 뒤로 가기: 열린 창이 있으면 닫고, 없으면 게임에서 나갈지 물음 (2026-10-22 사용자) */}
+      <BackButton label={sheet || menu || picker ? '닫기' : '게임에서 나가기'} onClick={() => {
+        if (picker) setPicker(false)
+        else if (sheet) setSheet(null)
+        else if (menu) setMenu(false)
+        else setLeaveAsk(true)
+      }} />
+      {leaveAsk && (
+        <div className="sheet-backdrop" onClick={() => setLeaveAsk(false)}>
+          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            <h2 className="jua">게임에서 나갈까요?</h2>
+            <p className="muted">{online ? '같은 방 코드로 다시 들어오면 이어서 해요.' : saving ? '게임은 저장돼요. 메뉴의 이어 하기로 돌아올 수 있어요.' : '손님 모드라 저장되지 않아요.'}</p>
+            <button className="wide" onClick={() => setLeaveAsk(false)}>계속하기</button>
+            <button className="wide secondary" onClick={onQuit}>메뉴로 나가기</button>
+          </div>
+        </div>
+      )}
       {menu && (
         <div className="sheet-backdrop" onClick={() => setMenu(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
@@ -714,6 +744,16 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
               <button className={sound.sfx ? 'on' : ''} aria-pressed={sound.sfx} onClick={() => { setSoundPrefs({ sfx: !sound.sfx }); setSound(soundPrefs()); sfx('click') }}>🔊 효과음 {sound.sfx ? '켜짐' : '꺼짐'}</button>
               <button className={sound.bgm ? 'on' : ''} aria-pressed={sound.bgm} onClick={() => { unlockAudio(); setSoundPrefs({ bgm: !sound.bgm }); setSound(soundPrefs()) }}>🎵 배경음 {sound.bgm ? '켜짐' : '꺼짐'}</button>
             </div>
+            {onSpeed && game.players.some((q) => !q.human) && (
+              <div className="speed-row">
+                <span>AI 속도</span>
+                <div className="seg">
+                  {([['fast', '빠르게'], ['normal', '보통'], ['slow', '천천히']] as const).map(([k, l]) => (
+                    <button key={k} className={speed === k ? 'on' : ''} aria-pressed={speed === k} onClick={() => onSpeed(k)}>{l}</button>
+                  ))}
+                </div>
+              </div>
+            )}
             <label className="sound-vol">
               <span>소리 크기 {Math.round(sound.vol * 100)}</span>
               <input type="range" min={0} max={100} step={5} value={Math.round(sound.vol * 100)} aria-label="소리 크기"
