@@ -257,33 +257,68 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
   )
 }
 
-// 전체 지도: 아래에서 위로, 왼쪽 길 / 본 길 / 오른쪽 길
-export function FullMap({ s, onClose }: { s: GameState; onClose: () => void }) {
+// 전체 지도 (2026-10-22 다시: 길이 이어진 진짜 지도 + 내 위치·다른 사람 위치·내 앞 칸 이동 숫자)
+// 판과 같은 자리 계산(갈래·지그재그)을 줄여서 그림. 아래에서 위로 걸어감
+const MAP_ROW = 70 // 깊이 1당 세로 px
+export function FullMap({ s, meId, onClose }: { s: GameState; meId: number; onClose: () => void }) {
   const st = s.stages[s.stageIdx]
-  const sorted = st.tiles.map((t, i) => ({ t, i })).sort((a, b) => b.t.d - a.t.d || a.t.lane - b.t.lane)
+  const zig = useMemo(() => zigOffsets(st), [st])
+  const me = s.players[meId]
+  const steps = useMemo(() => distancesFrom(st, me.pos, 999), [st, me.pos]) // 끝까지 몇 칸인지 (2026-10-22 사용자)
+  const maxD = Math.max(...st.tiles.map((t) => t.d))
+  const height = maxD * MAP_ROW + 110
+  // 가로: 판의 칸 자리(px)를 지도 폭(%)으로 줄임
+  const xs = st.tiles.map((t) => tileX(t, zig) + 60)
+  const minX = Math.min(...xs), maxX = Math.max(...xs)
+  const xOf = (i: number) => 9 + ((xs[i] - minX) / Math.max(1, maxX - minX)) * 82 // %
+  const yOf = (i: number) => (maxD - st.tiles[i].d) * MAP_ROW + 60 // px
+  const meRef = useRef<HTMLDivElement>(null)
+  useEffect(() => { meRef.current?.scrollIntoView({ block: 'center' }) }, [])
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+      <div className="sheet map-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
-          <h2 className="jua">{st.name}의 길 · 전체 지도</h2>
+          <h2 className="jua">{st.name}의 길 · 지도</h2>
           <button className="x" onClick={onClose}>닫기</button>
         </div>
-        <p className="muted">아래에서 위로 걸어가요. 가운데가 본 길, 양옆이 갈라지는 길이에요.</p>
-        <div className="map-col">
-          {sorted.map(({ t, i }) => {
+        <div className="map-legend">
+          <span><i className="lg-me" />나</span>
+          <span><i className="lg-other" />다른 사람</span>
+          <span><b className="map-step">3</b>내 앞 칸 수 (점선: 주사위 한 번에 닿는 칸)</span>
+          <span className="muted">아래에서 위로 가요</span>
+        </div>
+        <div className="map-scroll">
+        <div className="map-board" style={{ height }}>
+          <svg className="map-roads" viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" aria-hidden="true">
+            {st.tiles.flatMap((t, i) => t.next.map((n) => (
+              <line key={`${i}-${n}`} x1={xOf(i)} y1={yOf(i)} x2={xOf(n)} y2={yOf(n)} className={`map-road${st.tiles[n].road === 'main' ? '' : ' side'}`} vectorEffect="non-scaling-stroke" />
+            )))}
+          </svg>
+          {st.tiles.map((t, i) => {
             const look = tileLook(t)
             const here = s.players.filter((p) => p.pos === i)
+            const mine = i === me.pos
+            const n = steps.get(i)
             return (
-              <div key={i} className="map-row" style={{ justifyContent: t.lane < 0 ? 'flex-start' : t.lane > 0 ? 'flex-end' : 'center' }}>
-                <div className="map-tile" style={{ background: look.bg, color: look.fg }}>
-                  <span>{look.label}</span>
-                  {t.point && <em>{t.point === 'shop' ? '상점' : '결혼'}</em>}
-                  {t.fork && <em>갈림길</em>}
-                  <div className="map-dots">{here.map((p) => <i key={p.id} style={{ background: p.color }} />)}</div>
-                </div>
+              <div key={i} ref={mine ? meRef : undefined} className={`map-node${mine ? ' me' : ''}${n && n <= 6 ? ' reach' : ''}`} style={{ left: `${xOf(i)}%`, top: yOf(i), background: look.bg, color: look.fg }} title={look.label}>
+                <TileIcon kind={t.stop ? 'stop' : t.uni ? UNI_LOOK[t.uni].icon : t.kind === 'campus' ? 'grow' : t.kind} size={24} />
+                <span className="map-label">{look.label}</span>
+                {n && <b className="map-step">{n}</b>}
+                {t.point && <em className="map-point">{t.point === 'shop' ? '상점' : '결혼식장'}</em>}
+                {here.length > 0 && (
+                  <span className="map-people">
+                    {here.map((p) => (
+                      <span key={p.id} className={`map-face${p.id === meId ? ' me' : ''}`} style={{ borderColor: p.color }} title={p.name}>
+                        <Character outfit={p.outfit} size={20} age={ageOf(s, p)} crop="head" />
+                      </span>
+                    ))}
+                  </span>
+                )}
+                {mine && <span className="map-me-tag jua">나</span>}
               </div>
             )
           })}
+        </div>
         </div>
       </div>
     </div>

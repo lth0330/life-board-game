@@ -703,7 +703,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
       )}
       {sheet === 'people' && <PeopleSheet s={game} onClose={() => setSheet(null)} />}
       {sheet === 'me' && <MyInfoSheet s={game} p={game.players[emoteId ?? p.id]} onClose={() => setSheet(null)} />}
-      {sheet === 'map' && <FullMap s={game} onClose={() => setSheet(null)} />}
+      {sheet === 'map' && <FullMap s={game} meId={online ? (online.mine.includes(p.id) ? p.id : online.mine[0] ?? p.id) : p.human ? p.id : (game.players.find((q) => q.human)?.id ?? p.id)} onClose={() => setSheet(null)} />}
       {sheet === 'manual' && <Manual onClose={() => setSheet(null)} />}
 
 

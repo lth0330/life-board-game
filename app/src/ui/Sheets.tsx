@@ -299,15 +299,6 @@ export function PeopleSheet({ s, onClose }: { s: GameState; onClose: () => void 
           )
         })}
       </div>
-      <h3 className="jua">최근 기록</h3>
-      <div className="log-full">
-        {[...s.log].reverse().slice(0, 40).map((l, i) => (
-          <div key={i} className={`log-${l.tone}`}>
-            {l.playerId !== null && <b style={{ color: s.players[l.playerId].color }}>{s.players[l.playerId].name} </b>}
-            {l.text}
-          </div>
-        ))}
-      </div>
     </Sheet>
   )
 }
