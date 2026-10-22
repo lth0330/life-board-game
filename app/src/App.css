@@ -471,12 +471,13 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
 .dice-flight.landed { animation: none; }
 .dice-shadow { position: absolute; left: 6px; right: 6px; bottom: -22px; height: 14px; border-radius: 50%; background: rgba(0,0,0,0.25); }
 .cube-wrap { width: 72px; height: 72px; perspective: 400px; }
-.cube { position: relative; width: 72px; height: 72px; transform-style: preserve-3d; transition: transform 0.25s ease-out; }
+.cube { position: relative; width: 72px; height: 72px; transform-style: preserve-3d; -webkit-transform-style: preserve-3d; transition: transform 0.25s ease-out; }
 .cube.tumbling { animation: tumble3d 0.45s linear infinite; }
 .cube-face {
   position: absolute; inset: 0; background: #fbf8f1; border-radius: 12px; border: 2px solid #d6cbb4;
-  display: grid; grid-template-columns: repeat(3, 1fr); padding: 10px; gap: 2px; backface-visibility: hidden;
+  display: grid; grid-template-columns: repeat(3, 1fr); padding: 10px; gap: 2px;
 }
+/* backface-visibility: hidden은 뺌 — 폰에서 3D가 납작해지면 모든 면이 '뒷면'으로 처리돼 주사위가 투명해 보였음 (2026-10-22) */
 .cube-face i { display: flex; align-items: center; justify-content: center; }
 .cube-face i.pip::after { content: ''; width: 12px; height: 12px; border-radius: 50%; background: var(--ink); }
 .cube-face i.pip.red::after { background: var(--accent); width: 16px; height: 16px; }
@@ -681,11 +682,13 @@ button.wide:not(:disabled):active, .decision .options button:not(:disabled):acti
 @keyframes leg-step { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) { .char.walking .leg-l, .char.walking .leg-r { animation: none; } }
 /* 주사위 연출 (2026-10-17): 던지면 날아와 판 위에서 통통 튀며 구르고, 멈추면 떨어져 두 번 튀고 자리 잡음 */
-.dice-flight { top: 58%; animation: dice-fly 0.6s cubic-bezier(.3,.7,.4,1) both, dice-hop 0.42s ease-in-out 0.6s infinite; }
+.dice-flight { top: 58%; animation: dice-fly 0.6s cubic-bezier(.3,.7,.4,1) both; }
+/* 통통 튀기는 transform 대신 margin으로 (부모가 transform 애니메이션 중이면 폰 브라우저가 안의 3D 주사위를 못 그림) */
+.dice-flight:not(.landed) .cube-wrap { animation: dice-hop 0.42s ease-in-out 0.6s infinite; }
 .dice-flight .dice-shadow { animation: dice-shadow-hop 0.42s ease-in-out 0.6s infinite; }
 .dice-flight.landed { animation: dice-land 0.45s cubic-bezier(.3,.6,.4,1) both; }
 .dice-flight.landed .dice-shadow { animation: none; }
-@keyframes dice-hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-34px); } }
+@keyframes dice-hop { 0%, 100% { margin-top: 0; } 50% { margin-top: -34px; } }
 @keyframes dice-shadow-hop { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.6); opacity: 0.5; } }
 @keyframes dice-land {
   0% { transform: translateY(-40px); }
@@ -949,3 +952,10 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .far-decor { position: absolute; pointer-events: none; }
 /* 잔디 결 (아주 옅은 무늬) */
 .plane::before { background: radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.07) 0 2px, transparent 3px) 0 0 / 46px 46px, radial-gradient(circle at 70% 60%, rgba(42, 33, 24, 0.06) 0 2px, transparent 3px) 0 0 / 58px 58px, var(--grass); }
+.roulette-legend { display: flex; align-items: center; gap: 6px; font-size: 14px; font-family: 'Jua', sans-serif; }
+.roulette-legend i { width: 14px; height: 14px; border-radius: 4px; border: 2px solid var(--ink); display: inline-block; }
+.roulette-legend i.ok { background: #3FA45B; } .roulette-legend i.no { background: #D9573E; margin-left: 8px; }
+.roulette-legend b { font-size: 16px; }
+/* 폰에서는 판을 조금 멀리서 보기 (2026-10-22 사용자: 칸이 너무 크고 배경·지도가 안 보임) */
+@media (max-width: 600px) { .camera { transform: scale(0.76); transform-origin: 50% 64%; } }
+@media (max-width: 380px) { .camera { transform: scale(0.7); } }

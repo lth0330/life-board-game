@@ -310,11 +310,11 @@ export function Roulette({ title, chance, ok, who, manual, onDone }: { title: st
     return () => { window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); window.removeEventListener('mouseup', up); window.removeEventListener('touchend', up) }
   }, [phase])
   const lights = Array.from({ length: 16 }, (_, i) => polar(i * 22.5, 49.5))
-  const okMid = polar(span / 2, 30), noMid = polar(span + (360 - span) / 2, 30)
   return (
     <div className="roulette-pop" role="dialog" aria-label={`${title}: ${phase === 'stopped' ? (ok ? '성공' : '실패') : '룰렛'}`}>
       <b className="jua">{title}</b>
-      <span className="roulette-sub">{who} · 성공 확률 <b>{Math.round(chance * 100)}%</b></span>
+      <span className="roulette-sub">{who}</span>
+      <span className="roulette-legend"><i className="ok" />성공 <b>{Math.round(chance * 100)}%</b><i className="no" />실패 <b>{100 - Math.round(chance * 100)}%</b></span>
       <div
         className={`wheel-wrap${manual && phase === 'ready' ? ' can-spin' : ''}`} ref={wrap}
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
@@ -330,8 +330,6 @@ export function Roulette({ title, chance, ok, who, manual, onDone }: { title: st
           {span >= 359.9 ? <circle cx="50" cy="50" r={WHEEL_R} fill="url(#wheelOk)" /> : span > 0 && <path d={arc(0, span)} fill="url(#wheelOk)" />}
           {Array.from({ length: 24 }, (_, i) => <path key={i} d={`M50 50 L${polar(i * 15).join(' ')}`} stroke="rgba(255,255,255,0.35)" strokeWidth="0.5" />)}
           {span > 0 && span < 359.9 && <path d={`M${polar(span).join(' ')} L50 50 L50 4`} stroke="#2A2118" strokeWidth="1.4" fill="none" />}
-          {span >= 40 && <text x={okMid[0]} y={okMid[1] + 2.5} textAnchor="middle" fontSize="7.5" fontFamily="Jua, sans-serif" fill="#fff" stroke="#1E6B35" strokeWidth="0.6" paintOrder="stroke" transform={`rotate(${span / 2} ${okMid[0]} ${okMid[1]})`}>성공</text>}
-          {span <= 320 && <text x={noMid[0]} y={noMid[1] + 2.5} textAnchor="middle" fontSize="7.5" fontFamily="Jua, sans-serif" fill="#fff" stroke="#8E2F1E" strokeWidth="0.6" paintOrder="stroke" transform={`rotate(${span + (360 - span) / 2} ${noMid[0]} ${noMid[1]})`}>실패</text>}
           {lights.map(([x, y], i) => <circle key={i} cx={x} cy={y} r="1.3" fill={i % 2 ? '#FFF7D6' : '#FF7A59'} stroke="#2A2118" strokeWidth="0.4" />)}
           <circle cx="50" cy="50" r="9" fill="#FBF5E8" stroke="#2A2118" strokeWidth="1.6" />
           <path d="M50 44l1.8 3.7 4 .5-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.8 4-.5z" fill="#E2B85C" stroke="#2A2118" strokeWidth="0.6" />

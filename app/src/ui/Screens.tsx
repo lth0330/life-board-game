@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Logo } from '../art/Art'
 import { Character } from '../art/Character'
 import type { Outfit } from '../engine/outfit'
@@ -12,7 +12,29 @@ export type Speed = 'fast' | 'normal' | 'slow'
 export interface SetupResult { name: string; names: string[]; humans: number; ai: number; difficulty: Difficulty; speed: Speed; outfit: Outfit; teams?: (0 | 1)[] }
 
 // 왼쪽 위에 늘 같은 자리에 있는 뒤로 가기 버튼 (2026-10-22 사용자: 모든 화면에서)
+// 폰의 뒤로 버튼·뒤로 쓸기(브라우저 뒤로)도 지금 보이는 '‹' 버튼과 똑같이 (2026-10-22)
+// 화면에 '‹' 버튼이 있으면 그 동작을 하고 사이트에 머묾. 없으면(처음 화면·로그인한 메뉴) 원래대로 사이트를 떠남
+let currentBack: (() => void) | null = null
+let historyReady = false
+function setupHistory() {
+  if (historyReady || typeof window === 'undefined') return
+  historyReady = true
+  window.history.pushState({ dgl: true }, '')
+  window.addEventListener('popstate', () => {
+    if (!currentBack) return // 돌아갈 곳이 없으면 한 번 더 뒤로 가면 사이트를 떠남
+    currentBack()
+    window.history.pushState({ dgl: true }, '')
+  })
+}
 export function BackButton({ onClick, label = '뒤로 가기' }: { onClick: () => void; label?: string }) {
+  const latest = useRef(onClick)
+  latest.current = onClick
+  useEffect(() => {
+    setupHistory()
+    const run = () => latest.current()
+    currentBack = run
+    return () => { if (currentBack === run) currentBack = null }
+  }, [])
   return (
     <button className="back-fab" onClick={onClick} aria-label={label} title={label}>
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 4L7 12l8 8" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
