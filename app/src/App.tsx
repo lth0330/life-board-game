@@ -662,7 +662,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
       )}
 
       {!busy && game.mini && isMine(game.mini.playerId) && (
-        <MiniGame key={`${game.turn}-${game.mini.game}`} mini={game.mini} guide={miniGuide(game, game.mini.game, !!game.mini.duel)} practiceLimit={online ? MINI_PRACTICE_LIMIT.online : MINI_PRACTICE_LIMIT.local} outfit={game.players[game.mini.playerId].outfit} onFinish={(v) => run(['finishMini', v])} />
+        <MiniGame key={`${game.turn}-${game.mini.game}`} mini={game.mini} guide={miniGuide(game, game.mini.game, !!game.mini.duel)} practiceLimit={online ? MINI_PRACTICE_LIMIT.online : MINI_PRACTICE_LIMIT.local} outfit={game.players[game.mini.playerId].outfit} age={ageOf(game, game.players[game.mini.playerId])} onFinish={(v) => run(['finishMini', v])} />
       )}
       {!busy && game.mini && !isMine(game.mini.playerId) && game.players[game.mini.playerId].human && (
         <div className="speech waiting-note" role="status">{game.players[game.mini.playerId].name}님이 미니게임 중…</div>

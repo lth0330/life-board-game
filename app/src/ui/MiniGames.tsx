@@ -5,6 +5,7 @@ import { EventArt, Landmark } from '../art/More'
 import type { MiniState } from '../engine/types'
 import { Character, type Pose } from '../art/Character'
 import { DEFAULT_OUTFIT, type Outfit } from '../engine/outfit'
+import { Cup, DieFace, MiniIcon, PlayingCard } from '../art/MiniArt'
 
 // 미니게임 화면. 결과: 0 실패, 1 성공, 2 대성공 (대결 timing은 0~100점)
 // level 0 쉬움 ~ 2 어려움 (능력치가 높을수록 쉬움)
@@ -15,7 +16,8 @@ interface Props {
   onFinish: (value: number) => void
   guide: { stat: string; reward: string } // 설명서: 무엇이 쉽게 해 주나, 보상
   practiceLimit: number // 연습 횟수 (혼자 무제한, 온라인 3번)
-  outfit?: Outfit // 이 미니게임을 하는 사람 옷차림 (춤 동작 그림)
+  outfit?: Outfit // 이 미니게임을 하는 사람 옷차림 (춤 동작·달리기·공 던지기 그림)
+  age?: number
 }
 
 // 설명서: 게임 방법
@@ -56,7 +58,7 @@ const MINI_THEME: Record<string, string> = {
 }
 const THEME_LANDMARK: Record<string, string> = { sport: '운동회', brain: '두뇌 올림피아드', fest: '축제 거리', casino: '카지노', travel: '세계일주' }
 
-export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAULT_OUTFIT }: Props) {
+export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAULT_OUTFIT, age }: Props) {
   // 시작 화면(설명서·연습·시작) → 연습이면 결과를 보여 주고 다시 시작 화면, 시작이면 진짜 결과
   const [mode, setMode] = useState<'intro' | 'help' | 'practice' | 'real'>('intro')
   const [practiced, setPracticed] = useState(0)
@@ -89,13 +91,13 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
     switch (mini.game) {
       case 'timing': return <Timing level={mini.level} rounds={1} duel={isDuel} onDone={done} />
       case 'tug': return <Tug level={mini.level} onDone={done} />
-      case 'throw': return <Throw level={mini.level} onDone={done} />
+      case 'throw': return <Throw level={mini.level} outfit={outfit} age={age} onDone={done} />
       case 'confess': return <Confess level={mini.level} onDone={done} />
       case 'rhythm': return <Rhythm level={mini.level} onDone={done} />
-      case 'dance': return <Dance level={mini.level} outfit={outfit} onDone={done} />
-      case 'race': return <Mash level={mini.level} onDone={done} />
-      case 'memory': return <Memory level={mini.level} symbols={['●', '■', '▲', '★', '♥', '◆']} onDone={done} />
-      case 'photo': return <Memory level={mini.level} symbols={['파리', '도쿄', '뉴욕', '로마', '카이로', '시드니']} onDone={done} />
+      case 'dance': return <Dance level={mini.level} outfit={outfit} age={age} onDone={done} />
+      case 'race': return <Mash level={mini.level} outfit={outfit} age={age} onDone={done} />
+      case 'memory': return <Memory level={mini.level} symbols={MEMORY_ICONS} draw={(x) => <MiniIcon name={x} size={34} />} onDone={done} />
+      case 'photo': return <Memory level={mini.level} symbols={Object.keys(CITY_ICON)} draw={(x) => <span className="city"><MiniIcon name={CITY_ICON[x]} size={30} /><small>{x}</small></span>} onDone={done} />
       case 'pairs': return <Pairs level={mini.level} onDone={done} />
       case 'quickmath': return <QuickMath level={mini.level} onDone={done} />
       case 'firstImpression': return <FirstImpression level={mini.level} seen={seen.current} onDone={done} />
@@ -290,7 +292,7 @@ function Tug({ level, onDone }: { level: number; onDone: (v: number) => void }) 
   return (
     <div className="mini-body">
       <p>왼손·오른손을 <b>번갈아</b> 눌러 줄을 당기세요! (6초)</p>
-      <div className="tug-track"><div className="tug-flag" style={{ left: `${50 + pos / 2}%` }}>🚩</div></div>
+      <div className="tug-track"><div className="tug-flag" style={{ left: `${50 + pos / 2}%` }}><MiniIcon name="flag" size={34} /></div></div>
       <div className="mini-big jua">{left}초</div>
       <div className="mini-grid two">
         <button onPointerDown={(e) => { e.preventDefault(); tap('L') }}>왼손{keyHint && <small className="key-hint">← 또는 A</small>}</button>
@@ -302,7 +304,8 @@ function Tug({ level, onDone }: { level: number; onDone: (v: number) => void }) 
 }
 
 // 공 던지기: 누르고 있으면 힘이 찼다 빠졌다 함. 목표 칸에서 손을 떼기
-function Throw({ level, onDone }: { level: number; onDone: (v: number) => void }) {
+// 2026-10-22: 막대 위에 장면 (내 캐릭터가 던진 공이 힘만큼 날아가 바구니로)
+function Throw({ level, outfit, age, onDone }: { level: number; outfit: Outfit; age?: number; onDone: (v: number) => void }) {
   const w = [20, 13, 8][level] // 목표 칸 너비
   const speed = [0.8, 1.1, 1.4][level]
   const target = useMemo(() => 55 + rand(25), [])
@@ -329,6 +332,11 @@ function Throw({ level, onDone }: { level: number; onDone: (v: number) => void }
   return (
     <div className="mini-body">
       <p>버튼을 <b>누르고 있다가</b> 힘이 초록 칸에 왔을 때 떼세요</p>
+      <div className="throw-field">
+        <span className="thrower"><Character outfit={outfit} age={age} pose={state === 'done' ? 'up' : 'idle'} expr={state === 'hold' ? 'surprised' : 'normal'} size={28} /></span>
+        <span className="throw-basket" style={{ left: `${8 + (target + w / 2) * 0.88}%` }}><svg viewBox="0 0 48 40" width="48" height="40" aria-hidden="true"><path d="M4 8h40l-6 30H10z" fill="#C98F5B" stroke="#2A2118" strokeWidth="3" strokeLinejoin="round" /><path d="M8 18h32M10 28h28M18 8l2 30M30 8l-2 30" stroke="#8A5A3B" strokeWidth="2" /></svg></span>
+        {state === 'done' && <span className="throw-ball" style={{ left: `${8 + power * 0.88}%` }}><i /></span>}
+      </div>
       <div className="gauge">
         <div className="gauge-zone" style={{ left: `${target}%`, width: `${w}%` }} />
         <div className="power-fill" style={{ width: `${power}%` }} />
@@ -367,7 +375,7 @@ function Confess({ level, onDone }: { level: number; onDone: (v: number) => void
   return (
     <div className="mini-body">
       <p>하트가 <b>가장 커졌을 때</b> 고백하세요</p>
-      <div className="heart-box"><span className="heart" style={{ transform: `scale(${0.5 + beat * 0.7})` }}>💗</span></div>
+      <div className="heart-box"><span className="heart" style={{ transform: `scale(${0.5 + beat * 0.7})` }}><MiniIcon name="heart" size={110} /></span></div>
       <button className="wide big" onPointerDown={(e) => { e.preventDefault(); press() }}>고백!</button>
       <SpaceKey run={press} />
     </div>
@@ -423,11 +431,11 @@ function Rhythm({ level, onDone }: { level: number; onDone: (v: number) => void 
         {hits.map((h, i) => {
           const y = ((now - (h - fall)) / fall) * 85 // 85%가 선
           if (marks[i] !== null || y < -10 || y > 100) return null
-          return <span key={i} className="rhythm-note" style={{ top: `${y}%` }}>♪</span>
+          return <span key={i} className="rhythm-note" style={{ top: `${y}%` }}><MiniIcon name="note" size={36} /></span>
         })}
       </div>
       <div className="mini-seq">{marks.map((x, i) => <span key={i}>{x === null ? '·' : ['놓침', '좋아', '딱!'][x]}</span>)}</div>
-      <button className="wide big" onPointerDown={(e) => { e.preventDefault(); press() }}>♪ 지금!</button>
+      <button className="wide big" onPointerDown={(e) => { e.preventDefault(); press() }}>지금!</button>
       <SpaceKey run={press} />
     </div>
   )
@@ -438,7 +446,7 @@ const ARROWS = ['↑', '↓', '←', '→']
 // 춤: 화살표 대신 내 캐릭터가 춤 동작을 보여 줌 (2026-10-17 사용자). ← 왼팔 · ↑ 두 팔 · → 오른팔 · ↓ 팔 벌리기
 const POSE_OF: Record<string, Pose> = { '←': 'left', '↑': 'up', '→': 'right', '↓': 'out' }
 const POSE_NAME: Record<string, string> = { '←': '왼팔', '↑': '만세', '→': '오른팔', '↓': '팔 벌리기' }
-function Dance({ level, outfit, onDone }: { level: number; outfit: Outfit; onDone: (v: number) => void }) {
+function Dance({ level, outfit, age, onDone }: { level: number; outfit: Outfit; age?: number; onDone: (v: number) => void }) {
   const len = [5, 6, 7][level]
   const seq = useMemo(() => Array.from({ length: len }, () => ARROWS[rand(4)]), [len])
   const [shown, setShown] = useState(0) // 지금까지 보여 준 개수 (len이면 내 차례)
@@ -463,8 +471,8 @@ function Dance({ level, outfit, onDone }: { level: number; outfit: Outfit; onDon
       <p>{showing ? '춤 동작을 잘 보세요' : '본 순서대로 따라 하세요!'}</p>
       <div className="dance-stage" key={shown}>
         {showing
-          ? <Character outfit={outfit} pose={POSE_OF[seq[shown]]} expr="happy" size={70} title={POSE_NAME[seq[shown]]} />
-          : picked.length < len ? <Character outfit={outfit} pose="idle" size={70} title="따라 할 차례" /> : <b className="jua mini-big">끝!</b>}
+          ? <Character outfit={outfit} age={age} pose={POSE_OF[seq[shown]]} expr="happy" size={70} title={POSE_NAME[seq[shown]]} />
+          : picked.length < len ? <Character outfit={outfit} age={age} pose="idle" size={70} title="따라 할 차례" /> : <b className="jua mini-big">끝!</b>}
       </div>
       <div className="mini-seq dance-seq">{Array.from({ length: len }, (_, i) => <span key={i}>{picked[i] ? <Character outfit={outfit} pose={POSE_OF[picked[i]]} size={14} /> : ''}</span>)}</div>
       <div className="mini-grid dance-btns">{ARROWS.map((a) => <button key={a} disabled={showing} onClick={() => pick(a)} aria-label={POSE_NAME[a]}><Character outfit={outfit} pose={POSE_OF[a]} size={20} /><small>{POSE_NAME[a]}</small></button>)}</div>
@@ -474,7 +482,8 @@ function Dance({ level, outfit, onDone }: { level: number; outfit: Outfit; onDon
 }
 
 // 5초 동안 많이 누르기 (운동회 달리기). 체력이 높으면 목표가 낮음
-function Mash({ level, onDone }: { level: number; onDone: (v: number) => void }) {
+// 2026-10-22: 트랙 위에서 내 캐릭터가 누른 만큼 달려 나감
+function Mash({ level, outfit, age, onDone }: { level: number; outfit: Outfit; age?: number; onDone: (v: number) => void }) {
   const goal = [20, 28, 36][level]
   const [count, setCount] = useState(0)
   const [left, setLeft] = useState(5)
@@ -500,6 +509,10 @@ function Mash({ level, onDone }: { level: number; onDone: (v: number) => void })
   return (
     <div className="mini-body">
       <p>5초 동안 최대한 많이 누르세요! 목표 {goal}번</p>
+      <div className="race-track">
+        <span className="race-finish" style={{ left: `${4 + 78}%` }} aria-hidden="true" />
+        <span className={`racer${started && left > 0 ? ' go' : ''}`} style={{ left: `${4 + Math.min(1, count / goal) * 78}%` }}><Character outfit={outfit} age={age} pose="idle" expr={count >= goal ? 'happy' : 'normal'} size={32} /></span>
+      </div>
       <div className="mini-big jua">{count}번 · {left}초</div>
       <button className="wide big" onPointerDown={(e) => e.preventDefault()} onClick={press}>{/* 눌러도 포커스가 안 남아 스페이스가 두 번 세지지 않게 */}
         {started ? '달려!' : '누르면 시작'}
@@ -510,7 +523,10 @@ function Mash({ level, onDone }: { level: number; onDone: (v: number) => void })
 }
 
 // 잠깐 보여준 순서 기억하기. 지력이 높으면 개수가 적음
-function Memory({ level, symbols, onDone }: { level: number; symbols: string[]; onDone: (v: number) => void }) {
+// 그림 (2026-10-22): 기억력은 그림 6개, 여행 코스는 랜드마크 + 도시 이름
+const MEMORY_ICONS = ['apple', 'star', 'heart', 'fish', 'umbrella', 'crown']
+const CITY_ICON: Record<string, string> = { 파리: 'eiffel', 뉴욕: 'liberty', 카이로: 'pyramid', 이스터섬: 'moai', 독일: 'castle', 런던: 'ferris' }
+function Memory({ level, symbols, draw = (x) => x, onDone }: { level: number; symbols: string[]; draw?: (x: string) => ReactNode; onDone: (v: number) => void }) {
   const len = [4, 5, 6][level]
   const seq = useMemo(() => Array.from({ length: len }, () => symbols[rand(symbols.length)]), [len, symbols])
   const [show, setShow] = useState(true)
@@ -530,11 +546,11 @@ function Memory({ level, symbols, onDone }: { level: number; symbols: string[]; 
   return (
     <div className="mini-body">
       <p>{show ? '순서를 기억하세요!' : `순서대로 고르세요 (${picked.length}/${len})`}</p>
-      <div className="mini-seq">{(show ? seq : picked).map((x, i) => <span key={i}>{x}</span>)}</div>
+      <div className="mini-seq pics">{(show ? seq : picked).map((x, i) => <span key={i}>{draw(x)}</span>)}</div>
       {!show && (
         <>
           <div className="mini-grid">
-            {symbols.map((x, k) => <button key={x} disabled={picked.length >= len} onClick={() => pick(x)}>{x}{finePointer() && <small className="key-hint">{k + 1}</small>}</button>)}
+            {symbols.map((x, k) => <button key={x} className="pic-btn" aria-label={x} disabled={picked.length >= len} onClick={() => pick(x)}>{draw(x)}{finePointer() && <small className="key-hint">{k + 1}</small>}</button>)}
           </div>
           <div className="row">
             <button className="grow" disabled={!picked.length} onClick={() => setPicked(picked.slice(0, -1))}>⌫ 하나 지우기</button>
@@ -550,7 +566,7 @@ function Memory({ level, symbols, onDone }: { level: number; symbols: string[]; 
 // 같은 그림 찾기. 지력이 높으면 짝이 적음
 function Pairs({ level, onDone }: { level: number; onDone: (v: number) => void }) {
   const n = [3, 4, 6][level]
-  const deck = useMemo(() => shuffle([...'●■▲★♥◆'.slice(0, n), ...'●■▲★♥◆'.slice(0, n)]), [n])
+  const deck = useMemo(() => shuffle([...MEMORY_ICONS.slice(0, n), ...MEMORY_ICONS.slice(0, n)]), [n])
   const [open, setOpen] = useState<number[]>([])
   const [found, setFound] = useState<number[]>([])
   const [left, setLeft] = useState(18)
@@ -581,7 +597,7 @@ function Pairs({ level, onDone }: { level: number; onDone: (v: number) => void }
       <div className="mini-grid cards">
         {deck.map((x, i) => (
           <button key={i} className={found.includes(i) ? 'found' : ''} onClick={() => flip(i)} aria-label={`카드 ${i + 1}`}>
-            {open.includes(i) || found.includes(i) ? x : ''}
+            {open.includes(i) || found.includes(i) ? <MiniIcon name={x} size={40} /> : '?'}
           </button>
         ))}
       </div>
@@ -648,7 +664,6 @@ function FirstImpression({ level, seen, onDone }: { level: number; seen: Seen; o
 
 // 홀짝 (2026-10-21 사용자, 야바위처럼): 주사위 두 개가 구르다 멈추기 직전에 컵이 덮음 → 홀·짝을 고르면 컵을 엶
 // 운세가 좋으면 이겼을 때 크게 받음
-const DIE_FACE = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅']
 function OddEven({ level, onDone }: { level: number; onDone: (v: number) => void }) {
   const final = useMemo<[number, number]>(() => [rand(6) + 1, rand(6) + 1], [])
   const [face, setFace] = useState<[number, number]>([1, 1])
@@ -675,8 +690,8 @@ function OddEven({ level, onDone }: { level: number; onDone: (v: number) => void
     <div className="mini-body">
       <p>{stage === 'roll' ? '주사위를 굴리는 중…' : stage === 'cover' ? '컵 속 주사위 두 개의 합은 홀일까요, 짝일까요?' : `${final[0]} + ${final[1]} = ${sum} (${sum % 2 ? '홀' : '짝'})${((sum % 2 === 1) === bet) ? ' 맞혔다!' : ' 틀렸다…'}`}</p>
       <div className="cup-table">
-        <div className="cup-dice">{face.map((f, i) => <span key={i} className={stage === 'roll' ? 'tumble' : ''}>{DIE_FACE[f - 1]}</span>)}</div>
-        <div className={`cup cup-${stage}`} aria-hidden="true" />
+        <div className="cup-dice">{face.map((f, i) => <span key={i} className={stage === 'roll' ? 'tumble' : ''}><DieFace value={f} size={46} /></span>)}</div>
+        <div className={`cup cup-${stage}`} aria-hidden="true"><Cup width={176} /></div>
       </div>
       <div className="mini-grid two">
         <button disabled={!ready || bet !== null} onClick={() => guess(true)}>홀</button>
@@ -690,6 +705,7 @@ function OddEven({ level, onDone }: { level: number; onDone: (v: number) => void
 // 카드 높낮이 두 판
 function HighLow({ onDone }: { onDone: (v: number) => void }) {
   const [cards, setCards] = useState(() => [rand(13) + 1])
+  const suits = useMemo(() => [rand(4), rand(4), rand(4)], [])
   const [right, setRight] = useState(0)
   const guess = (higher: boolean) => {
     const prev = cards[cards.length - 1]
@@ -705,7 +721,7 @@ function HighLow({ onDone }: { onDone: (v: number) => void }) {
   return (
     <div className="mini-body">
       <p>다음 카드가 더 높을까, 낮을까? (2번)<br /><small>카드 숫자는 1~13 (A=1, J=11, Q=12, K=13), 같은 숫자는 안 나와요</small></p>
-      <div className="mini-seq">{cards.map((c, i) => <span key={i}>{c}</span>)}</div>
+      <div className="card-row">{cards.map((c, i) => <PlayingCard key={i} value={c} suit={suits[i]} size={84} />)}{!doneGuess && <span className="card-back" aria-hidden="true">?</span>}</div>
       <div className="mini-grid two">
         <button disabled={doneGuess} onClick={() => guess(true)}>높다</button>
         <button disabled={doneGuess} onClick={() => guess(false)}>낮다</button>
@@ -716,7 +732,7 @@ function HighLow({ onDone }: { onDone: (v: number) => void }) {
 
 // 슬롯머신: 시작을 누르면 3개가 돌고, 아래 버튼으로 하나씩 멈춤. 결과는 운세가 좋을수록 잘 나옴
 function Slot({ level, onDone }: { level: number; onDone: (v: number) => void }) {
-  const faces = ['7', '★', '♥', '◆']
+  const faces = ['seven', 'star', 'heart', 'diamond']
   const [reels, setReels] = useState(['?', '?', '?'])
   const [stopped, setStopped] = useState([false, false, false])
   const [plan, setPlan] = useState<{ grade: number; out: string[] } | null>(null)
@@ -745,7 +761,7 @@ function Slot({ level, onDone }: { level: number; onDone: (v: number) => void })
     <div className="mini-body">
       <p>세 개가 같으면 대박, 두 개면 조금 따요. 버튼을 눌러 하나씩 멈춰요</p>
       <KeyHint>스페이스바로 시작하고, 한 번 누를 때마다 하나씩 멈춰요</KeyHint>
-      <div className="mini-seq slot">{reels.map((x, i) => <span key={i} className={stopped[i] ? 'stopped' : ''}>{x}</span>)}</div>
+      <div className="mini-seq slot">{reels.map((x, i) => <span key={i} className={stopped[i] ? 'stopped' : ''}>{x === '?' ? '?' : <MiniIcon name={x} size={46} />}</span>)}</div>
       {!plan
         ? <button className="wide big" onPointerDown={(e) => e.preventDefault()} onClick={start}>시작</button>
         : <div className="mini-grid three">{[0, 1, 2].map((i) => <button key={i} disabled={stopped[i]} onClick={() => stop(i)}>멈춤 {i + 1}</button>)}</div>}
@@ -754,7 +770,7 @@ function Slot({ level, onDone }: { level: number; onDone: (v: number) => void })
 }
 
 // 세계일주 사진 찍기 (2026-10-21 사용자, 수도 맞히기 대신): 랜드마크가 왔다 갔다, 사진 틀 안에 왔을 때 찰칵 (3장)
-const SNAP_SPOTS = ['🗼', '🗽', '🏯', '🗿', '🕌', '🎡']
+const SNAP_SPOTS = ['eiffel', 'liberty', 'castle', 'moai', 'pyramid', 'ferris']
 function Snap({ level, onDone }: { level: number; onDone: (v: number) => void }) {
   const zone = [24, 17, 12][level] // 사진 틀 너비 (%)
   const speed = [0.6, 0.85, 1.1][level]
@@ -791,9 +807,9 @@ function Snap({ level, onDone }: { level: number; onDone: (v: number) => void })
       <p>{Math.min(shots.length + (flash ? 0 : 1), 3)}/3 · 랜드마크가 <b>사진 틀 안</b>에 왔을 때 찍으세요</p>
       <div className={`snap-view${flash ? ' flash' : ''}`}>
         <div className="snap-frame" style={{ left: `${50 - zone / 2}%`, width: `${zone}%` }} />
-        <span className="snap-spot" style={{ left: `${pos}%` }}>{spots[Math.min(shots.length - (flash ? 1 : 0), 2)]}</span>
+        <span className="snap-spot" style={{ left: `${pos}%` }}><MiniIcon name={spots[Math.max(0, Math.min(shots.length - (flash ? 1 : 0), 2))]} size={60} /></span>
       </div>
-      <p className="jua center">{shots.map((ok, i) => <span key={i}>{ok ? '📸' : '🌫️'} </span>)}{flash ? (last ? ' 잘 찍었다!' : ' 흔들렸다…') : ''}</p>
+      <div className="snap-shots">{shots.map((ok, i) => <span key={i} className={ok ? 'ok' : 'no'}>{ok ? <MiniIcon name={spots[i]} size={30} /> : '흔들림'}</span>)}<b className="jua">{flash ? (last ? '잘 찍었다!' : '흔들렸다…') : ''}</b></div>
       <button className="wide big" onPointerDown={(e) => { e.preventDefault(); shoot() }}>찰칵!</button>
       <SpaceKey run={shoot} />
     </div>
@@ -801,8 +817,8 @@ function Snap({ level, onDone }: { level: number; onDone: (v: number) => void })
 }
 
 // 세계일주 짐 싸기 (2026-10-21 사용자, 기념품 고르기 대신): 하나씩 나오는 물건을 여행에 챙길지 고르기. 지력이 높으면 시간이 길다
-const PACK_GOOD = ['🛂 여권', '🪥 칫솔', '🔌 충전기', '👕 옷', '🧴 선크림', '📷 카메라', '👛 지갑', '🕶️ 선글라스', '💊 상비약', '🩴 슬리퍼']
-const PACK_BAD = ['🎹 피아노', '🪴 화분', '🛋️ 소파', '🎳 볼링공', '🚲 자전거', '🍉 수박', '🐟 어항', '📺 텔레비전', '🧱 벽돌', '🛁 욕조']
+const PACK_GOOD: [string, string][] = [['passport', '여권'], ['toothbrush', '칫솔'], ['charger', '충전기'], ['shirt', '옷'], ['sunscreen', '선크림'], ['camera', '카메라'], ['wallet', '지갑'], ['sunglasses', '선글라스']]
+const PACK_BAD: [string, string][] = [['piano', '피아노'], ['plant', '화분'], ['sofa', '소파'], ['bowling', '볼링공'], ['bike', '자전거'], ['watermelon', '수박'], ['fishbowl', '어항'], ['tv', '텔레비전']]
 function Pack({ level, onDone }: { level: number; onDone: (v: number) => void }) {
   const limit = [2600, 2000, 1500][level]
   const items = useMemo(() => shuffle([...shuffle(PACK_GOOD).slice(0, 5).map((x) => ({ x, good: true })), ...shuffle(PACK_BAD).slice(0, 3).map((x) => ({ x, good: false }))]), [])
@@ -831,7 +847,7 @@ function Pack({ level, onDone }: { level: number; onDone: (v: number) => void })
   return (
     <div className="mini-body">
       <p>{i + 1}/{items.length} · 여행에 필요한 것만 챙기세요 · 맞힌 수 {right}</p>
-      <div className={`mini-big jua pack-item${mark === null ? '' : mark ? ' ok' : ' no'}`} key={i}>{items[i].x}<i className="pack-timer" style={{ animationDuration: `${limit}ms` }} /></div>
+      <div className={`mini-big jua pack-item${mark === null ? '' : mark ? ' ok' : ' no'}`} key={i}><MiniIcon name={items[i].x[0]} size={84} /><span>{items[i].x[1]}</span><i className="pack-timer" style={{ animationDuration: `${limit}ms` }} /></div>
       <div className="mini-grid two">
         <button onClick={() => pick(true)}>🧳 챙기기</button>
         <button onClick={() => pick(false)}>🙅 두고 가기</button>
