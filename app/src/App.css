@@ -879,3 +879,6 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .plane::before { content: ''; position: absolute; top: 0; bottom: 0; left: -2400px; right: -2400px; background: var(--grass); pointer-events: none; }
 .side-buttons button { white-space: nowrap; }
 .side-buttons > button:not(.emote-btn) { width: 52px; font-size: 11.5px; letter-spacing: -0.3px; }
+/* 큰 알림이 판의 칸(입체)보다 위에, 제목은 낱말 단위로 줄바꿈 (2026-10-22) */
+.banner { z-index: 7; word-break: keep-all; }
+.event-pop, .stage-card, .sheet, .check-hint { word-break: keep-all; }

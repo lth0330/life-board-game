@@ -139,7 +139,7 @@ export function FinanceSheet(f: FinanceProps) {
             const left = l.dueTurn - p.turnsPlayed
             const text = l.kind === '주담대'
               ? `주택담보대출 ${won(l.amount)} · 매 턴 ${won(l.installment ?? 0)} 자동 상환${l.missed ? ` · 연체 ${l.missed}번 ⚠️ (3번이면 경매)` : ''}`
-              : `${l.kind ?? '일반'} 대출 ${won(l.amount)} · 남은 ${Math.max(0, left)}턴${left <= 3 ? ' ⚠️' : ''}`
+              : `${l.kind ?? '일반'} 대출 ${won(l.amount)} · ${left > 50 ? '졸업 뒤 8턴 안에 갚기' : `남은 ${Math.max(0, left)}턴${left <= 3 ? ' ⚠️' : ''}`}`
             const warn = l.kind === '주담대' ? !!l.missed : left <= 3
             if (p.loans.length < 2) return <div key={i} className={warn ? 'bad' : 'muted'}>· {text}</div>
             return <button key={i} className={`loan-pick${loanPick === i ? ' on' : ''}${warn ? ' bad' : ''}`} aria-pressed={loanPick === i} onClick={() => setLoanPick(loanPick === i ? -1 : i)}>{loanPick === i ? '✔ ' : ''}{text}</button>

@@ -54,7 +54,9 @@ function LoanLine({ p }: { p: GameState['players'][number] }) {
   return (
     <div className={`hud-loan${left !== null && left <= 3 ? ' warn' : ''}`} title={parts}>
       💳 대출 <b>{won(loanTotal(p))}</b>{p.loans.length > 1 ? ` (${p.loans.length}개)` : ''}
-      {due && <> · {due.kind ?? '일반'} 기한 <b>{left}턴</b> 남음{left !== null && left <= 3 ? ' ⚠️' : ''}</>}
+      {due && (left !== null && left > 50
+        ? <> · {due.kind ?? '일반'} 기한 <b>졸업 뒤 8턴</b></> // 학자금은 졸업할 때 기한을 정함 (그전엔 99턴으로 둠)
+        : <> · {due.kind ?? '일반'} 기한 <b>{left}턴</b> 남음{left !== null && left <= 3 ? ' ⚠️' : ''}</>)}
       {mort && <> · 주담대 매 턴 {won(mort.installment ?? 0)}</>}
     </div>
   )
@@ -620,7 +622,7 @@ export function Play({ game, setGame, speed, saving, onQuit, online }: { game: G
             <p>{pending.text}</p>
             {!isMine(pending.playerId) && (
               <div className="note-row">
-                <p className="note">{game.players[pending.playerId].name}{game.players[pending.playerId].human ? '님' : '(AI)'}이 고르는 중…</p>
+                <p className="note">{game.players[pending.playerId].name}{game.players[pending.playerId].human ? '님이' : '(AI)가'} 고르는 중…</p>
                 {/* 기다리는 동안에도 표정 보내기 (오른쪽 표정 버튼은 결정 창에 가려서) */}
                 {emoteId !== undefined && (
                   <button className="emote-btn-inline" aria-label="표정" disabled={cooling} onClick={() => setPicker(true)}>
