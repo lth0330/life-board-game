@@ -159,8 +159,8 @@ function spend(p: Player, amount: number) {
 export function carChargesAt(p: Player, stageIdx: number, tier = p.car, boughtAt = p.carStage ?? 2) {
   return CARS[tier].charges[Math.min(2, Math.max(0, stageIdx - boughtAt))]
 }
-// 은행 대출 (2026-10-21 사용자): 한도는 가진 재산(집·차·주식)을 보고 정함, 매 턴 이자 3%, 같은 종류는 한 번에 하나만
-export const LOAN_RATE = 0.03
+// 은행 대출 (2026-10-21 사용자): 한도는 가진 재산(집·차·주식)을 보고 정함, 매 턴 이자 2%(2026-10-22 3%→2%), 같은 종류는 한 번에 하나만
+export const LOAN_RATE = 0.02
 export const LOAN_TURNS = 8
 // 청년은 재산이 없어도 3,000만까지 (2026-10-21 사용자)
 export const YOUNG_LOAN_MIN = 3000
@@ -366,7 +366,7 @@ function beginTurn(s: GameState) {
     s.pending = {
       type: 'career', playerId: p.id,
       title: sid === 'student' ? '고등학교 졸업! 진로를 정해요' : '스무 살까지 어떻게 살았나요?',
-      text: `대학은 3종류예요. 먼저 수능 주사위를 굴리고(상위권 합격 +15%, 하위권 -10%), 그다음 합격 룰렛. 고른 대학의 능력치가 높을수록 합격 확률이 올라가요. 떨어지면 바로 취업하거나 재수(1번)를 해요.\n지금 능력치 지력 ${p.stats.int} · 체력 ${p.stats.str} · 매력 ${p.stats.cha}\n\n[직업 조건]\n${jobGuide(p, false)}\n\n합격하면 청년이 되어 대학 길 9칸을 주사위로 걸으며(공부·동아리·연애·알바·시험·축제·장학금) 능력치를 키운 뒤 직업을 골라요. 대신 학자금 대출(수능 상위권 0원 · 중간 500만 · 하위권 800만, 이자 3%)이 생기고 그동안 월급이 없어요.`,
+      text: `대학은 3종류예요. 먼저 수능 주사위를 굴리고(상위권 합격 +15%, 하위권 -10%), 그다음 합격 룰렛. 고른 대학의 능력치가 높을수록 합격 확률이 올라가요. 떨어지면 바로 취업하거나 재수(1번)를 해요.\n지금 능력치 지력 ${p.stats.int} · 체력 ${p.stats.str} · 매력 ${p.stats.cha}\n\n[직업 조건]\n${jobGuide(p, false)}\n\n합격하면 청년이 되어 대학 길 9칸을 주사위로 걸으며(공부·동아리·연애·알바·시험·축제·장학금) 능력치를 키운 뒤 직업을 골라요. 대신 학자금 대출(수능 상위권 0원 · 중간 500만 · 하위권 800만, 이자 2%)이 생기고 그동안 월급이 없어요.`,
       options: [
         ...UNIS.map((u) => ({ id: `uni:${u.stat}`, label: `${u.name} 지원`, desc: `${STAT_NAMES[u.stat]} ${p.stats[u.stat]} → 합격 확률 ${Math.round(passChance(p, u.stat) * 100)}% (수능 상위권 +15%, 하위권 -10%) · 대학 길에서 ${STAT_NAMES[u.stat]}을 키우면 행복 +1` })),
         { id: 'work', label: '바로 취업', desc: '모아 둔 돈 +400만, 청년 첫 차례부터 직업과 월급이 생겨요' },
