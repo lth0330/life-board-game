@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { sfx } from '../sound'
-import { awning, box, door, gable, sideWin } from './Art'
+import { awning, box, door, gable, sideWin } from './toyParts'
 
 // 추가 그림 (기본 버전 — 아트 단계에서 다시 그림, docs/12-art.md)
 // 이벤트 길 입구 랜드마크, 결정 창 그림

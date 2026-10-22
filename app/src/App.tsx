@@ -17,12 +17,14 @@ import { Board, FullMap } from './ui/Board'
 import { Dresser } from './ui/Dresser'
 import { LogBox } from './ui/LogBox'
 import type { ChatMsg } from './online/Online'
-import { autoEmote, EMOTE_COOLDOWN_MS, EMOTE_MS, EmotePicker } from './ui/Emotes'
+import { EMOTE_COOLDOWN_MS, EMOTE_MS, EmotePicker } from './ui/Emotes'
+import { autoEmote } from './ui/emoteData'
 import { Confetti, DiceThrow, StageCard } from './ui/Effects'
 import { Manual } from './ui/Manual'
 import { MiniGame } from './ui/MiniGames'
 import { BackButton, Frame, MenuScreen, SetupScreen, TitleScreen, type Speed } from './ui/Screens'
-import { CardsSheet, FinanceSheet, GameOver, MyInfoSheet, PeopleSheet, playerLine, StageSummary, won, TeamBadge } from './ui/Sheets'
+import { CardsSheet, FinanceSheet, GameOver, MyInfoSheet, PeopleSheet, StageSummary, TeamBadge } from './ui/Sheets'
+import { playerLine, won } from './ui/format'
 
 // 온라인 화면(AWS 연결 포함)은 '온라인으로 하기'를 눌렀을 때만 내려받음 (혼자 하기는 가볍게)
 const Online = lazy(() => import('./online/Online').then((m) => ({ default: m.Online })))
@@ -363,12 +365,13 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
 
   // 차례가 넘어가도 방금 움직인 사람을 1.2초 더 보여 줌 (팝업·걷기가 끝난 뒤)
   const [hold, setHold] = useState<number | null>(null)
-  const prevCur = useRef(game.current)
+  const curIdx = game.current
+  const prevCur = useRef(curIdx)
   useEffect(() => {
-    if (game.current === prevCur.current) return
+    if (curIdx === prevCur.current) return
     setHold(prevCur.current)
-    prevCur.current = game.current
-  }, [game.current])
+    prevCur.current = curIdx
+  }, [curIdx])
   useEffect(() => {
     if (hold === null || walking || diceShow !== null || popShow !== null) return
     const t = setTimeout(() => setHold(null), 1200)

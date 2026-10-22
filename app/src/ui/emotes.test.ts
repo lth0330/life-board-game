@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { createElement } from 'react'
 import { Character } from '../art/Character'
 import { DEFAULT_OUTFIT, ITEMS, withGender, type Outfit } from '../engine/outfit'
-import { autoEmote, EMOTES } from './Emotes'
+import { autoEmote, EMOTES } from './emoteData'
 
 describe('캐릭터·표정', () => {
   it('AI 자동 표정: 좋은 일 기쁨, 나쁜 일 슬픔, 방해 화남, 복권 놀람, 그냥 기록은 없음', () => {

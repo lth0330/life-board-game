@@ -7,8 +7,8 @@ import {
   stars, stocksValue, teamTotals, TEAM_COLORS, TEAM_NAMES, sameTeam,
 } from '../engine/game'
 import type { GameState, InsuranceKind, Player, Sector } from '../engine/types'
+import { playerLine, won } from './format'
 
-export const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}만`
 
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   return (
@@ -256,11 +256,6 @@ export function CardsSheet({ p, canUse, onUseChance, onSabotage, onClose }: {
   )
 }
 
-export function playerLine(s: GameState, p: Player) {
-  const job = jobOf(p)
-  const jobText = job?.id === 'ceo' && p.biz ? `${p.biz.name} 사장 · ${p.biz.ranks?.[p.jobRank] ?? job.ranks[p.jobRank]}` : job ? `${job.name}${job.boom ? ` · ${job.ranks[p.jobRank]}` : ` ${job.ranks[p.jobRank]}`}` : isAdultStage(s) ? (p.biz ? `${p.biz.name} 팔고 은퇴` : '백수') : '학생'
-  return jobText
-}
 
 export function PeopleSheet({ s, onClose }: { s: GameState; onClose: () => void }) {
   return (

@@ -986,3 +986,10 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .map-sheet { overflow: hidden; display: flex; flex-direction: column; }
 .map-scroll { overflow-y: auto; min-height: 0; flex: 1; border-radius: 16px; overscroll-behavior: contain; padding: 14px 4px; }
 .map-step { width: auto; min-width: 22px; padding: 0 3px; box-sizing: border-box; } /* 두 자리 숫자 */
+/* 가운데 창이 왼쪽 위 뒤로 가기 버튼에 가리지 않게 위쪽에 자리를 둠 (2026-10-22) */
+.sheet-backdrop { padding: 62px 0 12px; box-sizing: border-box; }
+.sheet-backdrop .sheet { max-height: 100%; }
+.sheet-backdrop.mini-backdrop .sheet.mini { max-height: 100%; }
+/* 지도 칸을 조금 크게, 이름 글씨 키움 */
+.map-node { width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 14px; }
+.map-node .map-label { font-size: 11px; max-width: 58px; letter-spacing: -0.3px; }

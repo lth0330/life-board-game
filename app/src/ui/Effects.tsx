@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { PIPS } from '../art/Art'
+import { PIPS } from '../art/pips'
 
 // 연출 모음. 기본 버전 — 아트 단계에서 다듬는다 (docs/12-art.md)
 

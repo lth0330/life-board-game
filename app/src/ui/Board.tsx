@@ -31,7 +31,7 @@ const UNI_LOOK: Record<string, { bg: string; icon: string }> = {
 
 const STOP_LABEL: Record<string, string> = { club: '동아리', job: '직업', middleBranch: '새 가족', promotion: '승진 심사' }
 
-export function tileLook(t: Tile) {
+function tileLook(t: Tile) {
   const base = TILE_STYLE[t.kind]
   if (t.uni) return { ...base, bg: UNI_LOOK[t.uni].bg, label: UNI_NAMES[t.uni] }
   if (t.kind === 'stop' && !t.stop) return { ...base, label: '갈림길' }
@@ -259,7 +259,7 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
 
 // 전체 지도 (2026-10-22 다시: 길이 이어진 진짜 지도 + 내 위치·다른 사람 위치·내 앞 칸 이동 숫자)
 // 판과 같은 자리 계산(갈래·지그재그)을 줄여서 그림. 아래에서 위로 걸어감
-const MAP_ROW = 70 // 깊이 1당 세로 px
+const MAP_ROW = 80 // 깊이 1당 세로 px
 export function FullMap({ s, meId, onClose }: { s: GameState; meId: number; onClose: () => void }) {
   const st = s.stages[s.stageIdx]
   const zig = useMemo(() => zigOffsets(st), [st])
@@ -301,7 +301,7 @@ export function FullMap({ s, meId, onClose }: { s: GameState; meId: number; onCl
             const n = steps.get(i)
             return (
               <div key={i} ref={mine ? meRef : undefined} className={`map-node${mine ? ' me' : ''}${n && n <= 6 ? ' reach' : ''}`} style={{ left: `${xOf(i)}%`, top: yOf(i), background: look.bg, color: look.fg }} title={look.label}>
-                <TileIcon kind={t.stop ? 'stop' : t.uni ? UNI_LOOK[t.uni].icon : t.kind === 'campus' ? 'grow' : t.kind} size={24} />
+                <TileIcon kind={t.stop ? 'stop' : t.uni ? UNI_LOOK[t.uni].icon : t.kind === 'campus' ? 'grow' : t.kind} size={28} />
                 <span className="map-label">{look.label}</span>
                 {n && <b className="map-step">{n}</b>}
                 {t.point && <em className="map-point">{t.point === 'shop' ? '상점' : '결혼식장'}</em>}
