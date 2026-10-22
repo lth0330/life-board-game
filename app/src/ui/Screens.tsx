@@ -183,7 +183,7 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
                   <b>{n}</b><span>{teams[k] ? 'B팀' : 'A팀'}</span>
                 </button>
               ))}
-              {!teamOk && <p className="bad">두 명씩 나눠 주세요 (눌러서 팀 바꾸기)</p>}
+              {!teamOk && <p className="bad">두 명씩 나눠 주세요 (누르면 팀이 바뀌어요)</p>}
             </div>
           )}
         </div>

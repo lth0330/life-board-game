@@ -153,6 +153,7 @@ export interface Player {
   car: CarTier
   carCharges: number
   carStage?: number // 차를 산 단계 (능력 횟수는 산 단계부터 단계마다 +1)
+  lastLog?: number // 내 차례가 끝났을 때의 기록 번호 (다음 차례에 그사이 일어난 일을 보여 줌)
   record: { shopBuys: number; spent: number; lotteryWon: number; deeds: number; duelWins: number; stockGain: number; shopSpent: number } // 결산 상 계산용
   celebrated: number[] // 이미 치른 육순(60)·칠순(70)
   jobTenure: number // 지금 직업에서 일한 턴 (퇴직금 계산)

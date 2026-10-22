@@ -30,7 +30,7 @@ const HOW: Record<string, string> = {
   pairs: '카드를 두 장씩 뒤집어 같은 그림을 모두 찾으세요. 시간이 정해져 있어요.',
   quickmath: '덧셈 문제 5개가 나와요. 알맞은 답을 빨리 고르세요.',
   firstImpression: '상황에 맞는 가장 좋은 말이나 행동을 고르세요.',
-  rhythm: '음표 4개가 위에서 떨어져요. 노란 선에 닿을 때 "지금!"을 누르세요.',
+  rhythm: '음표 4개가 위에서 떨어져요. 노란 선에 닿을 때 "지금!"을 누르세요. 너무 일찍 누르면 그 음표는 놓쳐요.',
   confess: '하트가 콩닥콩닥 커졌다 작아져요. 가장 커졌을 때 "고백!"을 누르세요.',
   dance: '화살표 춤 동작이 하나씩 나와요. 다 본 뒤 같은 순서로 화살표를 누르세요.',
   oddEven: '주사위 두 개가 구르다가 컵에 덮여요. 컵 속 두 주사위의 합이 홀수일지 짝수일지 맞히세요.',
@@ -419,7 +419,12 @@ function Rhythm({ level, onDone }: { level: number; onDone: (v: number) => void 
     const el = performance.now() - t0.current
     const m = marksRef.current
     const i = m.findIndex((x, k) => x === null && Math.abs(el - hits[k]) <= good)
-    if (i < 0) return
+    if (i < 0) {
+      // 선에 음표가 없을 때 누르면 다음 음표를 놓친 걸로 (마구 누르기 막기, 2026-10-22 친구 피드백)
+      const next = m.findIndex((x) => x === null)
+      if (next >= 0) setM(m.map((x, k) => (k === next ? 0 : x)))
+      return
+    }
     const d = Math.abs(el - hits[i])
     setM(m.map((x, k) => (k === i ? (d <= perfect ? 2 : 1) : x)))
   }

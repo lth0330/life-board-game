@@ -112,3 +112,16 @@ describe('대학 지원 순서 (2026-10-21)', () => {
     expect(passed).toBeGreaterThan(0)
   })
 })
+
+describe('결과 창 (2026-10-22)', () => {
+  it('사람이 고른 결과는 기록에만 남지 않고 결과 창(popup)으로도 뜬다', () => {
+    const s = adult(5)
+    const p = cur(s)
+    const before = s.popup?.id ?? 0
+    s.pending = { type: 'wallet', playerId: p.id, title: '양심 선택: 주운 지갑', text: '', options: [], data: { sc: 60 } }
+    choose(s, 'return')
+    expect(s.popup?.id).toBe(before + 1)
+    expect(s.popup?.title).toBe('양심 선택: 주운 지갑')
+    expect(s.popup?.text).toContain('사례금')
+  })
+})

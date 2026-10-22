@@ -352,7 +352,7 @@ export function Roulette({ title, chance, ok, who, manual, onDone }: { title: st
 }
 
 // 칸 사건 팝업: 그림 + 제목 + 이번 칸 기록. 눌러서 닫거나 저절로 꺼짐
-export function EventPopup({ art, title, text, tone, who, onClose }: { art: string; title: string; text: string; tone: string; who: string; onClose: () => void }) {
+export function EventPopup({ art, title, text, tone, who, hint = false, onClose }: { art: string; title: string; text: string; tone: string; who: string; hint?: boolean; onClose: () => void }) {
   const draw = ART[art]
   return (
     <button className={`event-pop t-${tone}`} onClick={onClose} aria-label={`${title}: ${text} (눌러서 닫기)`}>
@@ -360,6 +360,7 @@ export function EventPopup({ art, title, text, tone, who, onClose }: { art: stri
       <b className="jua">{title}</b>
       <span className="muted">{who}</span>
       {text.split('\n').map((l, i) => <span key={i}>{l}</span>)}
+      {hint && <small className="pop-hint">눌러서 닫기</small>}
     </button>
   )
 }

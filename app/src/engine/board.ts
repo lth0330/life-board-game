@@ -43,13 +43,13 @@ export const STAGE_DEFS: StageDef[] = [
         { road: 'play', label: '놀이 길', desc: '행복·매력 칸이 많아요' },
       ],
     },
-    event: { at: 12, rejoin: 17, len: 5, name: '운동회', minis: ['race', 'tug', 'throw'], desc: '체력 미니게임 (체력이 높을수록 쉬움)' },
+    event: { at: 12, rejoin: 17, len: 5, name: '운동회', minis: ['race', 'tug', 'throw'], desc: '칸마다 체력 미니게임이 있어요 (체력이 높을수록 쉬워요)' },
   },
   {
     id: 'student', name: '학생', ages: [8, 19], rolls: 8, length: 40,
     weights: [['grow', 30], ['card', 25], ['happy', 15], ['money', 15], ['risk', 15]],
     stops: { 6: 'club' }, points: {},
-    event: { at: 13, rejoin: 20, len: 9, name: '두뇌 올림피아드', minis: ['memory', 'pairs', 'quickmath'], desc: '지력 미니게임 (지력이 높을수록 쉬움)' },
+    event: { at: 13, rejoin: 20, len: 9, name: '두뇌 올림피아드', minis: ['memory', 'pairs', 'quickmath'], desc: '칸마다 지력 미니게임이 있어요 (지력이 높을수록 쉬워요)' },
     event2: { at: 13, rejoin: 20, len: 9, name: '학교 축제', minis: ['rhythm', 'firstImpression', 'dance'], desc: '매력 미니게임 (매력이 높을수록 쉬움, 이기면 매력↑)' },
   },
   {
@@ -59,7 +59,7 @@ export const STAGE_DEFS: StageDef[] = [
     // 직업 칸 = 출발 칸 (바로 취업은 제자리에서 고름, 대학 졸업생은 여기로 합류. 2026-10-17 사용자)
     stops: { 0: 'job' }, points: { 5: 'shop', 10: 'marriage', 18: 'shop', 20: 'marriage' },
     campus: true,
-    event: { at: 11, rejoin: 17, len: 7, name: '축제 거리', minis: ['firstImpression', 'rhythm', 'confess'], desc: '연애·매력 미니게임 (매력이 높을수록 쉬움)' },
+    event: { at: 11, rejoin: 17, len: 7, name: '축제 거리', minis: ['firstImpression', 'rhythm', 'confess'], desc: '칸마다 연애·매력 미니게임이 있어요 (매력이 높을수록 쉬워요)' },
   },
   {
     id: 'middle', name: '중년', ages: [40, 59], rolls: 8, length: 40,
@@ -70,11 +70,11 @@ export const STAGE_DEFS: StageDef[] = [
     life: {
       id: 'startup', at: 5, rejoin: 11, title: '인생 2막', text: '앞으로 어떻게 살까요? (창업하면 지금 직업은 그만두고 퇴직금을 받아요)',
       roads: [
-        { road: 'startup', label: '창업 길', desc: '직업에 맞는 회사(백수는 카페)를 차려요. 큰돈과 위기가 섞인 길' },
-        { road: 'company', label: '하던 일 계속', desc: '지금 하는 일을 이어 가요. 안정적인 길' },
+        { road: 'startup', label: '창업 길', desc: '직업에 맞는 회사(백수는 카페)를 차려요. 큰돈과 위기가 섞인 길이에요' },
+        { road: 'company', label: '하던 일 계속', desc: '지금 하는 일을 이어 가요. 안정적인 길이에요' },
       ],
     },
-    event: { at: 21, rejoin: 28, len: 9, name: '세계일주', minis: ['snap', 'pack', 'photo'], desc: '행복 미니게임 (지력·체력이 높을수록 쉬움)' }, // 2026-10-21 카지노와 자리 바꿈
+    event: { at: 21, rejoin: 28, len: 9, name: '세계일주', minis: ['snap', 'pack', 'photo'], desc: '칸마다 행복 미니게임이 있어요 (지력·체력이 높을수록 쉬워요)' }, // 2026-10-21 카지노와 자리 바꿈
   },
   {
     id: 'old', name: '노년', ages: [60, 80], rolls: null, length: 22,
@@ -83,11 +83,11 @@ export const STAGE_DEFS: StageDef[] = [
     life: {
       id: 'retire', at: 1, rejoin: 7, title: '은퇴지 고르기', text: '어디서 노후를 보낼까요?',
       roads: [
-        { road: 'city', label: '도시 길', desc: '매 턴 돈이 오르내려요 (위험·보상)' },
+        { road: 'city', label: '도시 길', desc: '매 턴 돈이 오르내려요 (위험한 만큼 보상도 커요)' },
         { road: 'country', label: '시골 길', desc: '매 턴 행복 +2, 행복 칸이 많아요' },
       ],
     },
-    event: { at: 10, rejoin: 16, len: 8, name: '카지노', minis: ['oddEven', 'highLow', 'slot'], desc: '마지막 역전 기회! 가진 돈의 10~50%를 걸어요 (운세가 좋을수록 유리, 도박중독 주의)' },
+    event: { at: 10, rejoin: 16, len: 8, name: '카지노', minis: ['oddEven', 'highLow', 'slot'], desc: '마지막 역전 기회! 가진 돈의 10~50%를 걸어요 (운세가 좋을수록 유리하고, 도박중독에 주의해요)' },
   },
 ]
 

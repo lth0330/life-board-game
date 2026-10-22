@@ -255,6 +255,8 @@ export interface OnlinePlay {
   mine: number[]; host: boolean; send: (op: Op) => void
   emote?: (player: number, expr: Expr) => void
   incoming?: { player: number; expr: Expr; id: string } | null
+  spin?: (player: number) => void // 주사위 굴리기 시작을 다른 기기에 알림 (2026-10-22)
+  incomingSpin?: { player: number; id: string } | null // 다른 기기에서 굴리기 시작함
   chat?: ChatMsg[] // 채팅 (2026-10-21)
   sendChat?: (text: string) => boolean
 }
@@ -265,6 +267,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
   const [rolling, setRolling] = useState(false)
   const [menu, setMenu] = useState(false)
   const [leaveAsk, setLeaveAsk] = useState(false) // 뒤로 가기: 게임에서 나갈지 물음
+  const [pendingDown, setPendingDown] = useState(false) // 선택 창을 잠깐 내렸는지
   // 위쪽 정보 칸 접기 (폰에서 판을 넓게). 이 기기에 기억
   const [hudMini, setHudMini] = useState(() => { try { return localStorage.getItem('dgl:hudMini') === '1' } catch { return false } })
   const toggleHud = () => { const v = !hudMini; setHudMini(v); try { localStorage.setItem('dgl:hudMini', v ? '1' : '0') } catch { /* 무시 */ } }
@@ -295,10 +298,22 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
   const [diceShow, setDiceShow] = useState<{ value: number; second?: number } | null>(null)
   const lastDiceId = useRef(game.dice?.id ?? 0)
   const lastWheel = useRef(game.roulette?.id ?? 0)
+  // 온라인: 손님이 멈춘 뒤 방장 결과가 올 때까지, 다른 기기 사람이 굴리는 동안 주사위를 계속 굴림 (2026-10-22: 중간에 안 보이던 것)
+  const [awaitDice, setAwaitDice] = useState(false)
+  const [remoteRoll, setRemoteRoll] = useState(false)
+  useEffect(() => { if (!awaitDice) return; const t = setTimeout(() => setAwaitDice(false), 5000); return () => clearTimeout(t) }, [awaitDice])
+  useEffect(() => { if (!remoteRoll) return; const t = setTimeout(() => setRemoteRoll(false), 9000); return () => clearTimeout(t) }, [remoteRoll])
+  const spinId = online?.incomingSpin?.id
+  useEffect(() => {
+    const sp = online?.incomingSpin
+    if (sp && !online?.mine.includes(sp.player)) setRemoteRoll(true)
+  }, [spinId]) // eslint-disable-line react-hooks/exhaustive-deps
   const diceAt = useRef(0) // 주사위 결과가 나온 시각 (룰렛을 그 뒤에 띄우려고)
   useEffect(() => {
     if (!game.dice || game.dice.id === lastDiceId.current) return
     lastDiceId.current = game.dice.id
+    setAwaitDice(false)
+    setRemoteRoll(false)
     diceAt.current = Date.now()
     setDiceShow({ value: game.dice.value, second: game.dice.second })
     sfx('diceLand')
@@ -341,12 +356,14 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
     const t = setTimeout(() => { setSuspense(false); sfx(popShow.tone === 'bad' ? 'bad' : 'pop') }, 1500)
     return () => clearTimeout(t)
   }, [popVisible, suspense, popShow])
+  // 내 사건은 천천히 보도록 눌러서 닫을 때까지 (2026-10-22 친구 피드백). 다른 사람·AI 것은 저절로
+  const popMine = !!popShow && isMine(popShow.playerId) && game.players[popShow.playerId].human
   useEffect(() => {
-    if (!popVisible || suspense) return
+    if (!popVisible || suspense || popMine) return
     const ms = popShow && game.players[popShow.playerId].human ? 2600 : 1500 // AI 차례는 짧게
     const t = setTimeout(() => setPopShow(null), ms)
     return () => clearTimeout(t)
-  }, [popVisible, popShow, game.players, suspense])
+  }, [popVisible, popShow, game.players, suspense, popMine])
   // 룰렛 연출 (대학 합격·감독 도전)
   const [wheel, setWheel] = useState<GameState['roulette']>(null)
   // 주사위 결과와 같은 순간에 오면, 주사위가 나온 시각부터 재서 기다렸다가 돌림
@@ -378,7 +395,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
     return () => clearTimeout(t)
   }, [hold, walking, diceShow, popShow])
 
-  const busy = rolling || diceShow !== null || walking || popShow !== null || hold !== null || summaryOpen || wheel !== null || wheelWaiting
+  const busy = rolling || awaitDice || remoteRoll || diceShow !== null || walking || popShow !== null || hold !== null || summaryOpen || wheel !== null || wheelWaiting
   const p = cur(game)
   const shown = walking ? game.players[game.pathPlayer] : hold !== null ? game.players[hold] : p
   // 룰렛을 기다리거나 돌리는 동안은 정보 칸도 그 전 모습 그대로 (학자금 대출이 먼저 보여 합격을 미리 알 수 있었음, 2026-10-22)
@@ -399,11 +416,12 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
     const t = setTimeout(() => {
       if (aiTurn) {
         setRolling(true)
+        online?.spin?.(p.id) // 방장 기기에서 AI가 굴릴 때도 다른 기기에 보여 줌
         setTimeout(() => { setRolling(false); act(aiStep) }, Math.min(DICE_ROLL_MS, SPEED_MS[speed]))
       } else act(aiStep)
     }, SPEED_MS[speed])
     return () => clearTimeout(t)
-  }, [game, busy, p.human, speed, act, online])
+  }, [game, busy, p.human, p.id, speed, act, online])
 
   // ── 말풍선·배너 ──
   const [speech, setSpeech] = useState(game.speech)
@@ -414,6 +432,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
     return () => clearTimeout(t)
   }, [game.speech])
   const [banner, setBanner] = useState(game.banner)
+  useEffect(() => { setPendingDown(false) }, [game.pending?.type, game.pending?.title, game.turn])
   // 단계 카드('중년 단계' 등)가 떠 있는 동안은 선택 창을 띄우지 않음 → 카드가 사라진 뒤에 뜸 (2026-10-22 사용자)
   const pending = busy || banner?.title.endsWith('단계') ? null : game.pending
   useEffect(() => {
@@ -434,14 +453,15 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
   // 내 차례가 되면 가운데에 잠깐 '내 차례!' (2026-10-21 사용자)
   const [turnToast, setTurnToast] = useState(false)
   const toastTurn = useRef(-1)
+  const toastable = myTurn && isMine(p.id) && p.human // 다른 사람 차례(관람)에는 안 뜨게
   useEffect(() => {
-    if (!myTurn || game.phase !== 'roll' || game.pending || toastTurn.current === game.turn) return
+    if (!toastable || game.phase !== 'roll' || game.pending || toastTurn.current === game.turn) return
     toastTurn.current = game.turn
     setTurnToast(true)
     sfx('myTurn')
     const t = setTimeout(() => setTurnToast(false), 2000)
     return () => clearTimeout(t)
-  }, [myTurn, game.phase, game.pending, game.turn])
+  }, [toastable, game.phase, game.pending, game.turn])
 
   // ── 같은 칸 가위바위보: 고르는 동안 머리 위 손이 돌다가, 다 고르면 2.8초 공개 ──
   const rps = game.rpsShow
@@ -528,11 +548,13 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
     sfx('dice')
     setRolling(true)
     setSpinning(true)
+    online?.spin?.(checkPending.playerId)
   }, [checkPending, walking, diceShow, popShow, hold]) // eslint-disable-line react-hooks/exhaustive-deps
   const doRoll = () => {
     if (spinning) {
       setSpinning(false)
       setRolling(false)
+      if (online && !online.host) setAwaitDice(true) // 방장 결과가 올 때까지 계속 굴러가게
       if (checkPending) run(['choose', 'roll'])
       else run(['roll', 0, carMode, itemMode])
       return
@@ -542,6 +564,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
     sfx('dice')
     setRolling(true)
     setSpinning(true)
+    online?.spin?.(p.id)
   }
   const showCar = myTurn && canUseCar(p) && !onCampus
   const heldItems = myTurn && !onCampus ? [...new Set(p.diceItems)] : []
@@ -564,7 +587,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
       onPointerDown={(e) => { unlockAudio(); if ((e.target as HTMLElement).closest('.world')) swipeY.current = { y: e.clientY, t: Date.now() } }}
       onPointerUp={(e) => { const sw = swipeY.current; if (sw && sw.y - e.clientY > 70 && Date.now() - sw.t < 300) doRoll(); swipeY.current = null }}
     >
-      <Board s={game} focus={shown} posOf={posOf} walkingId={walking ? game.pathPlayer : null} canPan={myTurn} emotes={emotes} hands={hands} say={speech} showSteps={myTurn || (!p.human && game.phase === 'roll' && !busy)} />
+      <Board s={game} focus={shown} posOf={posOf} walkingId={walking ? game.pathPlayer : null} canPan={myTurn || (pendingDown && !!game.pending && isMine(game.pending.playerId))} emotes={emotes} hands={hands} say={speech} showSteps={myTurn || (!p.human && game.phase === 'roll' && !busy)} />
 
       <header className={`hud${hudMini ? ' mini' : ''}`}>
         <div className="hud-row">
@@ -578,7 +601,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
         <div className="hud-row">
           <div className="order">
             <span className="muted">
-              {hudP.human ? `${hudP.name} 차례` : `${hudP.name}(AI) 차례 · 보는 중`}
+              {hudP.human ? (isMine(hudP.id) ? `${hudP.name} 차례` : `${hudP.name} 차례 · 보는 중`) : `${hudP.name}(AI) 차례 · 보는 중`}
               {st.rolls ? ` · 남은 주사위 ${hudP.rollsLeft}/${st.rolls}` : ' · 골까지 경주'}
             </span>
           </div>
@@ -629,11 +652,16 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
       </div>
 
       {spinning && checkPending && <div className="check-hint" role="status"><b className="jua">{checkPending.title}</b><span>{checkPending.text}</span></div>}
-      {(rolling || diceShow !== null) && <DiceThrow value={rolling ? null : diceShow?.value ?? null} second={rolling ? (itemMode === 'twin' ? null : undefined) : diceShow?.second} />}
+      {(rolling || awaitDice || remoteRoll || diceShow !== null) && <DiceThrow value={rolling || awaitDice || remoteRoll ? null : diceShow?.value ?? null} second={rolling ? (itemMode === 'twin' ? null : undefined) : diceShow?.second} />}
 
-      {pending && (
+      {/* 선택 창 잠깐 내리기: 내리면 판을 끌어 보거나 지도를 볼 수 있음 (2026-10-22 친구 피드백) */}
+      {pending && pendingDown && (
+        <button className="pending-reopen jua" onClick={() => setPendingDown(false)}>▲ {pending.title} · 선택 창 다시 열기</button>
+      )}
+      {pending && !pendingDown && (
         <div className={`sheet-backdrop${pending.type === 'rps' ? ' see-board' : ''}`}>
           <div className="sheet decision">
+            <button className="pending-down" onClick={() => setPendingDown(true)} aria-label="선택 창 잠깐 내리기">▼ 잠깐 내리기</button>
             <EventArt type={pending.type} />
             <h2 className="jua">{pending.title}</h2>
             <p>{pending.text}</p>
@@ -674,7 +702,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
       {popVisible && popShow && (
         suspense
           ? <EventPopup art={popShow.art} title={popShow.text.match(/^\[(.+?)\]/)?.[1] ?? popShow.title} text="도전 중…" tone="info" who={game.players[popShow.playerId].name} onClose={() => setSuspense(false)} />
-          : <EventPopup art={popShow.art} title={popShow.title} text={popShow.text} tone={popShow.tone} who={game.players[popShow.playerId].name} onClose={() => setPopShow(null)} />
+          : <EventPopup art={popShow.art} title={popShow.title} text={popShow.text} tone={popShow.tone} who={game.players[popShow.playerId].name} hint={popMine} onClose={() => setPopShow(null)} />
       )}
 
       {!busy && game.mini && isMine(game.mini.playerId) && (
@@ -710,7 +738,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
       {sheet === 'manual' && <Manual onClose={() => setSheet(null)} />}
 
 
-      {turnToast && !banner && <div className="turn-toast jua" role="status">내 차례!</div>}
+      {turnToast && !banner && <div className="turn-toast jua" role="status">{online || game.players.filter((q) => q.human).length <= 1 ? '내 차례!' : `${p.name} 차례!`}</div>}
       {stageBanner && <StageCard title={banner.title} text={banner.text} />}
       {banner && !busy && !stageBanner && (
         <div className={`banner b-${banner.tone}${banner.title.startsWith('복권') ? ' b-lottery' : ''}`} role="status">

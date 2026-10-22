@@ -10,10 +10,10 @@ import type { GameState, InsuranceKind, Player, Sector } from '../engine/types'
 import { playerLine, won } from './format'
 
 
-export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function Sheet({ title, onClose, children, className = '' }: { title: string; onClose: () => void; children: ReactNode; className?: string }) {
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+      <div className={`sheet ${className}`} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <h2 className="jua">{title}</h2>
           <button className="x" onClick={onClose}>닫기</button>
@@ -70,7 +70,7 @@ export function FinanceSheet(f: FinanceProps) {
     </Sheet>
   )
   return (
-    <Sheet title="재테크" onClose={f.onClose}>
+    <Sheet title="재테크" className="finance-sheet" onClose={f.onClose}>
       {adult && !f.canUse && <p className="note">지금은 구경만 할 수 있어요 (내 차례, 주사위 던지기 전에 사용).</p>}
       <div className="tabs" role="tablist">
         {([['stock', '주식'], ['save', '적금'], ['lottery', '복권'], ['ins', '보험'], ['loan', '대출'], ['friend', '친구']] as const).map(([k, l]) => (
@@ -133,7 +133,7 @@ export function FinanceSheet(f: FinanceProps) {
         <div className="list">
           <p>빌린 돈 <b>{won(loanTotal(p))}</b> · 더 빌릴 수 있는 돈 {won(loanLimit(s, p))} (한도 {won(loanCap(s, p))}) · 매 턴 이자 {LOAN_RATE * 100}% · {LOAN_TURNS}턴 뒤 한꺼번에 갚기 (못 갚으면 강제 청산)</p>
           <p className="note">한도 = 기본 500만 + 집·차·주식 값의 절반 (청년은 적어도 3,000만). 일반 대출은 다 갚아야 다시 빌릴 수 있어요.</p>
-          {p.creditBad > 0 && <p className="bad">신용불량 {p.creditBad}턴: 대출 불가</p>}
+          {p.creditBad > 0 && <p className="bad">신용불량 {p.creditBad}턴: 대출을 받을 수 없어요</p>}
           {p.loans.length >= 2 && <p className="note">갚을 대출을 눌러 고르세요</p>}
           {p.loans.map((l, i) => {
             const left = l.dueTurn - p.turnsPlayed
@@ -141,8 +141,10 @@ export function FinanceSheet(f: FinanceProps) {
               ? `주택담보대출 ${won(l.amount)} · 매 턴 ${won(l.installment ?? 0)} 자동 상환${l.missed ? ` · 연체 ${l.missed}번 ⚠️ (3번이면 경매)` : ''}`
               : `${l.kind ?? '일반'} 대출 ${won(l.amount)} · ${left > 50 ? '졸업 뒤 8턴 안에 갚기' : `남은 ${Math.max(0, left)}턴${left <= 3 ? ' ⚠️' : ''}`}`
             const warn = l.kind === '주담대' ? !!l.missed : left <= 3
-            if (p.loans.length < 2) return <div key={i} className={warn ? 'bad' : 'muted'}>· {text}</div>
-            return <button key={i} className={`loan-pick${loanPick === i ? ' on' : ''}${warn ? ' bad' : ''}`} aria-pressed={loanPick === i} onClick={() => setLoanPick(loanPick === i ? -1 : i)}>{loanPick === i ? '✔ ' : ''}{text}</button>
+            // 대출마다 바로 갚는 버튼 (2026-10-22: 창업 대출 갚는 곳을 못 찾았음)
+            const payNow = <button className="loan-pay" disabled={locked || p.money <= 0} onClick={(e) => { e.stopPropagation(); f.onRepay(Math.min(l.amount, Math.max(0, p.money)), i) }}>{p.money >= l.amount ? '다 갚기' : '가진 만큼 갚기'}</button>
+            if (p.loans.length < 2) return <div key={i} className={`loan-line ${warn ? 'bad' : 'muted'}`}><span>· {text}</span>{payNow}</div>
+            return <div key={i} className="loan-line"><button className={`loan-pick${loanPick === i ? ' on' : ''}${warn ? ' bad' : ''}`} aria-pressed={loanPick === i} onClick={() => setLoanPick(loanPick === i ? -1 : i)}>{loanPick === i ? '✔ ' : ''}{text}</button>{payNow}</div>
           })}
           <div className="row">
             {[500, 1000, 3000].map((a) => (
@@ -305,7 +307,7 @@ export function StageSummary({ s, onClose }: { s: GameState; onClose: () => void
     <div className="sheet-backdrop">
       <div className="sheet">
         <h2 className="jua center">{s.summary} 정산</h2>
-        <p className="center muted">지금까지 점수 (자산 150만당 1점 + 행복, 상은 마지막에)</p>
+        <p className="center muted">지금까지 점수 (자산 150만당 1점 + 행복, 상은 마지막에 더해요)</p>
         {s.settings.teams && <TeamTotal s={s} />}
         <div className="people">
           {ranked.map(({ p, sc }, i) => {
@@ -360,7 +362,7 @@ export function GameOver({ s, onRestart }: { s: GameState; onRestart: () => void
       <div className="sheet">
         <div className="center"><Trophy size={64} /></div>
         <h2 className="jua center">인생 결산</h2>
-        <p className="center muted">점수 = 자산 150만당 1점 + 행복 + 상 {AWARD_POINTS}점씩(공동이면 나눔) (집은 지금 시세, 차는 지금 가치로)</p>
+        <p className="center muted">점수 = 자산 150만당 1점 + 행복 + 상 {AWARD_POINTS}점씩(같으면 나눠요) (집은 지금 시세, 차는 지금 가치로 계산해요)</p>
         {s.settings.teams && <TeamTotal s={s} final />}
         <div className="people">
           {ranked.map(({ p, sc }, i) => (

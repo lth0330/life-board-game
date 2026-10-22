@@ -126,14 +126,14 @@ export const AWARD_POINTS = 10
 export const stockGainOf = (s: GameState, p: Player) => p.record.stockGain + SECTORS.reduce((a, k) => a + p.stocks[k] * s.stockPrice[k] - p.stockCost[k], 0)
 export const AWARDS: { id: string; name: string; desc: string; value: (p: Player, s: GameState) => number }[] = [
   // 산 개수가 같으면 상점에서 쓴 돈이 많은 사람 (2026-10-16: 공동 수상이 64% 판에서 나와서)
-  { id: 'shop', name: '쇼핑왕', desc: '상점에서 가장 많이 산 사람 (개수가 같으면 쓴 돈이 많은 사람)', value: (p) => p.record.shopBuys * 1e7 + p.record.shopSpent },
-  { id: 'spend', name: '큰손', desc: '돈을 가장 많이 쓴 사람 (집·차·상점·복권·결혼식 등)', value: (p) => p.record.spent },
-  { id: 'kids', name: '다둥이', desc: '아이가 가장 많은 사람', value: (p) => p.kids.length },
-  { id: 'success', name: '자식 농사', desc: '크게 성공한 자녀가 가장 많은 사람', value: (p) => p.kids.filter((k) => k.result === 2).length },
-  { id: 'lucky', name: '행운아', desc: '복권 당첨금이 가장 많은 사람', value: (p) => p.record.lotteryWon },
-  { id: 'kind', name: '착한 사람', desc: '선행이 가장 많은 사람 (봉사·지갑 찾아주기·유기견·친구에게 돈 빌려주기)', value: (p) => p.record.deeds },
-  { id: 'invest', name: '투자왕', desc: '주식으로 가장 많이 번 사람 (판 이익 + 들고 있는 주식의 오른 만큼)', value: (p, s) => stockGainOf(s, p) },
-  { id: 'duel', name: '만남의 왕', desc: '같은 칸 대결에서 1등을 가장 많이 한 사람', value: (p) => p.record.duelWins },
+  { id: 'shop', name: '쇼핑왕', desc: '상점에서 가장 많이 산 사람이 받아요 (개수가 같으면 쓴 돈이 많은 사람)', value: (p) => p.record.shopBuys * 1e7 + p.record.shopSpent },
+  { id: 'spend', name: '큰손', desc: '돈을 가장 많이 쓴 사람이 받아요 (집·차·상점·복권·결혼식 등)', value: (p) => p.record.spent },
+  { id: 'kids', name: '다둥이', desc: '아이가 가장 많은 사람이 받아요', value: (p) => p.kids.length },
+  { id: 'success', name: '자식 농사', desc: '크게 성공한 자녀가 가장 많은 사람이 받아요', value: (p) => p.kids.filter((k) => k.result === 2).length },
+  { id: 'lucky', name: '행운아', desc: '복권 당첨금이 가장 많은 사람이 받아요', value: (p) => p.record.lotteryWon },
+  { id: 'kind', name: '착한 사람', desc: '선행이 가장 많은 사람이 받아요 (봉사·지갑 찾아주기·유기견·친구에게 돈 빌려주기)', value: (p) => p.record.deeds },
+  { id: 'invest', name: '투자왕', desc: '주식으로 가장 많이 번 사람이 받아요 (판 이익 + 들고 있는 주식의 오른 만큼)', value: (p, s) => stockGainOf(s, p) },
+  { id: 'duel', name: '만남의 왕', desc: '같은 칸 대결에서 1등을 가장 많이 한 사람이 받아요', value: (p) => p.record.duelWins },
 ]
 export function awardsOf(s: GameState, p: Player) {
   return AWARDS.flatMap((a) => {
@@ -331,7 +331,7 @@ function beginTurn(s: GameState) {
       log(s, p.id, `[운세 ${fortuneName(p.fortune)}] 복권 ${rank}등 당첨! +${won(prize)}`, 'good')
       s.banner = { title: `복권 ${rank}등!`, text: `${p.name} +${won(prize)}`, tone: 'good' }
       if (rank <= 2) say(s, p, 'lotteryWin')
-    } else log(s, p.id, '복권 꽝', 'info')
+    } else log(s, p.id, '복권 결과: 꽝… 다음 기회에', 'info')
   } else if (isAdultStage(s)) {
     p.lottery.chance = Math.max(10, p.lottery.chance - 10)
   }
@@ -348,6 +348,12 @@ function beginTurn(s: GameState) {
   if (p.money < 0 && rng.chance(0.25)) {
     badEvent(s, p, { text: '빚 독촉에 시달렸다', loss: 0, happyLoss: 4 })
   }
+  // 지난 내 차례가 끝난 뒤 나에게 일어난 일(퇴직금·은퇴·복권·방해 카드·월급 밖의 좋은 일·나쁜 일)을 창으로 (2026-10-22: 기록 창에만 떠서 몰랐음)
+  if (p.human && p.lastLog !== undefined) {
+    const n = Math.min(s.log.length, Math.max(0, s.logCount - p.lastLog))
+    const lines = s.log.slice(s.log.length - n).filter((l) => l.playerId === p.id && !/기한까지 \d+턴/.test(l.text) && (l.tone !== 'info' || /복권|퇴직금|은퇴|연금|월급|입학|축하/.test(l.text))) // 대출 기한 경고는 따로 알림이 떠서 뺌
+    if (lines.length) s.popup = { id: (s.popup?.id ?? 0) + 1, art: lines.some((l) => /복권/.test(l.text)) ? 'ticket' : 'money', title: '지난 차례 뒤 일어난 일', text: lines.slice(-6).map((l) => l.text).join('\n'), tone: lines.some((l) => l.tone === 'bad') ? 'bad' : 'good', playerId: p.id }
+  }
   const sid = stageOf(s).id
   const lastStudentTurn = sid === 'student' && p.rollsLeft === 1
   const careerJob = p.careerDue ? jobOf(p) : null
@@ -363,11 +369,11 @@ function beginTurn(s: GameState) {
       text: `대학은 3종류예요. 먼저 수능 주사위를 굴리고(상위권 합격 +15%, 하위권 -10%), 그다음 합격 룰렛. 고른 대학의 능력치가 높을수록 합격 확률이 올라가요. 떨어지면 바로 취업하거나 재수(1번)를 해요.\n지금 능력치 지력 ${p.stats.int} · 체력 ${p.stats.str} · 매력 ${p.stats.cha}\n\n[직업 조건]\n${jobGuide(p, false)}\n\n합격하면 청년이 되어 대학 길 9칸을 주사위로 걸으며(공부·동아리·연애·알바·시험·축제·장학금) 능력치를 키운 뒤 직업을 골라요. 대신 학자금 대출(수능 상위권 0원 · 중간 500만 · 하위권 800만, 이자 3%)이 생기고 그동안 월급이 없어요.`,
       options: [
         ...UNIS.map((u) => ({ id: `uni:${u.stat}`, label: `${u.name} 지원`, desc: `${STAT_NAMES[u.stat]} ${p.stats[u.stat]} → 합격 확률 ${Math.round(passChance(p, u.stat) * 100)}% (수능 상위권 +15%, 하위권 -10%) · 대학 길에서 ${STAT_NAMES[u.stat]}을 키우면 행복 +1` })),
-        { id: 'work', label: '바로 취업', desc: '모아 둔 돈 +400만, 청년 첫 차례부터 직업·월급' },
+        { id: 'work', label: '바로 취업', desc: '모아 둔 돈 +400만, 청년 첫 차례부터 직업과 월급이 생겨요' },
       ],
     }
   } else if (sid === 'young' && p.retake) {
-    s.pending = { type: 'retake', playerId: p.id, title: '재수 1년', text: `${STAT_NAMES[p.retake]} +1 하고 다시 시험을 봐요 (이번 차례는 이걸로 끝)`, options: [{ id: 'go', label: '시험 보기' }] }
+    s.pending = { type: 'retake', playerId: p.id, title: '재수 1년', text: `${STAT_NAMES[p.retake]} +1 하고 다시 시험을 봐요 (이번 차례는 이걸로 끝나요)`, options: [{ id: 'go', label: '시험 보기' }] }
   } else if (sid === 'young' && p.collegeDecided && !p.college && !p.jobId && p.pos === 0) {
     goToJob(s, p)
   } else if (sid === 'middle' && p.exIdol != null) {
@@ -378,10 +384,10 @@ function beginTurn(s: GameState) {
     s.pending = {
       type: 'idolNext', playerId: p.id, title: '아이돌 은퇴! 다음 인생은?', text: `아이돌 때 ${JOBS.find((j) => j.id === 'idol')!.ranks[r]} · 매력 ${p.stats.cha}. 배우·유튜버로 가면 아이돌 등급에서 한 단계 아래부터 시작해요.`,
       options: [
-        { id: 'actor', label: '🎬 배우 전직', desc: `${actor.ranks[start]}부터 시작 · 대박형 · 월급 ${won(actor.salary)}` },
-        { id: 'youtuber', label: '📹 유튜버 전직', desc: `${yt.ranks[start]}부터 시작 · 대박형 · 월급 ${won(yt.salary)}` },
+        { id: 'actor', label: '🎬 배우 전직', desc: `${actor.ranks[start]}부터 시작해요 · 대박형 · 월급 ${won(actor.salary)}` },
+        { id: 'youtuber', label: '📹 유튜버 전직', desc: `${yt.ranks[start]}부터 시작해요 · 대박형 · 월급 ${won(yt.salary)}` },
         { id: 'biz', label: `🏢 창업: ${BUSINESSES.idol.name}`, desc: `자금 ${won(bizCost(p))} · 매력 바탕 · ${r >= 2 ? '톱스타라 중소기업부터' : '소기업부터'}` },
-        { id: 'rest', label: '🛋️ 좀 쉬기', desc: '백수 (중년 초반 창업 갈림길에서 창업 가능)' },
+        { id: 'rest', label: '🛋️ 좀 쉬기', desc: '백수가 돼요 (중년 초반 창업 갈림길에서 창업할 수 있어요)' },
       ],
     }
   } else if (sid === 'middle' && p.exAthlete !== null) {
@@ -389,9 +395,9 @@ function beginTurn(s: GameState) {
     s.pending = {
       type: 'athleteNext', playerId: p.id, title: '선수 은퇴! 다음 인생은?', text: `선수 때 ${JOBS.find((j) => j.id === 'athlete')!.ranks[p.exAthlete]}${p.medals.length ? ` · 메달 ${p.medals.length}개` : ''} · 체력 ${p.stats.str}`,
       options: [
-        { id: 'coach', label: '감독 도전', desc: `룰렛 성공 확률 ${ch}% (체력·선수 성적·메달) · 실패하면 백수` },
-        { id: 'biz', label: `창업: ${BUSINESSES.athlete.name}`, desc: `자금 ${won(bizCost(p))} · 체력 바탕 · 소기업부터` },
-        { id: 'rest', label: '좀 쉬기', desc: '백수 (중년 초반 창업 갈림길에서 창업 가능)' },
+        { id: 'coach', label: '감독 도전', desc: `룰렛 성공 확률 ${ch}% (체력·선수 성적·메달) · 실패하면 백수가 돼요` },
+        { id: 'biz', label: `창업: ${BUSINESSES.athlete.name}`, desc: `자금 ${won(bizCost(p))} · 체력이 바탕이에요 · 소기업부터 시작해요` },
+        { id: 'rest', label: '좀 쉬기', desc: '백수가 돼요 (중년 초반 창업 갈림길에서 창업할 수 있어요)' },
       ],
     }
   } else if (sid === 'old' && p.jobId === 'ceo' && p.bizKeep === null) {
@@ -399,7 +405,7 @@ function beginTurn(s: GameState) {
       type: 'bizRetire', playerId: p.id, title: '사업가의 노년', text: `${p.biz?.name} · ${bizRankOf(p)}`,
       options: [
         { id: 'sell', label: '회사 팔고 은퇴', desc: `+${won(bizSale(p))}` },
-        { id: 'keep', label: '계속 경영', desc: `수익 ${BIZ.oldMult}배, 매 턴 행복 -1, 골인할 때 팖` },
+        { id: 'keep', label: '계속 경영', desc: `수익 ${BIZ.oldMult}배, 매 턴 행복 -1, 골인할 때 팔아요` },
       ],
     }
   } else if (sid === 'middle' && p.kids.some((k) => isMinor(k) && k.edu === null)) eduPending(s, p)
@@ -1194,8 +1200,8 @@ function suneung(s: GameState, p: Player, dice: number, k: StatKey, after: UniAf
   else s.pending = {
     type: 'uniFail', playerId: p.id, title: '대학 불합격', text: '어떻게 할까요?',
     options: [
-      { id: 'retake', label: '재수하기 (1번만)', desc: `다음 차례를 써서 ${STAT_NAMES[k]} +1 하고 다시 도전`, disabled: !!p.retook },
-      { id: 'work', label: '바로 취업', desc: '지금 능력치로 바로 직업 고르기' },
+      { id: 'retake', label: '재수하기 (1번만)', desc: `다음 차례를 써서 ${STAT_NAMES[k]} +1 하고 다시 도전해요`, disabled: !!p.retook },
+      { id: 'work', label: '바로 취업', desc: '지금 능력치로 바로 직업을 골라요' },
     ],
     data: { k },
   }
@@ -1634,7 +1640,7 @@ function drawCard(s: GameState, p: Player) {
     if (!p.pet?.alive && s.stageIdx <= 3) deck.push(() => {
       s.pending = {
         type: 'stray', playerId: p.id, title: '유기견을 만났다', text: '길에서 떠도는 강아지가 따라온다. 키울까요?',
-        options: [{ id: 'yes', label: '키운다', desc: '매 턴 행복 +1, 사료값 (선행)' }, { id: 'no', label: '보호소에 데려다준다' }],
+        options: [{ id: 'yes', label: '키운다', desc: '매 턴 행복 +1, 사료값이 들어요 (선행)' }, { id: 'no', label: '보호소에 데려다준다' }],
       }
     })
   }
@@ -1715,7 +1721,7 @@ function startMini(s: GameState, p: Player, game: MiniId, target?: string) {
         type: 'festTarget', playerId: p.id, title: `축제 거리: ${MINI_NAMES[game]}`, text: '누구와 축제를 즐길까요? 잘하면 호감도가 올라요.',
         options: [
           ...known.map((x) => ({ id: `old:${x.name}:${x.grade}`, label: `💞 ${x.name}${stars(x.grade)} (호감 ${x.affinity}%)`, desc: suitorDesc(x) })),
-          { id: 'new', label: '✨ 새로운 사람 만나기', desc: '랜덤으로 한 명' },
+          { id: 'new', label: '✨ 새로운 사람 만나기', desc: '아무나 한 명을 골라요' },
         ],
         data: { game },
       }
@@ -1802,7 +1808,7 @@ function addAffinityOrMeet(s: GameState, p: Player, amount: number, target?: str
 
 // 미니게임 설명서에 보여 줄 '무엇이 쉽게 해 주나'와 보상 (miniReward와 같은 내용)
 export function miniGuide(s: GameState, game: MiniId | DuelId, duel: boolean): { stat: string; reward: string } {
-  if (duel) return { stat: '같은 칸에 선 사람끼리 점수 대결', reward: `1등이 꼴찌에게서 ${won(DUEL_STAKE[stageOf(s).id] ?? scaleOf(s))}을 받아요` }
+  if (duel) return { stat: '같은 칸에 선 사람끼리 점수로 겨뤄요', reward: `1등이 꼴찌에게서 ${won(DUEL_STAKE[stageOf(s).id] ?? scaleOf(s))}을 받아요` }
   const k = MINI_STAT[game as MiniId]
   const stat = k === 'fortune' ? '운세가 좋을수록 유리해요' : k ? `${STAT_NAMES[k]}이 높을수록 쉬워요` : '운에 맡겨요'
   const chance = ' · 대성공이면 가끔 찬스 카드'
@@ -2157,20 +2163,20 @@ function openShop(s: GameState, p: Player, visit: ShopVisit = { big: false, n: 0
     opts.push({ id: `house${i}`, label: `${h.name} 사기`, desc: `시세 ${won(housePriceOf(s, i))}${coupon < 1 ? ` (쿠폰 쓰면 -${won(couponOff(housePriceOf(s, i), 1000))})` : ''}${sell} · 매 턴 관리비 ${won(housePriceOf(s, i) * HOUSE_RULES.upkeepRate)}`, disabled: p.money < cost })
     if (p.money < cost && !hasMortgage(p) && stageOf(s).id !== 'old') {
       const m = mortgagePlan(s, p, i)
-      opts.push({ id: `mortgage${i}`, label: `${h.name} 대출 끼고 사기`, desc: `계약금 ${won(m.down)} (30%) · 나머지 ${won(m.borrow)}은 주택담보대출 · 매 턴 ${won(m.installment)}씩 ${HOUSE_RULES.mortgageTurns}턴 자동으로 갚기 · 3번 못 내면 경매`, disabled: p.money < m.down || p.creditBad > 0 })
+      opts.push({ id: `mortgage${i}`, label: `${h.name} 대출 끼고 사기`, desc: `계약금 ${won(m.down)} (30%) · 나머지 ${won(m.borrow)}은 주택담보대출 · 매 턴 ${won(m.installment)}씩 ${HOUSE_RULES.mortgageTurns}턴 자동으로 갚아요 · 3번 못 내면 경매로 넘어가요`, disabled: p.money < m.down || p.creditBad > 0 })
     }
   })
   if (!visit.big && stageOf(s).id !== 'old') CARS.forEach((c, i) => {
     if (i <= p.car) return
     const cost = carCost(p, i)
     const trade = p.car ? ` · 지금 차 ${won(carResale(p))}에 팔고 ${won(cost)}만 더` : ''
-    opts.push({ id: `car${i}`, label: `${c.name} 사기`, desc: `${won(c.price)}${coupon < 1 ? ` (쿠폰 쓰면 -${won(couponOff(c.price, 500))})` : ''}${trade} · 주사위 ±1 이번 단계 ${c.charges[0]}번, 다음 단계부터 1번씩 늘어남 · 노년엔 못 삼`, disabled: p.money < cost })
+    opts.push({ id: `car${i}`, label: `${c.name} 사기`, desc: `${won(c.price)}${coupon < 1 ? ` (쿠폰 쓰면 -${won(couponOff(c.price, 500))})` : ''}${trade} · 주사위 ±1 이번 단계 ${c.charges[0]}번, 다음 단계부터 1번씩 늘어나요 · 노년엔 못 사요`, disabled: p.money < cost })
   })
   if (!p.agency && canDate(s, p)) {
-    opts.push({ id: 'agency0', label: '소개팅 회사 일반 회원', desc: '매 턴 30만, 연애 시작 100만, 속성 지정' })
-    opts.push({ id: 'agency1', label: '소개팅 회사 VIP 회원', desc: '매 턴 100만, 연애 시작 300만, 속성 지정 + ★3 이상 잘 나옴' })
+    opts.push({ id: 'agency0', label: '소개팅 회사 일반 회원', desc: '매 턴 30만, 연애 시작 100만, 원하는 속성을 고를 수 있어요' })
+    opts.push({ id: 'agency1', label: '소개팅 회사 VIP 회원', desc: '매 턴 100만, 연애 시작 300만, 원하는 속성을 고르고 ★3 이상이 잘 나와요' })
   }
-  if (!p.pet?.alive) opts.push({ id: 'pet', label: '반려동물 데려오기', desc: `${won(50)} · 매 턴 행복 +1, 사료값`, disabled: p.money < 50 })
+  if (!p.pet?.alive) opts.push({ id: 'pet', label: '반려동물 데려오기', desc: `${won(50)} · 매 턴 행복 +1, 사료값이 들어요`, disabled: p.money < 50 })
   opts.push({ id: 'chance', label: '찬스 카드 사기', desc: `${won(100)}${p.chance ? ' · 이미 1장 있어요' : ''}`, disabled: p.money < 100 || !!p.chance })
   const full = p.diceItems.length >= MAX_DICE_ITEMS
   for (const k of Object.keys(DICE_ITEMS) as DiceItem[]) {
@@ -2179,7 +2185,7 @@ function openShop(s: GameState, p: Player, visit: ShopVisit = { big: false, n: 0
   }
   // 돈이 모자라면 여기서 바로 은행 대출 (2026-10-21 사용자). 일반 대출은 한 번에 하나만
   if (canBankLoan(s, p)) for (const a of [500, 1000, 3000]) {
-    if (a <= loanLimit(s, p)) opts.push({ id: `loan${a}`, label: `💳 은행에서 ${won(a)} 빌리기`, desc: `${LOAN_TURNS}턴 안에 한꺼번에 갚기 · 매 턴 이자 ${LOAN_RATE * 100}% · 빌린 뒤 다시 골라요` })
+    if (a <= loanLimit(s, p)) opts.push({ id: `loan${a}`, label: `💳 은행에서 ${won(a)} 빌리기`, desc: `${LOAN_TURNS}턴 안에 한꺼번에 갚아요 · 매 턴 이자 ${LOAN_RATE * 100}% · 빌린 뒤 다시 골라요` })
   }
   opts.push({ id: 'pass', label: visit.n ? '다 샀어요 (나가기)' : '그냥 지나가기' })
   const houseNote = visit.n ? '' : p.house
@@ -2269,7 +2275,7 @@ function jobOptions(s: GameState, p: Player, includeStay: boolean): ChoiceOption
   }))
   const biz = p.jobId ? BUSINESSES[p.jobId] : null
   if (includeStay && biz && stageOf(s).id === 'middle') {
-    opts.push({ id: 'biz', label: `창업: ${biz.name}`, desc: `자금 ${won(bizCost(p))}${p.jobId === 'chef' ? ' (요리사 할인)' : ''} · ${STAT_NAMES[biz.stat]} ${p.stats[biz.stat]} 바탕 · 소기업부터 · 지금 직장 퇴직금 받음`, disabled: p.money < bizCost(p) && p.creditBad > 0 })
+    opts.push({ id: 'biz', label: `창업: ${biz.name}`, desc: `자금 ${won(bizCost(p))}${p.jobId === 'chef' ? ' (요리사 할인)' : ''} · ${STAT_NAMES[biz.stat]} ${p.stats[biz.stat]}이 바탕이에요 · 소기업부터 시작하고 지금 직장 퇴직금을 받아요`, disabled: p.money < bizCost(p) && p.creditBad > 0 })
   }
   opts.push({ id: includeStay ? 'stay' : 'jobless', label: includeStay ? (p.jobId ? '지금 그대로' : '계속 백수로') : '백수로 지내기', desc: includeStay ? '' : '월급 없음, 매 턴 행복 +1, 굴리기 전에 언제든 취업 도전' })
   return opts
@@ -2301,8 +2307,8 @@ function stopTile(s: GameState, p: Player, t: Tile) {
     }
     case 'middleBranch': {
       const opts: ChoiceOption[] = []
-      if (p.spouse && p.children + p.adopted === 0) opts.push({ id: 'adopt', label: '입양하기', desc: `5~8살 아이 · 지원금 +${won(KIDS.adoptGrant)}, 어른이 되면 용돈 (중년에 1번만)` })
-      if (!p.pet?.alive) opts.push({ id: 'pet', label: '반려동물 키우기', desc: '매 턴 행복 +1, 사료값' })
+      if (p.spouse && p.children + p.adopted === 0) opts.push({ id: 'adopt', label: '입양하기', desc: `5~8살 아이 · 지원금 +${won(KIDS.adoptGrant)}, 어른이 되면 용돈을 줘요 (중년에 1번만)` })
+      if (!p.pet?.alive) opts.push({ id: 'pet', label: '반려동물 키우기', desc: '매 턴 행복 +1, 사료값이 들어요' })
       opts.push({ id: 'none', label: '지금처럼 살기' })
       s.pending = { type: 'middleBranch', playerId: p.id, title: '새 가족', text: '새 가족을 맞을까요?', options: opts }
       break
@@ -2386,6 +2392,7 @@ export function choose(s: GameState, optionId: string) {
   const sc = scaleOf(s)
   s.pending = null
   const spent0 = p.record.spent
+  const chooseStart = s.logCount
   switch (pd.type) {
     case 'afterRoll': {
       const d = (pd.data ?? {}) as { item?: DiceItem | null; bonus?: number }
@@ -2781,8 +2788,18 @@ export function choose(s: GameState, optionId: string) {
     }
   }
   if (pd.type === 'shop') p.record.shopSpent += p.record.spent - spent0
+  // 고른 결과를 화면에 (2026-10-22: 기록 창에만 떠서, 단계 마지막 차례면 결과를 못 보고 넘어갔음)
+  const resultLines = p.human && !s.pending && !s.mini && !NO_RESULT_POP.has(pd.type)
+    ? s.log.slice(s.log.length - Math.min(s.log.length, s.logCount - chooseStart)).filter((l) => l.playerId === p.id || l.playerId === null) : []
+  const popBefore = s.popup?.id
   resume(s)
+  if (resultLines.length && s.popup?.id === popBefore) {
+    s.popup = { id: (s.popup?.id ?? 0) + 1, art: TYPE_POP_ART[pd.type] ?? 'card', title: pd.title, text: resultLines.slice(-6).map((l) => l.text).join('\n'), tone: resultLines.some((l) => l.tone === 'bad') ? 'bad' : resultLines[0].tone, playerId: p.id }
+  }
 }
+// 결과 창을 따로 안 띄우는 선택 (갈림길·상점처럼 다음 화면이 바로 이어지는 것)
+const NO_RESULT_POP = new Set(['fork', 'shop', 'shopCoupon', 'agencyAttr', 'afterRoll', 'retake', 'casinoStake', 'festTarget', 'sabotageTarget', 'cardSwap'])
+const TYPE_POP_ART: Record<string, string> = { wallet: 'money', happyPick: 'rest', date: 'heart', marriage: 'heart', growPick: 'grow', job: 'money', invest: 'money' }
 
 // ───────── 차례 전에 하는 행동 (재테크·카드) ─────────
 
@@ -3108,6 +3125,7 @@ function payDebtsAtGoal(s: GameState, p: Player) {
 function endTurn(s: GameState) {
   const p = cur(s)
   const st = stageOf(s)
+  p.lastLog = s.logCount
   if (st.rolls) p.rollsLeft = Math.max(0, p.rollsLeft - 1)
   if (st.id === 'old' && tileOf(s, p).kind === 'goal' && !p.finished) {
     p.finished = true
