@@ -26,19 +26,19 @@ export const SAVINGS_RATE = 0.015 // 적금 매 턴 이자
 export const STAGE_SCALE: Record<StageId, number> = { child: 2, student: 5, young: 60, middle: 90, old: 70 }
 
 export const JOBS: JobDef[] = [
-  { id: 'office', name: '회사원', boom: false, req: { int: 2 }, college: false, salary: 360, ranks: ['신입', '부장', '임원'], key: 'int', note: '무난해요' },
-  { id: 'civil', name: '공무원', boom: false, req: { int: 3 }, college: false, salary: 270, ranks: ['9급', '7급', '5급'], key: 'int', pension: true, note: '연금이 나오고 해고 위기에 강해요' },
-  { id: 'teacher', name: '교사', boom: false, req: { int: 3, cha: 2 }, college: true, salary: 360, ranks: ['일반 교사', '학년 부장', '교장'], key: 'cha', pension: true, note: '연금이 나오고 방학마다 행복해요' },
+  { id: 'office', name: '회사원', boom: false, req: { int: 2 }, college: false, salary: 400, ranks: ['신입', '부장', '임원'], key: 'int', note: '무난해요' },
+  { id: 'civil', name: '공무원', boom: false, req: { int: 3 }, college: false, salary: 330, ranks: ['9급', '7급', '5급'], key: 'int', pension: true, note: '연금이 나오고 해고 위기에 강해요' },
+  { id: 'teacher', name: '교사', boom: false, req: { int: 3, cha: 2 }, college: true, salary: 405, ranks: ['일반 교사', '학년 부장', '교장'], key: 'cha', pension: true, note: '연금이 나오고 방학마다 행복해요' },
   { id: 'dev', name: '개발자', boom: false, req: { int: 4 }, college: false, salary: 450, ranks: ['주니어', '시니어', 'CTO'], key: 'int', sector: 'IT', note: '승진이 빨라요' },
   { id: 'police', name: '경찰', boom: false, req: { str: 4, int: 2 }, college: false, salary: 360, ranks: ['순경', '형사', '경찰서장'], key: 'str', pension: true, note: '연금이 나오고 행복해요' },
   { id: 'fire', name: '소방관', boom: false, req: { str: 4, int: 2 }, college: false, salary: 360, ranks: ['대원', '팀장', '소방서장'], key: 'str', pension: true, note: '연금이 나오고 행복해요' },
   { id: 'chef', name: '요리사', boom: false, req: { str: 2, cha: 2 }, college: false, salary: 360, ranks: ['보조', '셰프', '오너 셰프'], key: 'cha', note: '창업 성공률 크게↑' },
   { id: 'scientist', name: '과학자', boom: false, req: { int: 5 }, college: true, salary: 540, ranks: ['연구원', '책임연구원', '연구소장'], key: 'int', sector: '화학', note: '연구 성과 → 분야 주가↑' },
   { id: 'lawyer', name: '변호사', boom: false, req: { int: 5, cha: 3 }, college: true, salary: 675, ranks: ['변호사', '파트너', '대표 변호사'], key: 'int', note: '높은 등급 배우자↑' },
-  { id: 'doctor', name: '의사', boom: false, req: { int: 7, str: 3 }, college: true, salary: 810, ranks: ['레지던트', '전문의', '병원장'], key: 'int', sector: '의료', note: '병원비 위기↓, 높은 등급 배우자↑' },
+  { id: 'doctor', name: '의사', boom: false, req: { int: 7, str: 3 }, college: true, salary: 720, ranks: ['레지던트', '전문의', '병원장'], key: 'int', sector: '의료', note: '병원비 위기↓, 높은 등급 배우자↑' },
   { id: 'athlete', name: '운동선수', boom: true, req: { str: 5 }, college: false, salary: 585, ranks: ['2군', '주전', '국가대표'], key: 'str', note: '중년에 은퇴해요' },
   { id: 'idol', name: '아이돌', boom: true, req: { cha: 6 }, college: false, salary: 630, ranks: ['연습생', '신인', '톱스타'], key: 'cha', sector: '엔터', note: '중년에 은퇴하고 배우·유튜버로 가거나 창업해요' },
-  { id: 'youtuber', name: '유튜버', boom: true, req: { cha: 3 }, college: false, salary: 405, ranks: ['구독자 1만', '10만', '100만'], key: 'cha', sector: '엔터', note: '크게 오르거나 크게 떨어져요' },
+  { id: 'youtuber', name: '유튜버', boom: true, req: { cha: 3 }, college: false, salary: 450, ranks: ['구독자 1만', '10만', '100만'], key: 'cha', sector: '엔터', note: '크게 오르거나 크게 떨어져요' },
   { id: 'ceo', name: '사업가', boom: true, req: {}, college: false, salary: 675, ranks: ['소기업', '중소기업', '중견기업'], key: 'int', note: '중년에 창업해야만 될 수 있어요' },
   { id: 'actor', name: '배우', boom: true, req: {}, college: false, salary: 630, ranks: ['단역', '조연', '주연'], key: 'cha', sector: '엔터', note: '아이돌 출신만 (중년에 전직, 2026-10-21)' },
   { id: 'coach', name: '감독', boom: false, req: {}, college: false, salary: 450, ranks: ['코치', '감독', '국가대표 감독'], key: 'str', note: '운동선수 출신만 될 수 있어요 (은퇴 때 도전)' },
@@ -114,11 +114,11 @@ export const HOUSE_RULES = {
 // 창업 (2026-10-15 사용자 결정). 숫자는 초안
 export const BIZ = {
   cost: 3000, chefCost: 1800, // 2026-10-21 밤: 돈이 2.25배가 되어 자금 1.5배, 수익·매각 2.25배
-  base: [675, 1575, 3375], // 회사 크기별 매 턴 기본 수익 (소 / 중소 / 중견)
+  base: [540, 1260, 2700], // 회사 크기별 매 턴 기본 수익 (소 / 중소 / 중견). 2026-10-23 -20% (능력치 높은 사람이 창업하면 너무 셌음)
   fortune: [-0.6, -0.2, 0.5, 1, 1.8], // 운세별 배율 (대흉 ~ 대길)
-  growPerStat: 0.05, // 운세 평타 이상일 때 커질 확률 = 능력치 × 5%
+  growPerStat: 0.04, // 운세 평타 이상일 때 커질 확률 = 능력치 × 5%
   fallBase: 0.3, fallPerStat: 0.02, // 악 이하일 때 작아질 확률 = 30% - 능력치 × 2%
-  sale: [2250, 9000, 22500], // 노년에 팔 때
+  sale: [1500, 5400, 13500], // 노년에 팔 때 (2026-10-23 -40%: 중견기업 매각만으로 150점이라 너무 셌음)
   oldMult: 0.7, // 노년에 계속 경영하면 수익 배율
 }
 // 직업별 창업 업종 (자기 직업에 맞춰서). 백수는 능력치로 고름
@@ -143,12 +143,12 @@ export const BUSINESSES: Record<string, { name: string; stat: 'int' | 'str' | 'c
 export const CAFE = {
   name: '카페', stat: 'int' as const, sector: null, avg: true,
   ranks: ['동네 카페', '유명 카페', '인스타 유명 카페'],
-  base: [675, 1350, 2475], // 일반 회사 675 / 1,575 / 3,375
-  sale: [2250, 6750, 13500], // 일반 회사 2,250 / 9,000 / 22,500
+  base: [540, 1080, 1980], // 일반 회사 540 / 1,260 / 2,700 (2026-10-23 같이 -20%)
+  sale: [1500, 4500, 9000], // 일반 회사 1,500 / 5,400 / 13,500
 }
 // 퇴직금 = 그만둘 때 월급 × 그 직업에서 일한 턴 × 0.3. 꾸준형만 (아이돌·유튜버·운동선수·사업가 없음)
 export const SEVERANCE_RATE = 0.3
-export const PENSION = 180 // 공무원·교사·경찰·소방관: 노년 매 턴
+export const PENSION = 250 // 공무원·교사·경찰·소방관: 노년 매 턴
 // 운동선수 메달: 국가대표일 때 매 턴 체력 × 2% 확률, 최대 3개. 그때부터 매 턴 메달 연금
 export const MEDALS = [{ name: '금', pension: 40 }, { name: '은', pension: 25 }, { name: '동', pension: 15 }]
 export const CAR_CRASH_LOSS = 0.15 // 사고 날 때마다 차 가치 -15%

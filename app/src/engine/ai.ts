@@ -1,30 +1,45 @@
-import { BUSINESSES, DICE_ITEMS, JOBS, SECTORS } from './data'
+import { BIZ, BUSINESSES, DICE_ITEMS, JOBS, SECTORS } from './data'
 import { findEvent, specialValue } from './special'
 import {
   aiDiceItem, aiFinishMini, aiWantsCar, passChance, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, canBankLoan, loanLimit, loanTotal, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, rngOf, salaryOf, scoreOf, stageOf, startSabotage, takeLoan, toggleInsurance,
   tradeStock, playChance, moodLevel, scaleOf, withdraw,
 } from './game'
-import type { GameState, Pending, Player } from './types'
+import type { GameState, Pending, Personality, Player } from './types'
 
 // 규칙 기반 AI. 사람과 같은 정보만 본다 (미래 뉴스는 아무도 모름)
 
+// 성격에 맞는 직업 (2026-10-23 사용자: 직업 특성을 보고 고르게). 1보다 크면 좋아함
+// 가족형: 연애·가정에 좋은 직업(요리사 집밥·교사 자녀 교육·소방관·회사원 연애), 의사(이혼 위기)·과학자(연애↓)·변호사(과로)는 피함
+// 안전형: 연금·건강(공무원), 다치는 직업·대박형은 피함 / 엘리트형: 대학 나온 고소득 / 재테크형: 고소득·주식 분야 / 도박꾼형: 대박형
+const FIT: Record<Personality, Record<string, number>> = {
+  family: { chef: 1.6, teacher: 1.6, fire: 1.5, office: 1.4, civil: 1.3, police: 1.2, idol: 1.2, doctor: 0.6, scientist: 0.6, lawyer: 0.8, dev: 0.8, youtuber: 0.8 },
+  safe: { civil: 2, teacher: 1.7, police: 1.3, office: 1.3, fire: 1.1, chef: 0.9, dev: 0.7, athlete: 0.4, idol: 0.4, youtuber: 0.4 },
+  elite: { doctor: 1.8, lawyer: 1.5, scientist: 1.4, dev: 1.2, teacher: 1.1, youtuber: 0.5, idol: 0.7, athlete: 0.8, chef: 0.8 },
+  investor: { dev: 1.4, scientist: 1.3, lawyer: 1.2, doctor: 1.2, office: 1.1, civil: 0.6, teacher: 0.8 },
+  gambler: { idol: 1.8, youtuber: 1.6, athlete: 1.6, chef: 1.1, civil: 0.4, teacher: 0.6, office: 0.7 },
+}
 const jobValue = (id: string, p: Player): number => {
   const j = JOBS.find((x) => x.id === id)
   if (!j) return 0
-  let v = j.salary
-  switch (p.personality) {
-    case 'safe': if (j.pension) v *= 1.6; if (j.boom) v *= 0.4; break
-    case 'family': if (j.id === 'teacher' || j.pension) v *= 1.4; break
-    case 'gambler': if (j.boom) v *= 1.8; break
-    case 'elite': if (j.college) v *= 1.3; break
-    case 'investor': break
-  }
+  let v = j.salary * (FIT[p.personality][id] ?? 1)
   // 월급만 보지 않고 잘 맞는 직업: 핵심 능력치가 조건보다 높을수록, 대학 전공에 맞을수록
   v *= 1 + 0.08 * Math.max(0, p.stats[j.key] - (j.req[j.key] ?? 0))
   if (p.major === 'str' && (j.id === 'athlete' || j.key === 'str')) v *= 1.6
   if (p.major === 'cha' && (j.id === 'idol' || j.id === 'youtuber' || j.id === 'teacher')) v *= 1.5
   return v
+}
+
+// 창업하면 벌 것 같은 돈 ÷ 지금 월급 (2026-10-23: 재테크형·도박꾼형이 능력치와 상관없이 늘 창업해서 손해를 봄)
+// 업종 능력치가 높을수록 수익이 크고 회사도 잘 큼. 운세가 나쁘면 적자. 성격마다 거는 정도가 다름
+function bizRatio(p: Player): number {
+  const b = p.jobId ? BUSINESSES[p.jobId] : null
+  const st = b ? p.stats[b.stat] : Math.round((p.stats.int + p.stats.str + p.stats.cha) / 3) // 백수는 카페 (세 능력치 평균)
+  const grow = st >= 7 ? 2 : st >= 5 ? 1.4 : 1
+  const luck = [0.2, 0.5, 0.8, 1.2, 1.6][p.fortune] ?? 0.8
+  const expect = BIZ.base[0] * (0.5 + st / 10) * grow * luck * (p.jobId === 'chef' ? 1.2 : 1)
+  const appetite = { gambler: 1.1, investor: 1, elite: 0.75, family: 0.6, safe: 0.45 }[p.personality]
+  return (expect * appetite) / Math.max(300, salaryOf(p))
 }
 
 function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
@@ -53,7 +68,7 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
         case 'play': return per === 'family' || per === 'gambler' ? 2.5 : 1.4
         case 'college': return per === 'elite' ? 3 : per === 'gambler' ? 0.5 : 1.5
         case 'work': return per === 'investor' ? 2 : 1
-        case 'startup': return per === 'gambler' || per === 'investor' || p.jobId === 'chef' ? 3 : !p.jobId ? 2 : 0.6
+        case 'startup': return p.jobId === 'ceo' ? 0 : 1.5 * bizRatio(p) // '하던 일 계속'(1.5)보다 벌 것 같으면 창업
         case 'company': return 1.5
         case 'city': return per === 'gambler' || per === 'investor' ? 3 : 1
         case 'country': return 2
@@ -94,13 +109,10 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
       if (id === 'stay') return p.jobId ? jobValue(p.jobId, p) * 1.05 : 0
       if (id === 'biz') {
         // 창업: 업종 능력치가 높고 운을 거는 성격일수록. 기대 수익을 지금 월급과 비교
-        const b = p.jobId ? BUSINESSES[p.jobId] : null
-        if (!b) return 0
-        const expect = 200 * (0.5 + p.stats[b.stat] / 10) * (per === 'gambler' ? 2.2 : per === 'investor' ? 1.8 : per === 'safe' ? 0.8 : 1.3)
-        return expect
+        if (!p.jobId || !BUSINESSES[p.jobId]) return 0
+        return jobValue(p.jobId, p) * 1.05 * bizRatio(p) // 그대로 있기보다 나을 때만
       }
       if (id === 'jobless') return 1
-      if (id === 'ceo') return per === 'gambler' || per === 'investor' ? 500 : p.jobId === 'chef' ? 450 : 50
       return jobValue(id.slice(4), p)
     }
     case 'middleBranch': return id === 'adopt' ? (per === 'family' ? 5 : 2) : id === 'pet' ? (per === 'family' ? 4 : 2.5) : 1
