@@ -196,10 +196,7 @@ export default function App() {
           slot={profile ? slot : null}
           gameNotice={gameNotice}
           onContinue={() => { if (slot) { setGame(slot.state); setScreen('play') } }}
-          onNew={() => {
-            if (profile) { deleteLocalGame(profile.loginId); pending.current = null; flush(); setSlot(null) }
-            setScreen('setup')
-          }}
+          onNew={() => setScreen('setup')} // 저장은 새 게임을 실제로 시작할 때 지움 (설정 화면에서 뒤로 가면 그대로)
           onOnline={() => (profile ? setScreen('online') : askLogin('login', 'online'))}
           onLogout={() => (profile ? logoutAll() : setScreen('title'))}
           onDress={() => setDress(true)}
@@ -226,6 +223,7 @@ export default function App() {
         onOutfit={changeOutfit}
         onBack={() => setScreen('menu')}
         onStart={(o) => {
+          if (profile) { deleteLocalGame(profile.loginId); pending.current = null; flush(); setSlot(null) }
           setSpeed(o.speed)
           saveSpeed(o.speed)
           setGame(createGame({
@@ -411,8 +409,9 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
   useEffect(() => {
     if (game.phase === 'gameover' || busy || (online && !online.host)) return // AI는 방장 기기만 돌림
     const aiPending = game.pending && !game.players[game.pending.playerId].human
+    const aiMini = !!game.mini && !game.players[game.mini.playerId].human // 온라인에서 미니게임 하던 사람이 나감
     const aiTurn = !game.pending && !game.mini && !p.human && game.phase === 'roll'
-    if (!aiPending && !aiTurn) return
+    if (!aiPending && !aiMini && !aiTurn) return
     const t = setTimeout(() => {
       if (aiTurn) {
         setRolling(true)

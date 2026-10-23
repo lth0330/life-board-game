@@ -1792,6 +1792,18 @@ export function finishMini(s: GameState, value: number) {
   resume(s)
 }
 
+// 미니게임 주인이 AI가 됐을 때 (온라인에서 하던 사람이 나감) AI 결과로 끝냄
+export function aiFinishMini(s: GameState) {
+  const m = s.mini
+  if (!m || s.players[m.playerId].human) return
+  const rng = rngOf(s)
+  const q = s.players[m.playerId]
+  if (m.duel) { finishMini(s, timingScore(rng, q)); return }
+  const r = rng.next()
+  const great = [0.55, 0.32, 0.15][m.level] ?? 0.32
+  finishMini(s, r < great ? 2 : r < great + 0.35 ? 1 : 0)
+}
+
 // 데이트로 오르는 호감도: 등급이 낮을수록, 내 매력이 높을수록 많이 오름
 export function affinityGain(s: GameState, p: Player, x: Suitor) {
   const [lo, hi] = ([[30, 40], [25, 33], [20, 27], [15, 22], [12, 18]] as const)[Math.max(0, Math.min(4, x.grade - 1))]

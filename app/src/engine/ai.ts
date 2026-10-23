@@ -1,7 +1,7 @@
 import { BUSINESSES, DICE_ITEMS, JOBS, SECTORS } from './data'
 import { findEvent, specialValue } from './special'
 import {
-  aiDiceItem, aiWantsCar, passChance, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, canBankLoan, loanLimit, loanTotal, repayFriendLoan,
+  aiDiceItem, aiFinishMini, aiWantsCar, passChance, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, canBankLoan, loanLimit, loanTotal, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, rngOf, salaryOf, scoreOf, stageOf, startSabotage, takeLoan, toggleInsurance,
   tradeStock, playChance, moodLevel, scaleOf,
 } from './game'
@@ -260,7 +260,9 @@ export function aiPreRoll(s: GameState) {
 
 // 화면에서 AI 한 걸음 진행: 결정이 있으면 고르고, 아니면 준비 후 던지기
 export function aiStep(s: GameState) {
-  if (s.phase === 'gameover' || s.mini) return
+  if (s.phase === 'gameover') return
+  if (s.mini) { aiFinishMini(s); return } // 하던 사람이 나가서 AI가 맡은 미니게임
+
   if (s.pending) {
     if (!s.players[s.pending.playerId].human) choose(s, aiChoose(s))
     return

@@ -14,3 +14,16 @@ it('노년엔 야근·세금 카드가 안 나오고, 집 없이 주택담보대
     }
   }
 }, 30000)
+
+it('미니게임 하던 사람이 나가 AI가 되면 AI가 미니게임을 끝낸다', () => {
+  const s = createGame({ humanName: '나', humans: 2, aiCount: 0, settings: { startAdult: false, difficulty: 'normal', online: true }, seed: 5 })
+  s.pending = null
+  s.mini = { game: 'race', playerId: 0, level: 1 }
+  s.phase = 'mini'
+  s.players[0].human = false // 손님이 나감
+  aiStep(s)
+  expect(s.mini).toBe(null)
+  s.mini = { game: 'timing', playerId: 0, level: 1, duel: { ids: [0, 1], results: { 1: 50 }, queue: [] } }
+  aiStep(s)
+  expect(s.mini).toBe(null)
+})
