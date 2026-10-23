@@ -2405,7 +2405,11 @@ function jobPerkTick(s: GameState, p: Player) {
       if (rng.chance(0.12)) down(3, '번아웃이 왔다')
       break
     case 'police': case 'fire':
-      if (rng.chance(0.1)) { up(3, job.id === 'police' ? '범인을 잡았다!' : '불을 끄고 사람을 구했다!'); changeFortune(s, p, 1, job.id === 'police' ? '범인 검거' : '인명 구조') }
+      if (rng.chance(0.1)) {
+        up(3, job.id === 'police' ? '범인을 잡았다!' : '불을 끄고 사람을 구했다!')
+        if (job.id === 'police') { const m = sc * 3; p.money += m; log(s, p.id, `${tag}검거 포상금 +${won(m)}`, 'good') } // 경찰 특성 (2026-10-23 밸런스)
+        changeFortune(s, p, 1, job.id === 'police' ? '범인 검거' : '인명 구조')
+      }
       else if (rng.chance(job.id === 'fire' ? 0.12 : 0.09)) hurt('출동 중에 다쳤다', sc * 2)
       break
     case 'chef':
