@@ -3,7 +3,7 @@ import {
   AI_NAMES, BIZ, BUSINESSES, CARS, CHANCE_NAMES, DICE_ITEMS, FORTUNES, HOUSES, CAR_CRASH_LOSS, CAR_RESALE, HOUSE_RULES, INSURANCE, CAFE, JOBS, KIDS, LOTTERY_PRICE, MAX_DICE_ITEMS, MEDALS, PENSION, SEVERANCE_RATE,
   ADULT_BONUS_MULT, PERF_BONUS, SAVINGS_RATE, SCORE_PER_POINT,
   PERSONALITIES, PLAYER_COLORS, PRESTIGE_JOBS, SABOTAGE_NAMES, SECTORS, SPOUSE_NAMES, STAGE_SCALE, STAT_NAMES,
-  TAX_RATE, TRAITS, JOB_PROS_CONS,
+  TAX_RATE, TRAITS, JOB_PROS_CONS, JOB_AFFINITY, JOB_HEALTH,
 } from './data'
 import { DEFAULT_OUTFIT, randomOutfit, type Outfit } from './outfit'
 import { makeRng, type Rng } from './rng'
@@ -25,6 +25,9 @@ export const scaleOf = (s: GameState) => STAGE_SCALE[stageOf(s).id]
 export const isAdultStage = (s: GameState) => s.stageIdx >= 2
 export const fortuneName = (f: number) => FORTUNES[f]
 const clampStat = (v: number) => Math.max(0, Math.min(10, v))
+// 직업 특성을 쓰는 직업: 노년엔 은퇴해서 없음 (연금 때문에 직업 기록만 남아 있음)
+export const workJob = (s: GameState, p: Player): JobDef | null => (stageOf(s).id === 'old' ? null : jobOf(p))
+const jobTag = (j: JobDef) => `[${j.name}] `
 
 // ───────── 기분 (2026-10-17 사용자): 최근 5턴 동안 행복이 얼마나 오르내렸나. 쌓인 행복은 마지막 점수, 기분은 지금 삶의 상태 ─────────
 export const MOOD_TURNS = 5
@@ -638,10 +641,14 @@ const coachChance = (p: Player, rank: number) => Math.min(0.95, 0.2 + p.stats.st
 function healthTick(s: GameState, p: Player) {
   const rng = rngOf(s)
   const str = p.stats.str
-  const ch = (str <= 2 ? 0.08 : str <= 4 ? 0.04 : str <= 6 ? 0.02 : 0.01) * (stageOf(s).id === 'old' ? 1.5 : 1)
+  const job = workJob(s, p)
+  const jobMult = (job && JOB_HEALTH[job.id]) ?? 1 // 직업 특성: 공무원 절반, 개발자 2배, 사업가 1.5배
+  const ch = (str <= 2 ? 0.08 : str <= 4 ? 0.04 : str <= 6 ? 0.02 : 0.01) * (stageOf(s).id === 'old' ? 1.5 : 1) * jobMult
   if (!rng.chance(ch)) return
-  const what = rng.pick(['허리 디스크가 왔다', '위염으로 병원에 갔다', '독감으로 입원했다', '무릎을 다쳤다'])
-  badEvent(s, p, { text: `${what} (체력 ${str})`, loss: scaleOf(s) * 3, happyLoss: 2, kind: 'health' })
+  const what = job?.id === 'dev' ? rng.pick(['거북목이 와서 병원에 다녔다', '밤샘 코딩으로 쓰러졌다', '허리 디스크가 왔다'])
+    : job?.id === 'ceo' ? rng.pick(['사업 스트레스로 위염이 왔다', '과로로 쓰러졌다', '허리 디스크가 왔다'])
+    : rng.pick(['허리 디스크가 왔다', '위염으로 병원에 갔다', '독감으로 입원했다', '무릎을 다쳤다'])
+  badEvent(s, p, { text: `${job && jobMult > 1 ? jobTag(job) : ''}${what} (체력 ${str})`, loss: scaleOf(s) * 3, happyLoss: 2, kind: 'health' })
 }
 
 // 차 사고: 스쿠터는 자주(몸을 다침), 일반차는 적당히, 고급차는 드물지만 수리비가 큼
@@ -745,12 +752,13 @@ function kidsTick(s: GameState, p: Player) {
     if (k.result !== null || age < k.bornAge + 20) continue
     const dice = rng.int(1, 6)
     const edu = KIDS.eduBonus[k.edu ?? 0]
-    const score = avg + edu + dice - (k.adopted ? KIDS.adoptPenalty : 0)
+    const teach = p.jobId === 'teacher' ? 1 : 0 // 교사 특성: 내 아이 교육 (은퇴 뒤에도)
+    const score = avg + edu + dice + teach - (k.adopted ? KIDS.adoptPenalty : 0)
     k.result = score >= KIDS.bigAt ? 2 : score >= KIDS.okAt ? 1 : 0
     p.happy += KIDS.resultHappy[k.result]
     const who = k.adopted ? '입양한 아이' : '아이'
     const how = [`${who}가 어른이 됐지만 잘 안 풀렸다…`, `${who}가 어엿한 어른이 됐다`, `${who}가 크게 성공했다!`][k.result]
-    log(s, p.id, `${how} (능력치 ${avg} + 교육 ${edu} + 주사위 ${dice}${k.adopted ? ` - ${KIDS.adoptPenalty}` : ''}) 매 턴 용돈 ${won((k.adopted ? KIDS.adoptAllowance : KIDS.allowance)[k.result])}`, k.result ? 'good' : 'bad')
+    log(s, p.id, `${how} (능력치 ${avg} + 교육 ${edu} + 주사위 ${dice}${teach ? ' + 교사 1' : ''}${k.adopted ? ` - ${KIDS.adoptPenalty}` : ''}) 매 턴 용돈 ${won((k.adopted ? KIDS.adoptAllowance : KIDS.allowance)[k.result])}`, k.result ? 'good' : 'bad')
     if (k.result === 2) s.banner = { title: '자녀 대성공!', text: p.name, tone: 'good' }
   }
   // 교육을 적게 하면 말썽이 잦고, 많이 하면 가끔 공부 스트레스
@@ -802,6 +810,7 @@ function familyTick(s: GameState, p: Player) {
   if (sp) {
     if (isAdultStage(s)) p.money += sp.wealth * 12
     if (sp.kindness >= 7) p.happy += 1
+    if (workJob(s, p)?.id === 'chef') p.happy += 1 // 요리사 특성: 집밥
     if (sp.kindness <= 3) {
       p.happy -= 1
       if (rng.chance(0.1)) { p.happy -= 3; log(s, p.id, `${sp.name}와 부부 싸움을 했다`, 'bad') }
@@ -830,6 +839,7 @@ function familyTick(s: GameState, p: Player) {
       const spouseCh = (sp.kindness <= 3 ? 0.03 : sp.kindness <= 5 ? 0.012 : 0.004) + (sp.trait === '바람기' ? 0.03 : 0)
       if (rng.chance(spouseCh)) divorce(s, p, 'spouse', rng.pick(['외도', '몰래 진 빚', '큰 스캔들']))
       else if (myFault && rng.chance(0.03)) divorce(s, p, 'me', p.lottery.addicted ? '도박중독' : '오래 간 빚')
+      else if (workJob(s, p)?.id === 'doctor' && rng.chance(0.04)) divorce(s, p, 'me', '[의사] 일에 바빠 가족에게 소홀했던 것') // 의사 특성
     }
   }
   p.happy += p.kids.filter((k) => k.result === null).length // 어릴 때만 행복, 어른이 되면 행복 대신 용돈
@@ -1630,12 +1640,14 @@ function drawCard(s: GameState, p: Player) {
     })
   }
   if (adult) {
-    deck.push(() => {
+    const invest = () => {
       s.pending = {
         type: 'invest', playerId: p.id, title: '투자 권유', text: `친구가 ${won(sc * 3)}을 투자하자고 한다. 결과는 운세에 달렸다.`,
-        options: [{ id: 'yes', label: `투자한다 (-${won(sc * 3)})`, desc: p.money < sc * 3 ? '돈이 모자라요' : undefined, disabled: p.money < sc * 3 }, { id: 'no', label: '거절한다' }], data: { cost: sc * 3 },
+        options: [{ id: 'yes', label: `투자한다 (-${won(sc * 3)})`, desc: p.money < sc * 3 ? '돈이 모자라요' : ceo && id !== 'old' ? '사업가 투자 감각: 운세가 평이면 꼭 성공해요' : undefined, disabled: p.money < sc * 3 }, { id: 'no', label: '거절한다' }], data: { cost: sc * 3 },
       }
-    })
+    }
+    deck.push(invest)
+    if (ceo && id !== 'old') deck.push(invest, invest) // 사업가 특성: 투자 권유가 자주
     if (id !== 'old') deck.push(() => {
       const k = rng.pick(STATS)
       p.stats[k] = clampStat(p.stats[k] - 1)
@@ -1820,7 +1832,9 @@ export function aiFinishMini(s: GameState) {
 export function affinityGain(s: GameState, p: Player, x: Suitor) {
   const [lo, hi] = ([[30, 40], [25, 33], [20, 27], [15, 22], [12, 18]] as const)[Math.max(0, Math.min(4, x.grade - 1))]
   const base = rngOf(s).int(lo, hi) + Math.max(0, p.stats.cha - 4)
-  return Math.round(base * MOOD_AFFINITY[moodLevel(p)] * (p.house ? HOUSE_AFFINITY : 1)) // 기쁘면 +15%, 집 있으면 +10%
+  const job = workJob(s, p)
+  const jobMult = JOB_AFFINITY[job ? job.id : 'none'] ?? 1 // 직업 특성 (아이돌 +30% … 백수 -25%)
+  return Math.round(base * MOOD_AFFINITY[moodLevel(p)] * (p.house ? HOUSE_AFFINITY : 1) * jobMult) // 기쁘면 +15%, 집 있으면 +10%
 }
 
 // 축제 거리: 호감도가 아니라 새 사람을 만나는 곳. 대성공이면 높은 등급이 잘 나옴
@@ -2313,7 +2327,9 @@ function jobOptions(s: GameState, p: Player, includeStay: boolean): ChoiceOption
   if (includeStay && biz && stageOf(s).id === 'middle') {
     opts.push({ id: 'biz', label: `창업: ${biz.name}`, desc: `자금 ${won(bizCost(p))}${p.jobId === 'chef' ? ' (요리사 할인)' : ''} · ${STAT_NAMES[biz.stat]} ${p.stats[biz.stat]}이 바탕이에요 · 소기업부터 시작해요 · ${severanceNote(p)}`, disabled: p.money < bizCost(p) && p.creditBad > 0 })
   }
-  opts.push({ id: includeStay ? 'stay' : 'jobless', label: includeStay ? (p.jobId ? '지금 그대로' : '계속 백수로') : '백수로 지내기', desc: includeStay ? '' : `월급 없음, 매 턴 행복 +1, 굴리기 전에 언제든 취업 도전${quit('')}` })
+  opts.push({ id: includeStay ? 'stay' : 'jobless', label: includeStay ? (p.jobId ? '지금 그대로' : '계속 백수로') : '백수로 지내기', desc: includeStay ? '' : `월급 없음
+👍 ${JOB_PROS_CONS.none[0]}
+👎 ${JOB_PROS_CONS.none[1]}${quit('')}` })
   return opts
 }
 
@@ -2362,28 +2378,65 @@ function sectorPending(p: Player, title: string, list: Sector[]) {
   }
 }
 
-// 직업별 특징 (docs/02-character.md)
+// 직업별 특징 (docs/02-character.md). 2026-10-23 사용자: 좋은 점·나쁜 점을 확실하게, 발동하면 [직업] 표시
 function jobPerkTick(s: GameState, p: Player) {
   const rng = rngOf(s)
   const sc = scaleOf(s)
-  switch (p.jobId) {
+  const job = jobOf(p)
+  if (!job) return
+  const tag = jobTag(job)
+  const up = (n: number, text: string) => { p.happy += n; log(s, p.id, `${tag}${text} 행복 +${n}`, 'good') }
+  const down = (n: number, text: string) => badEvent(s, p, { text: `${tag}${text}`, loss: 0, happyLoss: n })
+  const hurt = (text: string, loss: number) => badEvent(s, p, { text: `${tag}${text}`, loss, happyLoss: 2, kind: 'health' })
+  const scandal = () => {
+    down(4, '스캔들이 터졌다')
+    const top = [...p.suitors].sort((x, y) => y.affinity - x.affinity)[0]
+    if (top && !p.spouse) { top.affinity = Math.max(0, top.affinity - 15); log(s, p.id, `${tag}스캔들로 ${top.name} 호감도 -15`, 'bad') }
+  }
+  switch (job.id) {
+    case 'civil':
+      if (rng.chance(0.15)) up(2, '칼퇴하고 저녁이 있는 삶!')
+      break
     case 'teacher':
-      if (rng.chance(0.12)) { p.happy += 3; log(s, p.id, '방학이다! 행복 +3', 'good') }
+      if (rng.chance(0.12)) up(3, '방학이다!')
+      else if (rng.chance(0.1)) down(2, '학부모 민원에 시달렸다')
+      break
+    case 'dev':
+      if (rng.chance(0.12)) down(3, '번아웃이 왔다')
       break
     case 'police': case 'fire':
-      if (rng.chance(0.08)) { p.happy += 3; log(s, p.id, `${p.jobId === 'police' ? '범인을 잡았다' : '불을 끄고 사람을 구했다'}! 행복 +3`, 'good') }
-      else if (rng.chance(0.06)) badEvent(s, p, { text: '출동 중에 다쳤다', loss: sc, happyLoss: 2, kind: 'health' })
+      if (rng.chance(0.1)) { up(3, job.id === 'police' ? '범인을 잡았다!' : '불을 끄고 사람을 구했다!'); changeFortune(s, p, 1, job.id === 'police' ? '범인 검거' : '인명 구조') }
+      else if (rng.chance(job.id === 'fire' ? 0.12 : 0.09)) hurt('출동 중에 다쳤다', sc * 2)
+      break
+    case 'chef':
+      if (rng.chance(0.1)) hurt('주방에서 화상을 입었다', sc)
+      break
+    case 'scientist':
+      if (rng.chance(0.08)) { const m = sc * 4; p.money += m; log(s, p.id, `${tag}특허 수입! +${won(m)}`, 'good') }
+      break
+    case 'lawyer':
+      if (rng.chance(0.15)) down(3, '사건이 몰려 과로했다')
       break
     case 'doctor':
-      if (rng.chance(0.15)) { p.happy -= 2; log(s, p.id, '밤샘 당직… 행복 -2', 'bad') }
+      if (rng.chance(0.15)) down(2, '밤샘 당직…')
+      else if (rng.chance(0.05)) badEvent(s, p, { text: `${tag}의료 사고로 합의금을 냈다`, loss: sc * 5, happyLoss: 3 })
       break
     case 'youtuber':
       // 매력이 높을수록 광고·후원이 큼
-      if (rng.chance(0.3)) { const m = Math.round(sc * p.stats.cha * 0.5); p.money += m; log(s, p.id, `${rng.pick(['광고 협찬', '팬 후원', '라이브 방송 후원'])}! (매력 ${p.stats.cha}) +${won(m)}`, 'good') }
+      if (rng.chance(0.3)) { const m = Math.round(sc * p.stats.cha * 0.5); p.money += m; log(s, p.id, `${tag}${rng.pick(['광고 협찬', '팬 후원', '라이브 방송 후원'])}! (매력 ${p.stats.cha}) +${won(m)}`, 'good') }
+      else if (rng.chance(0.15)) down(3, '악플에 시달렸다')
       break
     case 'athlete':
       // 승급과는 상관없지만 매력이 높으면 부수입
-      if (p.stats.cha >= 4 && rng.chance(0.2)) { const m = Math.round(sc * p.stats.cha * 0.3); p.money += m; log(s, p.id, `${rng.pick(['굿즈 판매', '예능 출연', '광고 촬영', '인터넷 방송 출연'])}! (매력 ${p.stats.cha}) +${won(m)}`, 'good') }
+      if (p.stats.cha >= 4 && rng.chance(0.2)) { const m = Math.round(sc * p.stats.cha * 0.3); p.money += m; log(s, p.id, `${tag}${rng.pick(['굿즈 판매', '예능 출연', '광고 촬영', '인터넷 방송 출연'])}! (매력 ${p.stats.cha}) +${won(m)}`, 'good') }
+      else if (rng.chance(0.1)) { hurt('경기 중에 다쳤다', sc * 2); p.stats.str = clampStat(p.stats.str - 1); log(s, p.id, `${tag}부상으로 체력 -1`, 'bad') }
+      break
+    case 'idol': case 'actor':
+      if (rng.chance(0.08)) scandal()
+      break
+    case 'coach':
+      if (rng.chance(0.15)) up(2, '키운 후배가 좋은 성적을 냈다!')
+      else if (rng.chance(0.1)) down(2, '성적 압박에 시달렸다')
       break
     default: break
   }
@@ -2771,7 +2824,8 @@ export function choose(s: GameState, optionId: string) {
       if (optionId === 'yes') {
         p.money -= cost
         const f = p.fortune
-        const win = f >= 3 || (f === 2 && rng.chance(0.5))
+        const sense = workJob(s, p)?.id === 'ceo' // 사업가 특성: 투자 감각 (운세 한 단계 좋게 봄)
+        const win = sense ? f >= 2 || (f === 1 && rng.chance(0.5)) : f >= 3 || (f === 2 && rng.chance(0.5))
         if (win) { const g = Math.round(cost * (f >= 4 ? 3 : 2)); p.money += g; log(s, p.id, `[운세 ${fortuneName(f)}] 투자 성공! +${won(g)}`, 'good') }
         else log(s, p.id, `[운세 ${fortuneName(f)}] 투자 실패… -${won(cost)}`, 'bad')
       } else log(s, p.id, '투자를 거절했다', 'info')

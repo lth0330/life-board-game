@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import { Character } from '../art/Character'
 import { Trophy } from '../art/More'
-import { CARS, CHANCE_NAMES, DICE_ITEMS, HOUSE_RULES, HOUSES, INSURANCE, JOBS, KIDS, LOTTERY_PRICE, MEDALS, PERSONALITIES, SABOTAGE_NAMES, SAVINGS_RATE, SECTORS } from '../engine/data'
+import { CARS, CHANCE_NAMES, DICE_ITEMS, HOUSE_RULES, HOUSES, INSURANCE, JOB_PROS_CONS, JOBS, KIDS, LOTTERY_PRICE, MEDALS, PERSONALITIES, SABOTAGE_NAMES, SAVINGS_RATE, SECTORS } from '../engine/data'
 import {
   ageOf, moodLevel, moodOf, MOOD_FACES, MOOD_HELP, MOOD_NAMES, MOOD_TURNS, AWARD_POINTS, awardsOf, canBankLoan, canBorrowFrom, loanCap, LOAN_RATE, LOAN_TURNS, fortuneName, friendDebt, houseValue, isAdultStage, jobOf, kidAllowance, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
-  stars, stocksValue, teamTotals, TEAM_COLORS, TEAM_NAMES, sameTeam,
+  stageOf, stars, stocksValue, teamTotals, TEAM_COLORS, TEAM_NAMES, sameTeam,
 } from '../engine/game'
 import type { GameState, InsuranceKind, Player, Sector } from '../engine/types'
 import { playerLine, won } from './format'
@@ -408,6 +408,9 @@ const TRAIT_HELP: Record<string, string> = {
 export function MyInfoSheet({ s, p, onClose }: { s: GameState; p: Player; onClose: () => void }) {
   const age = ageOf(s, p)
   const job = jobOf(p)
+  // 직업 특성: 일하는 동안만 (노년엔 은퇴, 학생 때는 없음)
+  const working = isAdultStage(s) && stageOf(s).id !== 'old'
+  const traits = working ? JOB_PROS_CONS[job ? job.id : 'none'] : undefined
   const sp = p.spouse
   const debt = p.loans.reduce((a, l) => a + l.amount, 0) // 주택담보대출 포함
   const fDebt = friendDebt(s, p)
@@ -422,6 +425,13 @@ export function MyInfoSheet({ s, p, onClose }: { s: GameState; p: Player; onClos
           <div>돈 <b>{won(p.money)}</b> · 행복 <b>{p.happy}</b> · 지력 {p.stats.int} · 체력 {p.stats.str} · 매력 {p.stats.cha}</div>
         </div>
       </div>
+      {traits && (
+        <div className="note job-traits">
+          <b>{job ? job.name : '백수'} 특성</b>
+          <div>👍 {traits[0]}</div>
+          <div>👎 {traits[1]}</div>
+        </div>
+      )}
       <div className="note">
         기분 {MOOD_FACES[moodLevel(p)]} <b>{MOOD_NAMES[moodLevel(p)]}</b> (최근 {MOOD_TURNS}턴 행복 {moodOf(p) >= 0 ? '+' : ''}{moodOf(p)}) · {MOOD_HELP[moodLevel(p)]}
         <div className="muted">최근 5턴 행복이 많이 오르면 기쁨, 내려가면 우울이 돼요. 쌓인 행복은 마지막 점수에 들어가요.</div>

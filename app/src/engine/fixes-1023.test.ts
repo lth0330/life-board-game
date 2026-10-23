@@ -38,3 +38,17 @@ it('창업 갈림길에 퇴직금 금액이 보인다', async () => {
   p.jobId = 'youtuber'
   expect(severanceNote(p)).toContain('없어요')
 })
+
+it('직업 특성: 호감도 배율과 노년 은퇴', async () => {
+  const { affinityGain, makeSuitor, workJob } = await import('./game')
+  const s = createGame({ humanName: '나', humans: 1, aiCount: 0, settings: { startAdult: false, difficulty: 'normal' }, seed: 9 })
+  s.stageIdx = 2 // 청년
+  const p = s.players[0]
+  const x = makeSuitor(s, p)
+  const avg = (job: string | null) => { p.jobId = job; let t = 0; for (let i = 0; i < 200; i++) t += affinityGain(s, p, x); return t / 200 }
+  expect(avg('idol')).toBeGreaterThan(avg('office'))
+  expect(avg('office')).toBeGreaterThan(avg(null)) // 백수 -25%
+  p.jobId = 'doctor'
+  s.stageIdx = 4 // 노년
+  expect(workJob(s, p)).toBe(null)
+})
