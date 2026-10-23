@@ -27,3 +27,14 @@ it('미니게임 하던 사람이 나가 AI가 되면 AI가 미니게임을 끝�
   aiStep(s)
   expect(s.mini).toBe(null)
 })
+
+it('창업 갈림길에 퇴직금 금액이 보인다', async () => {
+  const { severanceNote, severanceOf } = await import('./game')
+  const s = createGame({ humanName: '나', humans: 1, aiCount: 0, settings: { startAdult: false, difficulty: 'normal' }, seed: 2 })
+  const p = s.players[0]
+  p.jobId = 'office'; p.jobTenure = 10
+  expect(severanceOf(p)).toBeGreaterThan(0)
+  expect(severanceNote(p)).toContain(`${severanceOf(p).toLocaleString('ko-KR')}만`)
+  p.jobId = 'youtuber'
+  expect(severanceNote(p)).toContain('없어요')
+})

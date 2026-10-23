@@ -68,7 +68,7 @@ export const STAGE_DEFS: StageDef[] = [
     // 20 취업 박람회는 2026-10-21 없앰 (창업은 인생 2막 갈림길에서 누구나)
     stops: { 12: 'promotion', 15: 'middleBranch' }, points: { 13: 'marriage', 17: 'shop' }, dateUntil: 13,
     life: {
-      id: 'startup', at: 5, rejoin: 11, title: '인생 2막', text: '앞으로 어떻게 살까요? (창업하면 지금 직업은 그만두고 퇴직금을 받아요)',
+      id: 'startup', at: 5, rejoin: 11, title: '인생 2막', text: '앞으로 어떻게 살까요? (창업하면 지금 직업은 그만둬요. 꾸준형 직업은 퇴직금을 받아요)',
       roads: [
         { road: 'startup', label: '창업 길', desc: '직업에 맞는 회사(백수는 카페)를 차려요. 큰돈과 위기가 섞인 길이에요' },
         { road: 'company', label: '하던 일 계속', desc: '지금 하는 일을 이어 가요. 안정적인 길이에요' },

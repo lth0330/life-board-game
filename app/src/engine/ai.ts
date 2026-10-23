@@ -3,7 +3,7 @@ import { findEvent, specialValue } from './special'
 import {
   aiDiceItem, aiFinishMini, aiWantsCar, passChance, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, canBankLoan, loanLimit, loanTotal, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, rngOf, salaryOf, scoreOf, stageOf, startSabotage, takeLoan, toggleInsurance,
-  tradeStock, playChance, moodLevel, scaleOf,
+  tradeStock, playChance, moodLevel, scaleOf, withdraw,
 } from './game'
 import type { GameState, Pending, Player } from './types'
 
@@ -247,8 +247,24 @@ export function aiPreRoll(s: GameState) {
     const need = Math.min(-p.money + 200, loanLimit(s, p))
     if (need > 0) takeLoan(s, Math.round(need))
   }
+  // 주택담보대출 할부금은 다음 차례 시작에 빠짐 → 그만큼은 남겨 두고 다른 빚을 갚음 (2026-10-23: 은행 빚만 갚다가 집이 경매로 넘어갔음)
+  const mort = p.loans.find((l) => l.kind === '주담대')
+  const reserve = mort ? Math.min(mort.amount, mort.installment ?? mort.amount) : 0
+  const near = p.loans.filter((l) => l.kind !== '주담대' && l.dueTurn - p.turnsPlayed <= 2)
+  const soonest = Math.min(...near.map((l) => l.dueTurn - p.turnsPlayed))
+  // AI는 남는 돈을 적금에 넣어 둠 → 기한이 다가온 빚은 적금에서 꺼내서 갚음
+  if (near.length && p.savings) {
+    const want = near.reduce((a, l) => a + l.amount, 0) + reserve - p.money
+    if (want > 0) withdraw(s, want)
+  }
   if (p.loans.length && p.money > loanTotal(p) + salaryOf(p) * 3) repayLoans(s)
-  else if (p.loans.some((l) => l.dueTurn - p.turnsPlayed <= 2) && p.money > 0) repayLoans(s) // 기한이 다가오면 있는 만큼 갚기
+  else if (soonest <= 1 && p.money > 0) repayLoans(s) // 다음 차례에 강제 청산: 경매(3번 연체)보다 급하니 있는 만큼
+  else if (soonest <= 2 && p.money > reserve) repayLoans(s, p.money - reserve) // 기한이 다가오면 할부금을 빼고 갚기
+  // 이미 2번 연체(한 번 더면 경매)인데 할부금이 모자라면 은행에서 빌려서라도 냄
+  if (mort && (mort.missed ?? 0) >= 2 && p.money + (p.savings ?? 0) < reserve && canBankLoan(s, p)) {
+    const need = Math.min(reserve - p.money - (p.savings ?? 0) + 50, loanLimit(s, p))
+    if (need > 0) takeLoan(s, Math.round(need))
+  }
   // 친구 돈: 여유 있으면 갚고, 은행이 막히면 친구에게 부탁
   s.friendLoans.forEach((l, i) => { if (l.borrowerId === p.id && p.money > l.owe * 2) repayFriendLoan(s, i) })
   if (p.money < 0 && (!canBankLoan(s, p) || loanLimit(s, p) < 200)) {

@@ -589,10 +589,22 @@ function bizReview(s: GameState, p: Player) {
 }
 
 // 퇴직금: 꾸준형 직업만. 그만둘 때 월급 × 일한 턴 × 0.3
+export function severanceOf(p: Player) {
+  const job = jobOf(p)
+  return !job || job.boom || p.jobTenure <= 0 ? 0 : Math.round(salaryOf(p) * p.jobTenure * SEVERANCE_RATE)
+}
+// 그만두는 선택지에 붙이는 안내 (2026-10-23 사용자: 퇴직금이 얼마인지 같이)
+export function severanceNote(p: Player) {
+  const job = jobOf(p)
+  if (!job) return ''
+  if (job.boom) return `${job.name}은 퇴직금이 없어요`
+  const amt = severanceOf(p)
+  return amt ? `${job.name} 퇴직금 +${won(amt)} (${p.jobTenure}턴 근무)` : `${job.name} 퇴직금은 아직 없어요 (일한 턴이 없음)`
+}
 function paySeverance(s: GameState, p: Player) {
   const job = jobOf(p)
-  if (!job || job.boom || p.jobTenure <= 0) return
-  const amt = Math.round(salaryOf(p) * p.jobTenure * SEVERANCE_RATE)
+  const amt = severanceOf(p)
+  if (!job || !amt) return
   p.money += amt
   log(s, p.id, `${job.name} 퇴직금 +${won(amt)} (${p.jobTenure}턴 근무)`, 'good')
   p.jobTenure = 0
@@ -1159,7 +1171,7 @@ function askFork(s: GameState, p: Player, t: Tile) {
     if (o.road === 'startup') {
       const cost = bizCost(p)
       const biz = p.jobId && p.jobId !== 'ceo' ? BUSINESSES[p.jobId] : null
-      desc = `${biz ? `${biz.name} 창업 · 지금 직업은 그만둠(퇴직금 받음)` : '카페 창업'} · 창업 자금 ${won(cost)}${p.money < cost ? ' (모자라면 빚)' : ''}`
+      desc = `${biz ? `${biz.name} 창업 · 지금 직업은 그만둬요 · ${severanceNote(p)}` : '카페 창업'} · 창업 자금 ${won(cost)}${p.money < cost ? ' (모자라면 빚)' : ''}`
       disabled = p.jobId === 'ceo' || (p.money < cost && p.creditBad > 0)
     }
     return { id: String(o.to), label: o.label, desc, disabled }
@@ -2289,17 +2301,19 @@ export function jobGuide(p: Player, collegeAssumed = p.college) {
 }
 
 function jobOptions(s: GameState, p: Player, includeStay: boolean): ChoiceOption[] {
+  const quit = (id: string) => (p.jobId && id !== p.jobId ? `
+💰 ${severanceNote(p)}` : '') // 지금 직업을 그만두게 되면 퇴직금 안내
   const opts: ChoiceOption[] = eligibleJobs(p, s.stageIdx).filter((j) => !includeStay || j.id !== p.jobId).map((j) => ({
     id: `job:${j.id}`, label: j.name,
     desc: `${j.boom ? '대박형' : '꾸준형'} · 월급 ${won(j.salary)} · ${j.ranks.join(' → ')}${JOB_PROS_CONS[j.id] ? `
 👍 ${JOB_PROS_CONS[j.id][0]}
-👎 ${JOB_PROS_CONS[j.id][1]}` : ` · ${j.note}`}`,
+👎 ${JOB_PROS_CONS[j.id][1]}` : ` · ${j.note}`}${quit(j.id)}`,
   }))
   const biz = p.jobId ? BUSINESSES[p.jobId] : null
   if (includeStay && biz && stageOf(s).id === 'middle') {
-    opts.push({ id: 'biz', label: `창업: ${biz.name}`, desc: `자금 ${won(bizCost(p))}${p.jobId === 'chef' ? ' (요리사 할인)' : ''} · ${STAT_NAMES[biz.stat]} ${p.stats[biz.stat]}이 바탕이에요 · 소기업부터 시작하고 지금 직장 퇴직금을 받아요`, disabled: p.money < bizCost(p) && p.creditBad > 0 })
+    opts.push({ id: 'biz', label: `창업: ${biz.name}`, desc: `자금 ${won(bizCost(p))}${p.jobId === 'chef' ? ' (요리사 할인)' : ''} · ${STAT_NAMES[biz.stat]} ${p.stats[biz.stat]}이 바탕이에요 · 소기업부터 시작해요 · ${severanceNote(p)}`, disabled: p.money < bizCost(p) && p.creditBad > 0 })
   }
-  opts.push({ id: includeStay ? 'stay' : 'jobless', label: includeStay ? (p.jobId ? '지금 그대로' : '계속 백수로') : '백수로 지내기', desc: includeStay ? '' : '월급 없음, 매 턴 행복 +1, 굴리기 전에 언제든 취업 도전' })
+  opts.push({ id: includeStay ? 'stay' : 'jobless', label: includeStay ? (p.jobId ? '지금 그대로' : '계속 백수로') : '백수로 지내기', desc: includeStay ? '' : `월급 없음, 매 턴 행복 +1, 굴리기 전에 언제든 취업 도전${quit('')}` })
   return opts
 }
 
