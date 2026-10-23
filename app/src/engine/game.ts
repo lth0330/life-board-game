@@ -310,6 +310,7 @@ function beginTurn(s: GameState) {
   s.phase = 'roll'
   p.happyHist = [...(p.happyHist ?? []), p.happy].slice(-MOOD_TURNS)
   tickFortune(s, p)
+  if ((p.chance as string) === 'shortcut') p.chance = 'reroll' // 예전 저장에 남은 지름길 카드 (2026-10-23 없앰)
   if (p.agency && !canDate(s, p) && stageOf(s).id === 'middle') {
     p.agency = null
     log(s, p.id, '중년 결혼식장을 지나 소개팅 회사가 자동 해지됐다', 'info')
@@ -671,6 +672,13 @@ function forceLiquidate(s: GameState, p: Player, overdue: { amount: number }[]) 
     p.money += Math.round(houseValue(s, p) * HOUSE_RULES.forcedRate)
     log(s, p.id, `강제 청산: ${HOUSES[p.house].name}을 팔았다`, 'bad')
     p.house = 0
+    // 집을 판 돈으로 주택담보대출부터 갚음 (집이 없는데 할부금만 남지 않게)
+    const m = p.loans.find((l) => l.kind === '주담대')
+    if (m) {
+      p.money -= m.amount
+      p.loans = p.loans.filter((l) => l !== m)
+      log(s, p.id, `집 판 돈으로 주택담보대출 ${won(m.amount)}을 갚았다`, 'info')
+    }
   }
   p.money -= need
   if (p.money < 0) p.creditBad = 8
@@ -1279,7 +1287,7 @@ function uniTile(s: GameState, p: Player, ev: string) {
       break
     case 'party': up('cha', 1); p.happy += 4; log(s, p.id, '축제와 MT! 매력 +1, 행복 +4', 'good'); break
     case 'scholar': {
-      const loan = p.loans[0]
+      const loan = p.loans.find((l) => l.kind === '학자금')
       if (p.stats.int >= 5 && loan) { const cut = Math.min(loan.amount, 300); loan.amount -= cut; p.loans = p.loans.filter((l) => l.amount > 0); log(s, p.id, `장학금! 학자금 대출 -${won(cut)}`, 'good') }
       else if (p.stats.int >= 5) { p.money += 300; log(s, p.id, `장학금! +${won(300)}`, 'good') }
       else { log(s, p.id, `장학금을 아깝게 놓쳤다 (지력 5 이상 필요, 지금 ${p.stats.int})`, 'info') }
@@ -1382,7 +1390,7 @@ function land(s: GameState) {
       if (t.stop === 'job' && p.campusTurns > 0) {
         p.campusTurns = 0
         for (const l of p.loans) if (l.kind === '학자금') l.dueTurn = p.turnsPlayed + 8 // 학자금은 졸업 뒤 8턴 안에
-        log(s, p.id, '대학 졸업! 이제 직업을 골라요 (학자금은 8턴 안에 갚기)', 'good')
+        log(s, p.id, `대학 졸업! 이제 직업을 골라요${p.loans.some((l) => l.kind === '학자금') ? ' (학자금은 8턴 안에 갚기)' : ''}`, 'good')
         s.banner = { title: '대학 졸업', text: p.name, tone: 'good' }
       }
       stopTile(s, p, t)
@@ -1437,7 +1445,7 @@ function giveSabotage(s: GameState, p: Player, card: SabotageCard) {
   log(s, p.id, `방해 카드 획득: ${SABOTAGE_NAMES[card]}`, 'info')
 }
 
-const randomChance = (rng: Rng) => rng.pick(['reroll', 'block', 'charm', 'coupon', 'shortcut'] as ChanceCard[])
+const randomChance = (rng: Rng) => rng.pick(['reroll', 'block', 'charm', 'coupon'] as ChanceCard[]) // 지름길(+2)은 없앰 (2026-10-23 사용자)
 
 // 특별 이벤트: 단계별 사건 중 하나를 골라 물어봄 (special.ts)
 function specialTile(s: GameState, p: Player, pool: typeof SPECIALS, kind: string) {
@@ -1598,10 +1606,12 @@ function drawCard(s: GameState, p: Player) {
     ],
   }
   deck.push(...stageCards[id], ...stageCards[id]) // 단계 카드가 더 자주 나오게
+  const ceo = p.jobId === 'ceo'
   if (adult && p.jobId && id !== 'old') {
     deck.push(() => {
       const safe = ['civil', 'teacher', 'police', 'fire'].includes(p.jobId!)
       if (safe) { p.happy += 1; log(s, p.id, '회사들이 구조조정… 공무원이라 무사했다 (행복 +1)', 'good'); return }
+      if (ceo) { badEvent(s, p, { text: '경기가 나빠져 거래처 주문이 줄었다', loss: sc * 2, happyLoss: 2 }); return } // 사업가는 월급이 없어서
       const job = jobOf(p)
       if (job && !job.boom && job.id !== 'civil' && p.jobRank > 0 && p.fortune <= 2) { p.jobRank--; log(s, p.id, `구조조정으로 ${job.ranks[p.jobRank]}(으)로 밀려났다`, 'bad') }
       else badEvent(s, p, { text: '회사 구조조정으로 월급이 깎였다', loss: sc * 2, happyLoss: 2 })
@@ -1611,7 +1621,7 @@ function drawCard(s: GameState, p: Player) {
     deck.push(() => {
       s.pending = {
         type: 'invest', playerId: p.id, title: '투자 권유', text: `친구가 ${won(sc * 3)}을 투자하자고 한다. 결과는 운세에 달렸다.`,
-        options: [{ id: 'yes', label: `투자한다 (-${won(sc * 3)})` }, { id: 'no', label: '거절한다' }], data: { cost: sc * 3 },
+        options: [{ id: 'yes', label: `투자한다 (-${won(sc * 3)})`, desc: p.money < sc * 3 ? '돈이 모자라요' : undefined, disabled: p.money < sc * 3 }, { id: 'no', label: '거절한다' }], data: { cost: sc * 3 },
       }
     })
     if (id !== 'old') deck.push(() => {
@@ -1619,10 +1629,10 @@ function drawCard(s: GameState, p: Player) {
       p.stats[k] = clampStat(p.stats[k] - 1)
       log(s, p.id, `바빠서 자기 관리를 못 했다. ${STAT_NAMES[k]} -1`, 'bad')
     })
-    if (p.jobId) {
+    if (p.jobId && id !== 'old') { // 노년은 은퇴해서 직업 기록(연금용)만 남아 있음
       const overtime = () => {
         s.pending = {
-          type: 'overtime', playerId: p.id, title: '야근 부탁', text: '회사에서 야근을 부탁한다.',
+          type: 'overtime', playerId: p.id, title: ceo ? '급한 주문' : '야근 부탁', text: ceo ? '거래처에서 급한 주문이 들어왔다. 밤새 일하면 맞출 수 있다.' : '회사에서 야근을 부탁한다.',
           options: [{ id: 'yes', label: '한다', desc: `+${won(sc)}, 행복 -3` }, { id: 'no', label: '거절한다', desc: '행복 +2' }], data: { amt: sc },
         }
       }
@@ -1734,7 +1744,7 @@ function startMini(s: GameState, p: Player, game: MiniId, target?: string) {
   if (casino && p.human) {
     s.pending = {
       type: 'casinoStake', playerId: p.id, title: `카지노: ${MINI_NAMES[game]}`, text: `마지막 역전 기회! 가진 돈(${won(p.money)})에서 얼마나 걸까요? 운세가 좋을수록 잘 맞아요 (지금 운세 ${fortuneName(p.fortune)}).\n대박이면 건 돈의 3배를 받고(+2배), 조금 따면 +절반, 지면 건 돈을 다 잃어요.`,
-      options: CASINO_PCT.map((pct) => { const v = casinoStake(p, pct); return { id: String(v), label: `가진 돈의 ${pct}% 걸기 (${won(v)})`, disabled: v <= 0 } }).concat([{ id: '0', label: '그냥 구경만', disabled: false }]),
+      options: CASINO_PCT.map((pct) => { const v = casinoStake(p, pct); return { id: `pct${pct}`, label: `가진 돈의 ${pct}% 걸기 (${won(v)})`, disabled: v <= 0 } }).concat([{ id: '0', label: '그냥 구경만', disabled: false }]),
       data: { game, level },
     }
     return
@@ -2602,7 +2612,7 @@ export function choose(s: GameState, optionId: string) {
     }
     case 'casinoStake': {
       const { game, level } = pd.data as { game: MiniId; level: number }
-      const stake = +optionId
+      const stake = optionId.startsWith('pct') ? casinoStake(p, +optionId.slice(3)) : 0 // 버튼 이름이 겹치지 않게 %로 받음
       if (!stake) { log(s, p.id, '카지노는 구경만 하고 지나갔다', 'info'); break }
       if (!p.lottery.addicted && rng.chance(p.lottery.chance / 100)) { p.lottery.addicted = true; log(s, p.id, '카지노에 빠졌다… 도박중독', 'bad') }
       p.lottery.chance = Math.min(50, p.lottery.chance + 5)
@@ -2787,7 +2797,7 @@ export function choose(s: GameState, optionId: string) {
       break
     }
   }
-  if (pd.type === 'shop') p.record.shopSpent += p.record.spent - spent0
+  if (pd.type === 'shop' || pd.type === 'shopCoupon') p.record.shopSpent += p.record.spent - spent0
   // 고른 결과를 화면에 (2026-10-22: 기록 창에만 떠서, 단계 마지막 차례면 결과를 못 보고 넘어갔음)
   const resultLines = p.human && !s.pending && !s.mini && !NO_RESULT_POP.has(pd.type)
     ? s.log.slice(s.log.length - Math.min(s.log.length, s.logCount - chooseStart)).filter((l) => l.playerId === p.id || l.playerId === null) : []
@@ -3045,10 +3055,6 @@ export function playChance(s: GameState) {
     p.charmTurns = 3
     syncFortune(p)
     log(s, p.id, `행운 부적! 3턴 동안 운세 한 단계↑ (지금 ${fortuneName(p.fortune)})`, 'good')
-  } else if (p.chance === 'shortcut') {
-    p.chance = null
-    log(s, p.id, '지름길 카드: 이번 주사위 +2', 'good')
-    roll(s, 2)
   }
 }
 

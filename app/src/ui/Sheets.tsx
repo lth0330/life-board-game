@@ -230,7 +230,7 @@ export function FinanceSheet(f: FinanceProps) {
 export function CardsSheet({ p, canUse, onUseChance, onSabotage, onClose }: {
   p: Player; canUse: boolean; onUseChance: () => void; onSabotage: () => void; onClose: () => void
 }) {
-  const active = p.chance === 'charm' || p.chance === 'shortcut'
+  const active = p.chance === 'charm'
   return (
     <Sheet title="내 카드" onClose={onClose}>
       <div className="cards">
@@ -240,9 +240,8 @@ export function CardsSheet({ p, canUse, onUseChance, onSabotage, onClose }: {
           <p className="muted">
             {p.chance === 'reroll' && '주사위를 던진 뒤 다시 굴릴지 물어봐요.'}
             {p.chance === 'block' && '방해를 받으면 자동으로 막아요.'}
-            {p.chance === 'coupon' && '상점에서 자동으로 30% 할인돼요.'}
+            {p.chance === 'coupon' && '상점에서 집·차를 살 때 30% 할인. 쓸지 물어봐요.'}
             {p.chance === 'charm' && '3턴 동안 운세가 한 단계 올라가요.'}
-            {p.chance === 'shortcut' && '이번 주사위에 +2.'}
           </p>
           {active && <button disabled={!canUse} onClick={onUseChance}>지금 쓰기</button>}
         </div>
