@@ -1,4 +1,5 @@
 // 캐릭터 그림 (SVG): 테두리 선 + 부드러운 곡선 + 그림자, 표정 8가지. 2026-10-17 다시 그림 (docs/12-art.md)
+import { heightOf } from './height'
 import { useId, type ReactNode } from 'react'
 import { accList, type Outfit } from '../engine/outfit'
 
@@ -25,9 +26,9 @@ type Extra = 'baby' | 'kinder' | 'student' | null
 function aged(o: Outfit, age?: number): { o: Outfit; scale: number; cane: boolean; extra: Extra } {
   if (age === undefined) return { o, scale: 1, cane: false, extra: null }
   const f = o.gender === 'f'
-  if (age < 4) return { o: { ...o, hair: 'buzz', hat: f ? 'ribbon' : 'none', hatColor: '#F3A3C0', top: 'tee', topColor: f ? '#F7D3E2' : '#CFE7F5', outer: 'none', bottom: 'shorts', bottomColor: '#FFFFFF', shoes: 'sneakers', shoesColor: '#FFFFFF', acc: 'none', acc2: 'none', acc3: 'none' }, scale: 0.66, cane: false, extra: 'baby' }
-  if (age < 8) return { o: { ...o, hat: 'cap', hatColor: '#F2C230', top: 'tee', outer: 'none', bottom: 'shorts', acc: 'none', acc2: 'none', acc3: 'none' }, scale: 0.76, cane: false, extra: 'kinder' }
-  if (age < 20) return { o: { ...o, hat: 'none', top: 'shirt', topColor: '#F4EBD6', outer: 'jacket', outerColor: '#1E2A44', bottom: f ? 'skirt' : 'pants', bottomColor: '#2C3A5C', acc: 'none', acc2: 'none', acc3: 'none' }, scale: age < 14 ? 0.8 : 0.9, cane: false, extra: 'student' }
+  if (age < 4) return { o: { ...o, hair: 'buzz', hat: f ? 'ribbon' : 'none', hatColor: '#F3A3C0', top: 'tee', topColor: f ? '#F7D3E2' : '#CFE7F5', outer: 'none', bottom: 'shorts', bottomColor: '#FFFFFF', shoes: 'sneakers', shoesColor: '#FFFFFF', acc: 'none', acc2: 'none', acc3: 'none' }, scale: heightOf(age), cane: false, extra: 'baby' }
+  if (age < 8) return { o: { ...o, hat: 'cap', hatColor: '#F2C230', top: 'tee', outer: 'none', bottom: 'shorts', acc: 'none', acc2: 'none', acc3: 'none' }, scale: heightOf(age), cane: false, extra: 'kinder' }
+  if (age < 20) return { o: { ...o, hat: 'none', top: 'shirt', topColor: '#F4EBD6', outer: 'jacket', outerColor: '#1E2A44', bottom: f ? 'skirt' : 'pants', bottomColor: '#2C3A5C', acc: 'none', acc2: 'none', acc3: 'none' }, scale: heightOf(age), cane: false, extra: 'student' }
   const hairColor = age >= 60 ? '#A9AEB6' : age >= 45 ? mix(o.hairColor, '#C8C8C8', 0.4) : o.hairColor
   return { o: { ...o, hairColor }, scale: 1, cane: age >= 65, extra: null }
 }

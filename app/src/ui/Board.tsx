@@ -3,6 +3,7 @@ import { Building, TileIcon, Tree } from '../art/Art'
 import { DECOR_KINDS, GroundDecor, SkyScenery } from '../art/Scenery'
 import { Landmark } from '../art/More'
 import { Character, type Expr } from '../art/Character'
+import { heightOf } from '../art/height'
 import { EmoteBubble, RpsBubble } from './Emotes'
 import { ageOf, TEAM_COLORS, UNI_NAMES } from '../engine/game'
 import { distancesFrom, EVENT_ROAD_NAME, tileX, tileY, zigOffsets } from '../engine/board'
@@ -207,17 +208,21 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
     ps.forEach((p, k) => {
       const dx = (k - (ps.length - 1) / 2) * 60
       const me = p.id === focus.id
+      const age = ageOf(s, p)
+      const drop = Math.round((1 - heightOf(age) * (age <= 2 ? 0.78 : 1)) * 150) // 키가 작으면 이름표·말풍선도 내려옴 (아기는 납작하게 그림)
+      const row = -(k % 2) * 34 + drop
+      // 이름표: 같은 칸이면 두 줄로 번갈아 (옆 사람과 안 겹치고 몸 가까이, 2026-10-23: 4명이면 계단처럼 높이 떠 있었음)
       items.push(
         <div key={`s${p.id}`} className="shadow" style={{ left: xAt(t) + 20 + dx, top: yAt(t) + 70 }} />,
         <div key={`c${p.id}`} className={`char${p.id === walkingId ? ' walking' : ''}${ageOf(s, p) <= 2 ? ' baby' : ''}`} style={{ ...stand, left: xAt(t) + 20 + dx, top: yAt(t) - 90 }}>
           <div style={{ opacity: me ? 1 : 0.5 }}>
             <Character outfit={p.outfit} view={p.id === walkingId ? 'back' : 'front'} size={80} age={ageOf(s, p)} /> {/* 걸을 때만 뒷모습 */}
-            <div className="name-tag" style={{ background: me ? p.color : 'rgba(42,33,24,0.6)', top: -40 - k * 34, ...(p.team !== undefined && s.settings.teams ? { boxShadow: `0 0 0 4px ${TEAM_COLORS[p.team]}` } : {}) }}>{p.name}</div>{/* 팀전: 이름표 둘레 팀 색 */}
+            <div className="name-tag" style={{ background: me ? p.color : 'rgba(42,33,24,0.6)', top: -40 + row, ...(p.team !== undefined && s.settings.teams ? { boxShadow: `0 0 0 4px ${TEAM_COLORS[p.team]}` } : {}) }}>{p.name}</div>{/* 팀전: 이름표 둘레 팀 색 */}
           </div>
           {p.id in hands
-            ? <div className="emote-on-board" style={{ top: -130 - k * 34 }}><RpsBubble value={hands[p.id]} /></div>
-            : emotes[p.id] ? <div className="emote-on-board" style={{ top: -130 - k * 34 }}><EmoteBubble key={emotes[p.id]} outfit={p.outfit} age={ageOf(s, p)} expr={emotes[p.id]} /></div>
-            : say?.playerId === p.id && <div className="say-on-board" style={{ top: -100 - k * 34, borderColor: p.color }} key={say.text}>{say.text}</div>}
+            ? <div className="emote-on-board" style={{ top: -130 + row }}><RpsBubble value={hands[p.id]} /></div>
+            : emotes[p.id] ? <div className="emote-on-board" style={{ top: -130 + row }}><EmoteBubble key={emotes[p.id]} outfit={p.outfit} age={ageOf(s, p)} expr={emotes[p.id]} /></div>
+            : say?.playerId === p.id && <div className="say-on-board" style={{ top: -100 + row, borderColor: p.color }} key={say.text}>{say.text}</div>}
         </div>,
       )
     })

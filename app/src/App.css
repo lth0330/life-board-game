@@ -880,10 +880,12 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .stock-btns { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .stock-btns button { min-height: 40px; padding: 0; }
 /* 넓은 화면(노트북·컴퓨터): 판을 넓게, 정보 칸·기록 창은 왼쪽에 폰 너비로 (2026-10-22) */
-@media (min-width: 900px) and (min-height: 560px) {
+/* 넓은 화면: 2026-10-23 태블릿(세로)도 판을 화면 가득 (900 → 700px) */
+@media (min-width: 700px) and (min-height: 560px) {
   .play { max-width: 1400px; }
   .hud { right: auto; width: 500px; }
-  .logbox { right: auto; width: 460px; }
+  .logbox { right: auto; width: max-content; max-width: 460px; } /* 짧은 기록이면 ▲ 버튼이 글 바로 옆에 */
+  .logbox.open { width: 460px; }
   .hud.mini ~ .side-buttons, .side-buttons { top: 16px; }
 }
 /* 넓은 화면에서 잔디가 판 밖에서 끊기지 않게 양옆으로 늘림 (2026-10-22) */
@@ -1013,3 +1015,21 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .job-row-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .job-more { margin-top: 6px; display: grid; gap: 3px; }
 .job-row .good { color: var(--good); }
+/* 화면 높이가 낮은 폰: 오른쪽 버튼 줄을 조금 작게 (2026-10-23: 직업 버튼을 넣으니 표정 버튼이 기록 ▲와 겹침) */
+@media (max-height: 700px) {
+  .side-buttons { gap: 4px; }
+  .side-buttons button { height: 38px; }
+  .side-buttons .emote-btn { height: 44px; }
+}
+/* 가로로 눕힌 폰: 세로로 돌려 달라는 안내 (2026-10-23 사용자 결정) */
+.rotate-hint { display: none; }
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  .rotate-hint {
+    display: flex; position: fixed; inset: 0; z-index: 100; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+    background: var(--paper); color: var(--ink); font-family: 'Jua', sans-serif; font-size: 22px; text-align: center; padding: 16px;
+  }
+  .rotate-hint small { font-family: inherit; font-size: 15px; color: var(--ink-soft); }
+  .rotate-hint .phone { width: 46px; height: 76px; border: 4px solid var(--ink); border-radius: 10px; animation: rotate-phone 1.6s ease-in-out infinite; }
+}
+@keyframes rotate-phone { 0%, 30% { transform: rotate(-90deg); } 60%, 100% { transform: rotate(0); } }
+@media (prefers-reduced-motion: reduce) { .rotate-hint .phone { animation: none; } }
