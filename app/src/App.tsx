@@ -224,8 +224,6 @@ export default function App() {
         onBack={() => setScreen('menu')}
         onStart={(o) => {
           if (profile) { deleteLocalGame(profile.loginId); pending.current = null; flush(); setSlot(null) }
-          setSpeed(o.speed)
-          saveSpeed(o.speed)
           setGame(createGame({
             humanName: o.name, humanNames: o.names, humans: o.humans, aiCount: o.ai, outfits: [o.outfit], teams: o.teams,
             settings: { startAdult: false, difficulty: o.difficulty },

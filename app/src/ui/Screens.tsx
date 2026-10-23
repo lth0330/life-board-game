@@ -3,13 +3,13 @@ import { Logo } from '../art/Art'
 import { Character } from '../art/Character'
 import type { Outfit } from '../engine/outfit'
 import type { Difficulty } from '../engine/types'
-import { savedSpeed, type Profile, type SaveSlot } from '../storage'
+import type { Profile, SaveSlot } from '../storage'
 import { TitleScenery } from '../art/Scenery'
 import { Dresser } from './Dresser'
 import { Manual } from './Manual'
 
 export type Speed = 'fast' | 'normal' | 'slow'
-export interface SetupResult { name: string; names: string[]; humans: number; ai: number; difficulty: Difficulty; speed: Speed; outfit: Outfit; teams?: (0 | 1)[] }
+export interface SetupResult { name: string; names: string[]; humans: number; ai: number; difficulty: Difficulty; outfit: Outfit; teams?: (0 | 1)[] }
 
 // 왼쪽 위에 늘 같은 자리에 있는 뒤로 가기 버튼 (2026-10-22 사용자: 모든 화면에서)
 // 폰의 뒤로 버튼·뒤로 쓸기(브라우저 뒤로)도 지금 보이는 '‹' 버튼과 똑같이 (2026-10-22)
@@ -134,7 +134,6 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
   const [names, setNames] = useState(['', '', ''])
   const [ai, setAi] = useState(3)
   const [difficulty, setDifficulty] = useState<Difficulty>('normal')
-  const [speed, setSpeed] = useState<Speed>(savedSpeed) // 기본은 빠르게, 지난번 고른 속도를 기억
   const [outfit, setOutfit] = useState(initialOutfit)
   const [dress, setDress] = useState(false)
   const [manual, setManual] = useState(false)
@@ -191,10 +190,7 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
       <div className="field"><span>AI 난이도</span>
         <Choice value={difficulty} options={[['normal', '보통'], ['hard', '어려움']]} onChange={setDifficulty} />
       </div>
-      <div className="field"><span>AI 차례 속도</span>
-        <Choice value={speed} options={[['fast', '빠르게'], ['normal', '보통'], ['slow', '천천히']]} onChange={setSpeed} />
-      </div>
-      <button className="wide big" disabled={humans + aiCount < 2 || (four && teamOn && !teamOk)} onClick={() => onStart({ name, names: names.slice(0, humans - 1), humans, ai: aiCount, difficulty, speed, outfit, teams: four && teamOn ? teams : undefined })}>게임 시작</button>
+      <button className="wide big" disabled={humans + aiCount < 2 || (four && teamOn && !teamOk)} onClick={() => onStart({ name, names: names.slice(0, humans - 1), humans, ai: aiCount, difficulty, outfit, teams: four && teamOn ? teams : undefined })}>게임 시작</button>
       <button className="wide ghost" onClick={onBack}>뒤로</button>
       {dress && <Dresser value={outfit} onChange={(o) => { setOutfit(o); onOutfit(o) }} onDone={() => setDress(false)} />}
       {manual && <Manual onClose={() => setManual(false)} />}
