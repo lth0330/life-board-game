@@ -23,7 +23,7 @@ import { Confetti, DiceThrow, StageCard } from './ui/Effects'
 import { Manual } from './ui/Manual'
 import { MiniGame } from './ui/MiniGames'
 import { BackButton, Frame, MenuScreen, SetupScreen, TitleScreen, type Speed } from './ui/Screens'
-import { CardsSheet, FinanceSheet, GameOver, MyInfoSheet, PeopleSheet, StageSummary, TeamBadge } from './ui/Sheets'
+import { CardsSheet, FinanceSheet, GameOver, JobsSheet, MyInfoSheet, PeopleSheet, StageSummary, TeamBadge } from './ui/Sheets'
 import { playerLine, won } from './ui/format'
 
 // 온라인 화면(AWS 연결 포함)은 '온라인으로 하기'를 눌렀을 때만 내려받음 (혼자 하기는 가볍게)
@@ -243,7 +243,7 @@ export default function App() {
   )
 }
 
-type SheetKind = null | 'finance' | 'cards' | 'people' | 'map' | 'manual' | 'me'
+type SheetKind = null | 'finance' | 'cards' | 'people' | 'map' | 'manual' | 'me' | 'jobs'
 
 // 온라인일 때: mine = 이 기기가 맡은 플레이어, host = 방장 기기(AI를 돌림), send = 손님 기기가 행동을 방장에게 보냄
 // emote = 내 표정을 다른 기기에 알림, incoming = 다른 사람이 보낸 표정 (id가 바뀔 때마다 띄움)
@@ -613,6 +613,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
         <button onClick={() => setSheet('map')}>지도</button>
         <button onClick={() => setSheet('people')}>사람들</button>
         <button onClick={() => setSheet('me')}>내 정보</button>
+        <button onClick={() => setSheet('jobs')}>직업</button>
         {gear}
         {emoteId !== undefined && (
           <button className="emote-btn" aria-label="표정" disabled={cooling} onClick={() => setPicker(true)}>
@@ -731,6 +732,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
       )}
       {sheet === 'people' && <PeopleSheet s={game} onClose={() => setSheet(null)} />}
       {sheet === 'me' && <MyInfoSheet s={game} p={game.players[emoteId ?? p.id]} onClose={() => setSheet(null)} />}
+      {sheet === 'jobs' && <JobsSheet p={game.players[emoteId ?? p.id]} onClose={() => setSheet(null)} />}
       {sheet === 'map' && <FullMap s={game} meId={online ? (online.mine.includes(p.id) ? p.id : online.mine[0] ?? p.id) : p.human ? p.id : (game.players.find((q) => q.human)?.id ?? p.id)} onClose={() => setSheet(null)} />}
       {sheet === 'manual' && <Manual onClose={() => setSheet(null)} />}
 

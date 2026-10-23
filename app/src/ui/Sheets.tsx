@@ -491,3 +491,51 @@ export function MyInfoSheet({ s, p, onClose }: { s: GameState; p: Player; onClos
     </Sheet>
   )
 }
+
+// 직업 안내: 게임 중 언제든 (학생 때 미리 준비하도록, 2026-10-23 사용자). 조건·월급·특성, 지금 내 능력치로 되는지
+const SPECIAL_JOB_WAY: Record<string, string> = {
+  ceo: '중년 \'인생 2막\' 갈림길에서 창업 길로 가면 돼요 (백수는 카페)',
+  actor: '아이돌이 중년에 은퇴할 때 고를 수 있어요',
+  coach: '운동선수가 중년에 은퇴할 때 감독 도전 룰렛에 성공하면 돼요',
+}
+const STAT_SHORT = { int: '지력', str: '체력', cha: '매력' } as const
+export function JobsSheet({ p, onClose }: { p: Player; onClose: () => void }) {
+  const [open, setOpen] = useState<string | null>(null)
+  const noCollege = p.collegeDecided && !p.college // 대학을 안 가기로 정함
+  return (
+    <Sheet title="직업 안내" onClose={onClose}>
+      <p className="note">직업은 청년이 될 때 골라요. 조건은 고르는 순간의 능력치로 봐요. 🎓 직업은 고등학교 졸업 때 대학에 가야 할 수 있어요. 직업을 누르면 좋은 점·나쁜 점이 보여요.<br />지금 내 능력치: 지력 {p.stats.int} · 체력 {p.stats.str} · 매력 {p.stats.cha}{p.college ? ' · 대학' : ''}</p>
+      <div className="info-list">
+        {JOBS.map((j) => {
+          const keys = Object.keys(j.req) as (keyof typeof STAT_SHORT)[]
+          const short = keys.filter((k) => p.stats[k] < (j.req[k] ?? 0)).map((k) => `${STAT_SHORT[k]} ${(j.req[k] ?? 0) - p.stats[k]}`)
+          const way = SPECIAL_JOB_WAY[j.id]
+          const status = way ? '' : j.college && noCollege ? '대학을 안 가서 못 해요' : short.length ? `${short.join(' · ')} 더 필요` : j.college && !p.college ? '능력치 OK · 대학 필요' : '✅ 지금 조건이 돼요'
+          const pc = JOB_PROS_CONS[j.id]
+          return (
+            <button key={j.id} className="info-row job-row" aria-expanded={open === j.id} onClick={() => setOpen(open === j.id ? null : j.id)}>
+              <div className="job-row-head">
+                <b>{j.name}</b>
+                <span className="muted">{j.boom ? '대박형' : '꾸준형'} · 월급 {won(j.salary)}{j.pension ? ' · 연금' : ''}</span>
+              </div>
+              <div className="muted">조건: {way ?? `${keys.length ? keys.map((k) => `${STAT_SHORT[k]} ${j.req[k]}`).join(' · ') : '없음'}${j.college ? ' · 🎓대학' : ''}`}</div>
+              {status && <div className={status.startsWith('✅') ? 'good' : 'bad'}>{status}</div>}
+              {open === j.id && (
+                <div className="job-more">
+                  <div>{j.ranks.join(' → ')}</div>
+                  {pc && <div>👍 {pc[0]}</div>}
+                  {pc && <div>👎 {pc[1]}</div>}
+                </div>
+              )}
+            </button>
+          )
+        })}
+        <div className="info-row">
+          <b>백수</b> <span className="muted">월급 없음 · 조건 없음</span>
+          <div>👍 {JOB_PROS_CONS.none[0]}</div>
+          <div>👎 {JOB_PROS_CONS.none[1]}</div>
+        </div>
+      </div>
+    </Sheet>
+  )
+}
