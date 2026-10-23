@@ -26,7 +26,7 @@ export interface Kid {
 }
 export type PointKind = 'shop' | 'marriage'
 export type Personality = 'investor' | 'elite' | 'family' | 'gambler' | 'safe'
-export type Difficulty = 'easy' | 'normal' | 'hard'
+export type Difficulty = 'normal' | 'hard' // 쉬움은 없앰 (2026-10-23 사용자, 예전 저장의 쉬움은 보통처럼)
 export type Sector = '생명' | 'IT' | '화학' | '의료' | '엔터'
 export type InsuranceKind = 'health' | 'property' | 'car'
 export type ChanceCard = 'reroll' | 'block' | 'charm' | 'coupon'

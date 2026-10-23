@@ -87,7 +87,7 @@ function OnlineHome({ me, outfit, onOutfit, onRoom, onBack }: { me: Me; outfit: 
 }
 
 // ───────── 대기실 ─────────
-const DIFF: [LobbyState['settings']['difficulty'], string][] = [['easy', '쉬움'], ['normal', '보통'], ['hard', '어려움']]
+const DIFF: [LobbyState['settings']['difficulty'], string][] = [['normal', '보통'], ['hard', '어려움']]
 
 function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Outfit; roomId: string; onLeave: () => void; renderPlay: RenderPlay }) {
   const [room, setRoom] = useState<Room | null>(null)

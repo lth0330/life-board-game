@@ -196,7 +196,6 @@ export function aiChoose(s: GameState): string {
   const rng = rngOf(s)
   const opts = pd.options.filter((o) => !o.disabled)
   if (!opts.length) return pd.options[0].id
-  if (s.settings.difficulty === 'easy' && rng.chance(0.25)) return rng.pick(opts).id
   let best = opts[0]
   let bestScore = -Infinity
   for (const o of opts) {

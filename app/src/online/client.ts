@@ -160,7 +160,7 @@ export async function adminDeleteUser(id: string): Promise<string | null> {
 // ───────── 방 ─────────
 export type SeatKind = 'human' | 'ai' | 'open'
 export interface Seat { kind: SeatKind; userId?: string; name?: string; outfit?: Outfit; team?: 0 | 1 } // outfit: 그 사람 계정 옷차림, team: 팀전 팀
-export interface RoomSettings { startAdult: boolean; difficulty: 'easy' | 'normal' | 'hard'; teams?: boolean }
+export interface RoomSettings { startAdult: boolean; difficulty: 'normal' | 'hard'; teams?: boolean }
 // 방 상태: 대기실 설정 + (시작하면) 플레이어마다 맡은 사람(userId, AI는 null)과 게임 상태
 // hostAway: 게임 중에 방장이 나가기를 누름 (방장이 돌아와 상태를 다시 올리면 없어짐)
 export interface LobbyState { settings: RoomSettings; owners?: (string | null)[]; game?: GameState; hostAway?: boolean }

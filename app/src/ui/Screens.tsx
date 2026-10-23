@@ -189,7 +189,7 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
         </div>
       )}
       <div className="field"><span>AI 난이도</span>
-        <Choice value={difficulty} options={[['easy', '쉬움'], ['normal', '보통'], ['hard', '어려움']]} onChange={setDifficulty} />
+        <Choice value={difficulty} options={[['normal', '보통'], ['hard', '어려움']]} onChange={setDifficulty} />
       </div>
       <div className="field"><span>AI 차례 속도</span>
         <Choice value={speed} options={[['fast', '빠르게'], ['normal', '보통'], ['slow', '천천히']]} onChange={setSpeed} />
