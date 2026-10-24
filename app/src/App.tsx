@@ -17,7 +17,7 @@ import { Board, FullMap } from './ui/Board'
 import { Dresser } from './ui/Dresser'
 import { LogBox } from './ui/LogBox'
 import type { ChatMsg } from './online/Online'
-import { EMOTE_COOLDOWN_MS, EMOTE_MS, EmotePicker } from './ui/Emotes'
+import { EMOTE_COOLDOWN_MS, EMOTE_MS, EmoteBubble, EmotePicker } from './ui/Emotes'
 import { autoEmote } from './ui/emoteData'
 import { Confetti, DICE_THROW_MS, DiceThrow, StageCard } from './ui/Effects'
 import { Manual } from './ui/Manual'
@@ -476,10 +476,17 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
   // ── 표정 말풍선 ──
   const [emotes, setEmotes] = useState<Record<number, Expr>>({})
   const emoteTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({})
-  const showEmote = useCallback((pid: number, expr: Expr) => {
+  // 사람이 고른 표정은 화면에도 (그 사람이 판에 안 보이거나 창이 판을 가릴 때, 2026-10-24 사용자)
+  const [screenEmotes, setScreenEmotes] = useState<Record<number, Expr>>({})
+  const showEmote = useCallback((pid: number, expr: Expr, byHand = false) => {
     setEmotes((e) => ({ ...e, [pid]: expr }))
+    if (byHand) setScreenEmotes((e) => ({ ...e, [pid]: expr }))
     clearTimeout(emoteTimers.current[pid])
-    emoteTimers.current[pid] = setTimeout(() => setEmotes((e) => { const n = { ...e }; delete n[pid]; return n }), EMOTE_MS)
+    emoteTimers.current[pid] = setTimeout(() => {
+      const drop = (e: Record<number, Expr>) => { const n = { ...e }; delete n[pid]; return n }
+      setEmotes(drop)
+      setScreenEmotes(drop)
+    }, EMOTE_MS)
   }, [])
   useEffect(() => () => Object.values(emoteTimers.current).forEach(clearTimeout), [])
   // AI: 새 기록이 좋은 일·나쁜 일이면 자동으로 (걷기·주사위·칸 사건 창이 끝난 뒤에 띄움)
@@ -515,7 +522,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
   const incomingId = online?.incoming?.id
   useEffect(() => {
     const inc = online?.incoming
-    if (inc) showEmote(inc.player, inc.expr)
+    if (inc) showEmote(inc.player, inc.expr, true)
   }, [incomingId]) // eslint-disable-line react-hooks/exhaustive-deps
   // 플레이어: 직접 골라서 (온라인은 내 첫 플레이어, 혼자 하기는 지금 차례인 사람 아니면 첫 사람)
   const emoteId = online ? online.mine[0] : p.human ? p.id : game.players.find((q) => q.human)?.id
@@ -531,7 +538,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
     if (emoteId === undefined || cooling) return
     setPicker(false)
     setCoolUntil(Date.now() + EMOTE_COOLDOWN_MS)
-    showEmote(emoteId, e)
+    showEmote(emoteId, e, true)
     online?.emote?.(emoteId, e)
   }
 
@@ -663,10 +670,10 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
             <EventArt type={pending.type} />
             <h2 className="jua">{pending.title}</h2>
             <p>{pending.text}</p>
-            {!isMine(pending.playerId) && (
+            {/* 창이 떠 있어도 표정 보내기 (오른쪽 표정 버튼은 창에 가려서). 내가 고를 때도 (2026-10-24) */}
+            {(!isMine(pending.playerId) || emoteId !== undefined) && (
               <div className="note-row">
-                <p className="note">{game.players[pending.playerId].name}{game.players[pending.playerId].human ? '님이' : '(AI)가'} 고르는 중…</p>
-                {/* 기다리는 동안에도 표정 보내기 (오른쪽 표정 버튼은 결정 창에 가려서) */}
+                {isMine(pending.playerId) ? <span className="note-spacer" /> : <p className="note">{game.players[pending.playerId].name}{game.players[pending.playerId].human ? '님이' : '(AI)가'} 고르는 중…</p>}
                 {emoteId !== undefined && (
                   <button className="emote-btn-inline" aria-label="표정" disabled={cooling} onClick={() => setPicker(true)}>
                     <Character outfit={game.players[emoteId].outfit} age={ageOf(game, game.players[emoteId])} expr="happy" size={40} crop="head" />
@@ -692,6 +699,22 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
           </div>
         </div>
       )}
+
+      {/* 화면 표정: 판에서 그 사람이 안 보이거나(다른 사람 차례) 창이 판을 가릴 때 왼쪽에 얼굴·이름 (2026-10-24 사용자) */}
+      {(() => {
+        const covered = (!!pending && !pendingDown) || summaryOpen || !!wheel
+        const list = Object.entries(screenEmotes).map(([k, e]) => [Number(k), e] as const).filter(([pid]) => covered || pid !== shown.id)
+        return list.length > 0 && (
+          <div className="screen-emotes" aria-live="polite">
+            {list.map(([pid, e]) => (
+              <div key={`${pid}-${e}`} className="screen-emote">
+                <EmoteBubble outfit={game.players[pid].outfit} age={ageOf(game, game.players[pid])} expr={e} size={52} />
+                <span className="screen-emote-name jua" style={{ background: game.players[pid].color }}>{game.players[pid].name}</span>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
 
       {summaryOpen && !walking && <StageSummary s={game} onClose={() => (online ? setClosedSummary(game.stageIdx) : act((s) => { s.summary = null }))} />}
 
