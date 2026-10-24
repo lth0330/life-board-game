@@ -19,7 +19,7 @@ import { LogBox } from './ui/LogBox'
 import type { ChatMsg } from './online/Online'
 import { EMOTE_COOLDOWN_MS, EMOTE_MS, EmotePicker } from './ui/Emotes'
 import { autoEmote } from './ui/emoteData'
-import { Confetti, DiceThrow, StageCard } from './ui/Effects'
+import { Confetti, DICE_THROW_MS, DiceThrow, StageCard } from './ui/Effects'
 import { Manual } from './ui/Manual'
 import { MiniGame } from './ui/MiniGames'
 import { BackButton, Frame, MenuScreen, SetupScreen, TitleScreen, type Speed } from './ui/Screens'
@@ -36,9 +36,9 @@ const account = () => import('./account/api')
 
 const SPEED_MS: Record<Speed, number> = { fast: 450, normal: 1000, slow: 1700 }
 const WALK_MS = 230
-const DICE_ROLL_MS = 750
-const DICE_SHOW_MS = 650
-const DICE_BEFORE_WHEEL_MS = 1600
+const DICE_ROLL_MS = 400 // AI가 주사위를 손에 쥐고 흔드는 시간 (뒤에 던지는 연출이 붙어서 750 → 400, 2026-10-24)
+const DICE_SHOW_MS = DICE_THROW_MS + 550 // 던져서 멈춘 뒤 숫자를 보여 주는 시간까지
+const DICE_BEFORE_WHEEL_MS = DICE_THROW_MS + 1600
 // 상점 카테고리 (물건 id로 나눔)
 const SHOP_CATS = [
   { id: 'home', icon: '🏠', name: '집·차', match: (id: string) => id.startsWith('house') || id.startsWith('mortgage') || id.startsWith('car') },
@@ -312,11 +312,11 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
     setRemoteRoll(false)
     diceAt.current = Date.now()
     setDiceShow({ value: game.dice.value, second: game.dice.second })
-    sfx('diceLand')
+    const land = setTimeout(() => sfx('diceLand'), DICE_THROW_MS * 0.4) // 처음 바닥에 닿을 때
     // 수능처럼 주사위 바로 뒤에 룰렛이 오면 주사위를 1.6초 보여 준 뒤 룰렛 (2026-10-21·22 사용자)
     const wheelNext = !!game.roulette && game.roulette.id !== lastWheel.current
     const t = setTimeout(() => setDiceShow(null), wheelNext ? DICE_BEFORE_WHEEL_MS : DICE_SHOW_MS)
-    return () => clearTimeout(t)
+    return () => { clearTimeout(t); clearTimeout(land) }
   }, [game.dice]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── 한 칸씩 걷기 ──

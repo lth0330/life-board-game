@@ -214,7 +214,7 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
       // 이름표: 같은 칸이면 두 줄로 번갈아 (옆 사람과 안 겹치고 몸 가까이, 2026-10-23: 4명이면 계단처럼 높이 떠 있었음)
       items.push(
         <div key={`s${p.id}`} className="shadow" style={{ left: xAt(t) + 20 + dx, top: yAt(t) + 70 }} />,
-        <div key={`c${p.id}`} className={`char${p.id === walkingId ? ' walking' : ''}${ageOf(s, p) <= 2 ? ' baby' : ''}`} style={{ ...stand, left: xAt(t) + 20 + dx, top: yAt(t) - 90 }}>
+        <div key={`c${p.id}`} data-focus={me || undefined} className={`char${p.id === walkingId ? ' walking' : ''}${ageOf(s, p) <= 2 ? ' baby' : ''}`} style={{ ...stand, left: xAt(t) + 20 + dx, top: yAt(t) - 90 }}>
           <div style={{ opacity: me ? 1 : 0.5 }}>
             <Character outfit={p.outfit} view={p.id === walkingId ? 'back' : 'front'} size={80} age={ageOf(s, p)} /> {/* 걸을 때만 뒷모습 */}
             <div className="name-tag" style={{ background: me ? p.color : 'rgba(42,33,24,0.6)', top: -40 + row, ...(p.team !== undefined && s.settings.teams ? { boxShadow: `0 0 0 4px ${TEAM_COLORS[p.team]}` } : {}) }}>{p.name}</div>{/* 팀전: 이름표 둘레 팀 색 */}

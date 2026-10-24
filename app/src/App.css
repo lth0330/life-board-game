@@ -467,31 +467,24 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
 
 /* ───── 주사위 던지기 연출 ───── */
 .dice-throw { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
-.dice-flight { position: absolute; left: 50%; top: 52%; width: 72px; height: 72px; margin: -36px 0 0 -36px; animation: dice-fly 0.75s cubic-bezier(.3,.7,.4,1) both; }
-.dice-flight.landed { animation: none; }
-.dice-shadow { position: absolute; left: 6px; right: 6px; bottom: -22px; height: 14px; border-radius: 50%; background: rgba(0,0,0,0.25); }
-.cube-wrap { width: 72px; height: 72px; perspective: 400px; }
-.cube { position: relative; width: 72px; height: 72px; transform-style: preserve-3d; -webkit-transform-style: preserve-3d; transition: transform 0.25s ease-out; }
+.dice-flight { position: absolute; width: 56px; height: 56px; margin: -56px 0 0 -28px; }
+.dice-shadow { position: absolute; width: 48px; height: 14px; margin: -8px 0 0 -24px; border-radius: 50%; background: rgba(0,0,0,0.28); }
+.cube-wrap { width: 56px; height: 56px; perspective: 400px; }
+.cube { position: relative; width: 56px; height: 56px; transform-style: preserve-3d; -webkit-transform-style: preserve-3d; }
 .cube.tumbling { animation: tumble3d 0.45s linear infinite; }
 .cube-face {
-  position: absolute; inset: 0; background: #fbf8f1; border-radius: 12px; border: 2px solid #d6cbb4;
-  display: grid; grid-template-columns: repeat(3, 1fr); padding: 10px; gap: 2px;
+  position: absolute; inset: 0; background: #fbf8f1; border-radius: 10px; border: 2px solid #d6cbb4;
+  display: grid; grid-template-columns: repeat(3, 1fr); padding: 7px; gap: 1px;
 }
 /* backface-visibility: hidden은 뺌 — 폰에서 3D가 납작해지면 모든 면이 '뒷면'으로 처리돼 주사위가 투명해 보였음 (2026-10-22) */
 .cube-face i { display: flex; align-items: center; justify-content: center; }
-.cube-face i.pip::after { content: ''; width: 12px; height: 12px; border-radius: 50%; background: var(--ink); }
-.cube-face i.pip.red::after { background: var(--accent); width: 16px; height: 16px; }
+.cube-face i.pip::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--ink); }
+.cube-face i.pip.red::after { background: var(--accent); width: 13px; height: 13px; }
 .dice-number {
-  position: absolute; left: 50%; top: 36%; transform: translateX(-50%); font-size: 64px; color: #fff;
+  position: absolute; transform: translateX(-50%); font-size: 64px; color: #fff;
   text-shadow: 0 4px 0 var(--accent-dark), 0 0 18px rgba(0,0,0,0.3); animation: pop 0.25s ease-out;
 }
 @keyframes tumble3d { from { transform: rotateX(0) rotateY(0) rotateZ(0); } to { transform: rotateX(360deg) rotateY(720deg) rotateZ(180deg); } }
-@keyframes dice-fly {
-  0% { transform: translate(120px, 300px) scale(1.4); }
-  55% { transform: translate(-20px, -60px) scale(1.1); }
-  80% { transform: translate(6px, 8px) scale(1); }
-  100% { transform: translate(0, 0) scale(1); }
-}
 
 /* ───── 축하·단계 전환 ───── */
 .confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 6; }
@@ -681,24 +674,13 @@ button.wide:not(:disabled):active, .decision .options button:not(:disabled):acti
 .char.walking .leg-r { animation-delay: -0.23s; }
 @keyframes leg-step { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) { .char.walking .leg-l, .char.walking .leg-r { animation: none; } }
-/* 주사위 연출 (2026-10-17): 던지면 날아와 판 위에서 통통 튀며 구르고, 멈추면 떨어져 두 번 튀고 자리 잡음 */
-.dice-flight { top: 58%; animation: dice-fly 0.6s cubic-bezier(.3,.7,.4,1) both; }
-/* 통통 튀기는 transform 대신 margin으로 (부모가 transform 애니메이션 중이면 폰 브라우저가 안의 3D 주사위를 못 그림) */
-.dice-flight:not(.landed) .cube-wrap { animation: dice-hop 0.42s ease-in-out 0.6s infinite; }
-.dice-flight .dice-shadow { animation: dice-shadow-hop 0.42s ease-in-out 0.6s infinite; }
-.dice-flight.landed { animation: dice-land 0.45s cubic-bezier(.3,.6,.4,1) both; }
-.dice-flight.landed .dice-shadow { animation: none; }
-@keyframes dice-hop { 0%, 100% { margin-top: 0; } 50% { margin-top: -34px; } }
-@keyframes dice-shadow-hop { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.6); opacity: 0.5; } }
-@keyframes dice-land {
-  0% { transform: translateY(-40px); }
-  45% { transform: translateY(0); }
-  65% { transform: translateY(-12px); }
-  85% { transform: translateY(0); }
-  93% { transform: translateY(-3px); }
-  100% { transform: translateY(0); }
-}
-@media (prefers-reduced-motion: reduce) { .dice-flight, .dice-flight .dice-shadow, .dice-flight.landed { animation: none; } }
+/* 주사위 연출 (2026-10-24 '내가 던지기'): 캐릭터 옆에서 손에 쥐고 흔들다가 판 위로 던져져 튀며 굴러 멈춤. 위치는 Effects.tsx가 left·top으로 옮김
+   통통 튀기는 transform 대신 margin으로 (부모가 transform 애니메이션 중이면 폰 브라우저가 안의 3D 주사위를 못 그림) */
+.dice-flight.holding .cube-wrap { animation: dice-hop 0.42s ease-in-out infinite; }
+.dice-shadow.holding { animation: dice-shadow-hop 0.42s ease-in-out infinite; }
+@keyframes dice-hop { 0%, 100% { margin-top: 0; } 50% { margin-top: -22px; } }
+@keyframes dice-shadow-hop { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+@media (prefers-reduced-motion: reduce) { .dice-flight.holding .cube-wrap, .dice-shadow.holding { animation: none; } }
 /* 이벤트 장면 (결혼·아기·집·합격 등) 더 크게 + 살짝 흔들리며 등장 (2026-10-17) */
 .banner .scene-art { width: min(300px, 70vw); height: auto; animation: scene-in 0.6s cubic-bezier(.3,1.4,.5,1) both; }
 @keyframes scene-in { 0% { transform: scale(0.6) rotate(-4deg); opacity: 0; } 60% { transform: scale(1.05) rotate(1deg); opacity: 1; } 100% { transform: scale(1) rotate(0); } }
