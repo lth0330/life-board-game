@@ -1,3 +1,4 @@
+import { BIZ_OPP, BIZ_RISK, bizEventsFor, findBizEvent, type BizEvent } from './bizEvents'
 import { buildStages, isEnd, maxDepth, walkAhead } from './board'
 import {
   AI_NAMES, BIZ, BUSINESSES, CARS, CHANCE_NAMES, DICE_ITEMS, FORTUNES, HOUSES, CAR_CRASH_LOSS, CAR_RESALE, HOUSE_RULES, INSURANCE, CAFE, JOBS, KIDS, LOTTERY_PRICE, MAX_DICE_ITEMS, MEDALS, PENSION, SEVERANCE_RATE,
@@ -414,6 +415,8 @@ function beginTurn(s: GameState) {
         { id: 'keep', label: '계속 경영', desc: `수익 ${BIZ.oldMult}배, 매 턴 행복 -1, 골인할 때 팔아요` },
       ],
     }
+  } else if ((sid === 'young' || sid === 'middle') && p.jobId === 'ceo' && p.biz && p.turnsPlayed - (p.bizOppTurn ?? -99) >= BIZ_OPP.gap && rng.chance(BIZ_OPP.chance)) {
+    bizOpportunity(s, p)
   } else if (sid === 'middle' && p.kids.some((k) => isMinor(k) && k.edu === null)) eduPending(s, p)
   else if (p.agency && !p.spouse && (sid === 'young' || sid === 'middle')) agencyTurn(s, p)
   resume(s)
@@ -698,6 +701,70 @@ function shareBiz(s: GameState, founder: Player, amount: number, what: string) {
   }
   log(s, founder.id, `동업 나눔(${what}): ${ids.map((id) => s.players[id].name).join('·')}에게 ${won(each)}씩`, 'info')
 }
+// ───────── 사업 기회 (2026-10-24 사용자, engine/bizEvents.ts) ─────────
+export const bizOppCost = (p: Player, ev: BizEvent) => Math.round(BIZ_OPP.cost[p.jobRank] * BIZ_RISK[ev.risk].cost / 10) * 10
+// 점수에 더해지는 것: 사업 능력치의 절반 + 운세
+const bizOppBonus = (p: Player) => Math.round(bizStat(p) / 2) + luckBonus(p)
+function bizOppRule(p: Player, ev: BizEvent) {
+  const r = BIZ_RISK[ev.risk]
+  const b = bizOppBonus(p)
+  return `주사위 + ${b}(사업 능력치 ${bizStat(p)}의 절반${luckBonus(p) ? `, 운세 ${luckBonus(p) > 0 ? '+' : ''}${luckBonus(p)}` : ''}) → ${r.great} 이상 대성공(${ev.grow ? '회사 성장' : `${r.reward}배`}) · ${r.ok} 이상 효과 없음(반만 돌려받음) · 그 밑 실패`
+}
+function bizOpportunity(s: GameState, p: Player) {
+  const rng = rngOf(s)
+  const ev = rng.pick(bizEventsFor(p.biz!.name))
+  const cost = bizOppCost(p, ev)
+  p.bizOppTurn = p.turnsPlayed
+  s.pending = {
+    type: 'bizOpp', playerId: p.id, title: `사업 기회: ${ev.title}`,
+    text: `${ev.desc}. 비용 ${won(cost)} · ${BIZ_RISK[ev.risk].name}
+${bizOppRule(p, ev)}`,
+    options: [
+      { id: 'yes', label: `도전한다 (-${won(cost)})`, disabled: p.money < cost },
+      { id: 'no', label: '안 한다' },
+    ],
+    data: { ev: ev.id, cost },
+  }
+}
+function bizOppResult(s: GameState, p: Player, evId: string, cost: number, v: number) {
+  const ev = p.biz && findBizEvent(p.biz.name, evId)
+  if (!ev) return
+  const r = BIZ_RISK[ev.risk]
+  const score = v + bizOppBonus(p)
+  if (score >= r.great) {
+    if (ev.grow && p.jobRank < (p.biz!.maxRank ?? 2)) {
+      p.jobRank++
+      log(s, p.id, `[사업 기회] ${ev.great} ${bizRankOf(p)}! (점수 ${score})`, 'good')
+    } else {
+      const gain = Math.round(cost * r.reward)
+      p.money += gain
+      log(s, p.id, `[사업 기회] ${ev.great} +${won(gain)} (점수 ${score})`, 'good')
+      shareBiz(s, p, gain, ev.title)
+    }
+    p.happy += 2
+    if (ev.sector) { s.stockPrice[ev.sector] = Math.round(s.stockPrice[ev.sector] * 1.15); log(s, null, `${p.name}의 ${ev.title} 성공! ${ev.sector}주 +15%`, 'good') }
+    s.banner = { title: `${ev.title} 대성공!`, text: `${p.name}: 점수 ${score}`, tone: 'good' }
+    say(s, p, 'promoted')
+  } else if (score >= r.ok) {
+    const back = Math.round(cost * BIZ_OPP.okBack)
+    p.money += back
+    log(s, p.id, `[사업 기회] ${ev.ok} 쓴 돈의 절반 +${won(back)} 돌아옴 (점수 ${score})`, 'info')
+    s.banner = { title: `${ev.title}: 효과 없음`, text: `${p.name}: 점수 ${score}`, tone: 'info' }
+  } else {
+    p.happy -= BIZ_OPP.failHappy
+    log(s, p.id, `[사업 기회] ${ev.fail} -${won(cost)}, 행복 -${BIZ_OPP.failHappy} (점수 ${score})`, 'bad')
+    if (ev.sector) { s.stockPrice[ev.sector] = Math.max(10, Math.round(s.stockPrice[ev.sector] * 0.9)); log(s, null, `${p.name}의 ${ev.title} 실패… ${ev.sector}주 -10%`, 'bad') }
+    s.banner = { title: `${ev.title} 실패`, text: `${p.name}: 점수 ${score}`, tone: 'bad' }
+  }
+}
+export function aiBizOpp(s: GameState, p: Player, pd: Pending) {
+  const d = pd.data as { ev: string; cost: number }
+  const ev = p.biz && findBizEvent(p.biz.name, d.ev)
+  if (!ev || p.money < d.cost * 1.5) return false
+  const want = { gambler: 0.9, investor: 0.7, elite: 0.6, family: 0.4, safe: 0.3 }[p.personality] + (bizOppBonus(p) - 3) * 0.1 - (ev.risk === 'normal' ? 0 : 0.15)
+  return rngOf(s).chance(Math.max(0.05, Math.min(0.95, want)))
+}
+
 // 동업으로 번 돈 (받은 돈 - 투자금)
 export const bizShareGain = (_s: GameState, p: Player) => p.record.bizShare ?? 0
 // 내가 투자한 회사들
@@ -2733,11 +2800,12 @@ export function choose(s: GameState, optionId: string) {
       break
     }
     case 'diceCheck': {
-      const d = pd.data as { kind: 'special' | 'suneung' | 'career'; ev?: string; opt?: string; k?: StatKey; after?: UniAfter }
+      const d = pd.data as { kind: 'special' | 'suneung' | 'career' | 'bizOpp'; ev?: string; opt?: string; k?: StatKey; after?: UniAfter; cost?: number }
       const v = rng.int(1, 6)
       showDice(s, v)
       if (d.kind === 'suneung') suneung(s, p, v, d.k ?? 'int', d.after ?? 'first')
       else if (d.kind === 'career') careerRoll(s, p, v)
+      else if (d.kind === 'bizOpp') bizOppResult(s, p, d.ev ?? '', d.cost ?? 0, v)
       else {
         const ev = findEvent(stageOf(s).id, d.ev ?? '')
         const o = ev?.options.find((x) => x.id === d.opt)
@@ -2950,6 +3018,20 @@ export function choose(s: GameState, optionId: string) {
       const wsc = (pd.data as { sc: number }).sc
       if (optionId === 'return') { p.money += wsc * 3; p.record.deeds++; log(s, p.id, `지갑 주인을 찾아줬다. 사례금 +${won(wsc * 3)} (선행)`, 'good'); changeFortune(s, p, 1, '지갑을 돌려줌') }
       else { p.money += wsc * 8; p.happy += 2; log(s, p.id, `주운 지갑의 돈을 가졌다 +${won(wsc * 8)}, 행복 +2`, 'info'); changeFortune(s, p, -1, '지갑을 가짐') }
+      break
+    }
+    case 'bizOpp': {
+      const d = pd.data as { ev: string; cost: number }
+      if (optionId !== 'yes' || p.money < d.cost) { log(s, p.id, `사업 기회(${findBizEvent(p.biz?.name ?? '', d.ev)?.title ?? ''})를 넘겼다`, 'info'); break }
+      p.money -= d.cost
+      if (p.human) {
+        const ev = findBizEvent(p.biz!.name, d.ev)!
+        diceCheck(s, p, ev.title, bizOppRule(p, ev), { kind: 'bizOpp', ev: d.ev, cost: d.cost })
+      } else {
+        const v = rng.int(1, 6)
+        showDice(s, v)
+        bizOppResult(s, p, d.ev, d.cost, v)
+      }
       break
     }
     case 'bizTakeInvest':
