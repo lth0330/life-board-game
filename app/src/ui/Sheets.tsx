@@ -5,6 +5,7 @@ import { CARS, CHANCE_NAMES, DICE_ITEMS, HOUSE_RULES, HOUSES, INSURANCE, JOB_PRO
 import {
   ageOf, moodLevel, moodOf, MOOD_FACES, MOOD_HELP, MOOD_NAMES, MOOD_TURNS, AWARD_POINTS, awardsOf, canBankLoan, canBorrowFrom, loanCap, LOAN_RATE, LOAN_TURNS, fortuneName, friendDebt, houseValue, isAdultStage, jobOf, kidAllowance, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
   stageOf, stars, stocksValue, teamTotals, TEAM_COLORS, TEAM_NAMES, sameTeam,
+  myStakes,
 } from '../engine/game'
 import type { GameState, InsuranceKind, Player, Sector } from '../engine/types'
 import { playerLine, won } from './format'
@@ -430,6 +431,14 @@ export function MyInfoSheet({ s, p, onClose }: { s: GameState; p: Player; onClos
           <b>{job ? job.name : '백수'} 특성</b>
           <div>👍 {traits[0]}</div>
           <div>👎 {traits[1]}</div>
+        </div>
+      )}
+      {(myStakes(s, p).length > 0 || !!p.biz?.investors?.length) && (
+        <div className="note">
+          <b>동업</b>
+          {myStakes(s, p).map((f) => <div key={f.id}>{f.name}의 {f.biz!.name}에 투자 · 회사 몫 10%</div>)}
+          {!!p.biz?.investors?.length && <div>내 {p.biz.name}에 {p.biz.investors.map((id) => s.players[id].name).join('·')} 투자 · 수익과 판 돈의 {p.biz.investors.length * 10}%를 나눠요</div>}
+          {p.record.bizShare !== undefined && <div className="muted">동업으로 번 돈 (받은 돈 - 투자금) {p.record.bizShare >= 0 ? '+' : ''}{won(p.record.bizShare)}</div>}
         </div>
       )}
       <div className="note">

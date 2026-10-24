@@ -1,7 +1,7 @@
 import { BIZ, BUSINESSES, DICE_ITEMS, JOBS, SECTORS } from './data'
 import { findEvent, specialValue } from './special'
 import {
-  aiDiceItem, aiFinishMini, aiWantsCar, passChance, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, canBankLoan, loanLimit, loanTotal, repayFriendLoan,
+  aiDiceItem, aiInvestDecision, aiFinishMini, aiWantsCar, passChance, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, canBankLoan, loanLimit, loanTotal, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, rngOf, salaryOf, scoreOf, stageOf, startSabotage, takeLoan, toggleInsurance,
   tradeStock, playChance, moodLevel, scaleOf, withdraw,
 } from './game'
@@ -193,6 +193,7 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
     case 'wallet': return id === 'return' ? (per === 'family' || per === 'safe' ? 2 : 1.2) : per === 'gambler' ? 2 : 0.8
     case 'stray': return id === 'yes' ? (per === 'family' || per === 'safe' ? 2 : 0.8) : 1
     case 'loanRequest': return id === 'yes' ? 1 : 1.2
+    case 'bizInvest': return id === 'yes' && aiInvestDecision(s, p, s.players[(pd.data as { founderId: number }).founderId]) ? 2 : 1 // 온라인에서 나간 사람
     case 'sabotageTarget': {
       const q = s.players[+id]
       return scoreOf(s, q).total - q.fortune * 10

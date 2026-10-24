@@ -120,6 +120,7 @@ export const BIZ = {
   fallBase: 0.3, fallPerStat: 0.02, // 악 이하일 때 작아질 확률 = 30% - 능력치 × 2%
   sale: [1500, 5400, 13500], // 노년에 팔 때 (2026-10-23 -40%: 중견기업 매각만으로 150점이라 너무 셌음)
   oldMult: 0.7, // 노년에 계속 경영하면 수익 배율
+  invest: 1000, investShare: 0.1, // 동업: 다른 사람이 창업하면 1,000만 투자 = 회사 몫 10% (수익·매각만 나눔, 적자는 안 나눔. 2026-10-24 사용자)
 }
 // 직업별 창업 업종 (자기 직업에 맞춰서). 백수는 능력치로 고름
 export const BUSINESSES: Record<string, { name: string; stat: 'int' | 'str' | 'cha'; sector: Sector | null; maxRank?: number }> = {

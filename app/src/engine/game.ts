@@ -135,7 +135,7 @@ export const AWARDS: { id: string; name: string; desc: string; value: (p: Player
   { id: 'success', name: '자식 농사', desc: '크게 성공한 자녀가 가장 많은 사람이 받아요', value: (p) => p.kids.filter((k) => k.result === 2).length },
   { id: 'lucky', name: '행운아', desc: '복권 당첨금이 가장 많은 사람이 받아요', value: (p) => p.record.lotteryWon },
   { id: 'kind', name: '착한 사람', desc: '선행이 가장 많은 사람이 받아요 (봉사·지갑 찾아주기·유기견·친구에게 돈 빌려주기)', value: (p) => p.record.deeds },
-  { id: 'invest', name: '투자왕', desc: '주식으로 가장 많이 번 사람이 받아요 (판 이익 + 들고 있는 주식의 오른 만큼)', value: (p, s) => stockGainOf(s, p) },
+  { id: 'invest', name: '투자왕', desc: '주식·동업으로 가장 많이 번 사람이 받아요 (판 이익 + 들고 있는 주식의 오른 만큼 + 동업으로 받은 돈 - 투자금)', value: (p, s) => stockGainOf(s, p) + bizShareGain(s, p) },
   { id: 'duel', name: '만남의 왕', desc: '같은 칸 대결에서 1등을 가장 많이 한 사람이 받아요', value: (p) => p.record.duelWins },
 ]
 export function awardsOf(s: GameState, p: Player) {
@@ -567,6 +567,7 @@ function bizTick(s: GameState, p: Player, mult: number) {
   const raw = bizBase(p) * bizStatMult(p) * BIZ.fortune[p.fortune] * mult
   const income = Math.round(raw > 0 ? raw * (1 - TAX_RATE(raw)) : raw)
   p.money += income
+  shareBiz(s, p, income, '수익')
   if (income < 0) log(s, p.id, `[운세 ${fortuneName(p.fortune)}] ${biz.name} 적자 ${won(income)}`, 'bad')
   if (mult < 1) p.happy -= 1 // 노년까지 일하느라 지침
   const stat = bizStat(p)
@@ -590,6 +591,7 @@ function bizReview(s: GameState, p: Player) {
   const income = Math.round(raw * (1 - TAX_RATE(raw)))
   p.money += income
   log(s, p.id, `사업 평가 좋음! ${p.biz!.name} 수익 한 번 더 +${won(income)}`, 'good')
+  shareBiz(s, p, income, '평가 보너스')
   s.banner = { title: '사업 평가', text: `${p.name}: +${won(income)}`, tone: 'good' }
 }
 
@@ -626,12 +628,69 @@ function startCompany(s: GameState, p: Player, biz: Biz) {
   p.bizKeep = null
   log(s, p.id, `${biz.name} 창업! (${biz.avg ? '지력·체력·매력 평균' : STAT_NAMES[biz.stat]}이 높을수록 잘 벌고 잘 큼)`, 'good')
   say(s, p, 'startup')
+  p.biz.investors = []
+  offerInvest(s, p, s.players.filter((q) => q.id !== p.id && !q.finished).map((q) => q.id))
 }
+
+// ───────── 동업 (2026-10-24 사용자) ─────────
+// 누가 창업하면 다른 사람에게 차례로 투자를 물음. 1,000만 = 회사 몫 10%, 투자금은 창업한 사람에게.
+// 수익·평가 보너스·매각 값의 10%씩 받고, 적자는 나누지 않음
+const canInvest = (q: Player) => !q.finished && q.money >= BIZ.invest
+export function aiInvestDecision(s: GameState, q: Player, founder: Player) {
+  if (q.money < BIZ.invest * 1.5) return false
+  const base = { investor: 0.6, gambler: 0.55, elite: 0.35, family: 0.25, safe: 0.15 }[q.personality]
+  return rngOf(s).chance(Math.max(0.05, Math.min(0.9, base + (bizStat(founder) - 5) * 0.05)))
+}
+function offerInvest(s: GameState, founder: Player, queue: number[]) {
+  const biz = founder.biz
+  if (!biz) return
+  for (let i = 0; i < queue.length; i++) {
+    const q = s.players[queue[i]]
+    if (!canInvest(q)) continue
+    if (q.human) {
+      const stat = biz.avg ? `능력치 평균 ${bizStat(founder)}` : `${STAT_NAMES[biz.stat]} ${bizStat(founder)}`
+      s.pending = {
+        type: 'bizInvest', playerId: q.id, title: `${founder.name}의 ${biz.name}에 투자할까요?`,
+        text: `${won(BIZ.invest)}을 넣으면 회사 몫 10%를 가져요. 수익이 나면 매 턴 10%, 회사를 팔면 판 돈의 10%를 받아요. 적자는 나누지 않아요. (${founder.name}: ${stat} · 운세 ${fortuneName(founder.fortune)})`,
+        options: [{ id: 'yes', label: `투자한다 (${won(BIZ.invest)})` }, { id: 'no', label: '안 한다' }],
+        data: { founderId: founder.id, queue: queue.slice(i + 1) },
+      }
+      s.phase = 'decision'
+      return
+    }
+    if (aiInvestDecision(s, q, founder)) invest(s, q, founder)
+  }
+}
+function invest(s: GameState, q: Player, founder: Player) {
+  if (!founder.biz || !canInvest(q)) return
+  q.money -= BIZ.invest
+  founder.money += BIZ.invest
+  founder.biz.investors = [...(founder.biz.investors ?? []), q.id]
+  q.record.bizShare = (q.record.bizShare ?? 0) - BIZ.invest
+  log(s, q.id, `${founder.name}의 ${founder.biz.name}에 ${won(BIZ.invest)} 투자! 회사 몫 10%`, 'info')
+}
+function shareBiz(s: GameState, founder: Player, amount: number, what: string) {
+  const ids = founder.biz?.investors ?? []
+  if (amount <= 0 || !ids.length) return
+  const each = Math.round(amount * BIZ.investShare)
+  for (const id of ids) {
+    const q = s.players[id]
+    founder.money -= each
+    q.money += each
+    q.record.bizShare = (q.record.bizShare ?? 0) + each
+  }
+  log(s, founder.id, `동업 나눔(${what}): ${ids.map((id) => s.players[id].name).join('·')}에게 ${won(each)}씩`, 'info')
+}
+// 동업으로 번 돈 (받은 돈 - 투자금)
+export const bizShareGain = (_s: GameState, p: Player) => p.record.bizShare ?? 0
+// 내가 투자한 회사들
+export const myStakes = (s: GameState, p: Player) => s.players.filter((f) => f.biz?.investors?.includes(p.id))
 
 function sellCompany(s: GameState, p: Player) {
   const amt = bizSale(p)
   p.money += amt
   log(s, p.id, `${p.biz?.name ?? '회사'}(${bizRankOf(p)})를 팔고 은퇴 +${won(amt)}`, 'good')
+  shareBiz(s, p, amt, '매각')
   s.banner = { title: '회사 매각', text: `${p.name}: +${won(amt)}`, tone: 'good' }
   p.bizKeep = false
   p.jobId = null
@@ -2874,6 +2933,14 @@ export function choose(s: GameState, optionId: string) {
       const wsc = (pd.data as { sc: number }).sc
       if (optionId === 'return') { p.money += wsc * 3; p.record.deeds++; log(s, p.id, `지갑 주인을 찾아줬다. 사례금 +${won(wsc * 3)} (선행)`, 'good'); changeFortune(s, p, 1, '지갑을 돌려줌') }
       else { p.money += wsc * 8; p.happy += 2; log(s, p.id, `주운 지갑의 돈을 가졌다 +${won(wsc * 8)}, 행복 +2`, 'info'); changeFortune(s, p, -1, '지갑을 가짐') }
+      break
+    }
+    case 'bizInvest': {
+      const d = pd.data as { founderId: number; queue: number[] }
+      const founder = s.players[d.founderId]
+      if (optionId === 'yes') invest(s, p, founder)
+      else log(s, p.id, `${founder.name}의 ${founder.biz?.name ?? '회사'}에 투자하지 않았다`, 'info')
+      offerInvest(s, founder, d.queue)
       break
     }
     case 'loanRequest': {

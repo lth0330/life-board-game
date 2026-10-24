@@ -120,7 +120,10 @@ export interface MiniState {
 }
 
 // 창업한 회사. 회사 크기는 Player.jobRank. avg: 세 능력치 평균으로 / ranks·base·sale: 업종만의 단계 이름·수입·판 값
-export interface Biz { name: string; stat: StatKey; sector: Sector | null; maxRank?: number; avg?: boolean; ranks?: string[]; base?: number[]; sale?: number[] }
+export interface Biz {
+  name: string; stat: StatKey; sector: Sector | null; maxRank?: number; avg?: boolean; ranks?: string[]; base?: number[]; sale?: number[]
+  investors?: number[] // 동업: 투자한 플레이어 (한 사람당 회사 몫 10%, 2026-10-24)
+}
 
 export interface Player {
   id: number
@@ -154,7 +157,7 @@ export interface Player {
   carCharges: number
   carStage?: number // 차를 산 단계 (능력 횟수는 산 단계부터 단계마다 +1)
   lastLog?: number // 내 차례가 끝났을 때의 기록 번호 (다음 차례에 그사이 일어난 일을 보여 줌)
-  record: { shopBuys: number; spent: number; lotteryWon: number; deeds: number; duelWins: number; stockGain: number; shopSpent: number } // 결산 상 계산용
+  record: { shopBuys: number; spent: number; lotteryWon: number; deeds: number; duelWins: number; stockGain: number; shopSpent: number; bizShare?: number } // 결산 상 계산용. bizShare: 동업으로 받은 돈
   celebrated: number[] // 이미 치른 육순(60)·칠순(70)
   jobTenure: number // 지금 직업에서 일한 턴 (퇴직금 계산)
   biz: Biz | null // 창업한 회사 (회사 크기는 jobRank)
