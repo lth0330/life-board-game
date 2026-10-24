@@ -52,3 +52,10 @@ it('직업 특성: 호감도 배율과 노년 은퇴', async () => {
   s.stageIdx = 4 // 노년
   expect(workJob(s, p)).toBe(null)
 })
+
+it('어려움이면 첫 AI는 가족형', () => {
+  for (let seed = 1; seed <= 20; seed++) {
+    const s = createGame({ humanName: '나', humans: 1, aiCount: 3, settings: { startAdult: false, difficulty: 'hard' }, seed })
+    expect(s.players[1].personality).toBe('family')
+  }
+})

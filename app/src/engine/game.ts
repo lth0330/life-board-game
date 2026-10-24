@@ -240,7 +240,9 @@ export function createGame(o: NewGameOptions): GameState {
   const names = [...AI_NAMES]
   for (let i = 0; i < o.aiCount; i++) {
     const name = names.splice(rng.int(0, names.length - 1), 1)[0]
-    s.players.push(newPlayer(humans + i, name, false, rng.pick(kinds)))
+    // 어려움이면 첫 AI는 꼭 가족형 (점수가 가장 높은 성격, 2026-10-24 사용자)
+    const kind = i === 0 && o.settings.difficulty === 'hard' ? 'family' : rng.pick(kinds)
+    s.players.push(newPlayer(humans + i, name, false, kind))
   }
   const st = stageOf(s)
   for (const p of s.players) {
