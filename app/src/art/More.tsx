@@ -152,7 +152,7 @@ const TYPE_ART: Record<string, string> = {
   marriage: 'marriage', wedding: 'marriage', baby: 'baby', shop: 'shop', job: 'job', career: 'book', adultStart: 'book', campus: 'book', collegeStat: 'book',
   club: 'book', academy: 'book', kidEdu: 'book', bizPick: 'biz', bizRetire: 'biz', athleteNext: 'medal', middleBranch: 'family', stray: 'family',
   fork: 'sign', retire: 'sign', afterRoll: 'dice', date: 'heart', agency: 'heart', agencyAttr: 'heart', agencyMatch: 'heart',
-  growPick: 'grow', invest: 'money', overtime: 'money', taxEvade: 'money', loanRequest: 'money', bizInvest: 'biz', sector: 'money',
+  growPick: 'grow', invest: 'money', overtime: 'money', taxEvade: 'money', loanRequest: 'money', bizInvest: 'biz', bizTakeInvest: 'biz', sector: 'money',
 }
 
 // 배너 제목으로 그림 고르기

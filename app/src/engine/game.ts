@@ -629,7 +629,7 @@ function startCompany(s: GameState, p: Player, biz: Biz) {
   log(s, p.id, `${biz.name} 창업! (${biz.avg ? '지력·체력·매력 평균' : STAT_NAMES[biz.stat]}이 높을수록 잘 벌고 잘 큼)`, 'good')
   say(s, p, 'startup')
   p.biz.investors = []
-  offerInvest(s, p, s.players.filter((q) => q.id !== p.id && !q.finished).map((q) => q.id))
+  askFounder(s, p)
 }
 
 // ───────── 동업 (2026-10-24 사용자) ─────────
@@ -640,6 +640,23 @@ export function aiInvestDecision(s: GameState, q: Player, founder: Player) {
   if (q.money < BIZ.invest * 1.5) return false
   const base = { investor: 0.6, gambler: 0.55, elite: 0.35, family: 0.25, safe: 0.15 }[q.personality]
   return rngOf(s).chance(Math.max(0.05, Math.min(0.9, base + (bizStat(founder) - 5) * 0.05)))
+}
+// 창업한 사람에게 먼저 투자를 받을지 물음 (2026-10-24 사용자: 원하지 않는데 받으면 안 됨). 투자할 수 있는 사람이 없으면 안 물음
+const AI_TAKE_INVEST = { safe: 0.9, family: 0.8, elite: 0.6, investor: 0.5, gambler: 0.4 }
+function askFounder(s: GameState, founder: Player) {
+  const queue = s.players.filter((q) => q.id !== founder.id && canInvest(q)).map((q) => q.id)
+  if (!queue.length || !founder.biz) return
+  if (founder.human) {
+    s.pending = {
+      type: 'bizTakeInvest', playerId: founder.id, title: '투자를 받을까요?',
+      text: `다른 사람에게 ${founder.biz.name} 투자를 물어봐요. 한 사람이 ${won(BIZ.invest)}을 넣으면 회사 몫 10%를 가져가요. 수익이 나면 매 턴, 회사를 팔면 판 돈의 10%를 그 사람에게 줘요. 적자는 나누지 않아요.`,
+      options: [{ id: 'yes', label: '투자를 받는다', desc: `받으면 한 사람당 +${won(BIZ.invest)}` }, { id: 'no', label: '혼자 한다', desc: '수익을 나누지 않아요' }],
+      data: { queue },
+    }
+    s.phase = 'decision'
+    return
+  }
+  if (rngOf(s).chance(AI_TAKE_INVEST[founder.personality])) offerInvest(s, founder, queue)
 }
 function offerInvest(s: GameState, founder: Player, queue: number[]) {
   const biz = founder.biz
@@ -2935,6 +2952,10 @@ export function choose(s: GameState, optionId: string) {
       else { p.money += wsc * 8; p.happy += 2; log(s, p.id, `주운 지갑의 돈을 가졌다 +${won(wsc * 8)}, 행복 +2`, 'info'); changeFortune(s, p, -1, '지갑을 가짐') }
       break
     }
+    case 'bizTakeInvest':
+      if (optionId === 'yes') { log(s, p.id, `${p.biz?.name ?? '회사'} 투자를 받기로 했다`, 'info'); offerInvest(s, p, (pd.data as { queue: number[] }).queue) }
+      else log(s, p.id, `${p.biz?.name ?? '회사'}는 혼자 하기로 했다`, 'info')
+      break
     case 'bizInvest': {
       const d = pd.data as { founderId: number; queue: number[] }
       const founder = s.players[d.founderId]

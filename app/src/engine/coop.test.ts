@@ -30,6 +30,7 @@ it('사람에게는 투자를 묻고, 투자하면 돈이 창업한 사람에게
     let n = 0
     while (s.phase !== 'gameover' && n++ < 8000) {
       const pd = s.pending
+      if (pd?.type === 'bizTakeInvest') { choose(s, 'yes'); continue } // 사람이 창업하면 투자를 받음
       if (pd?.type === 'bizInvest') {
         asked++
         const q = s.players[pd.playerId]
@@ -46,4 +47,27 @@ it('사람에게는 투자를 묻고, 투자하면 돈이 창업한 사람에게
     }
   }
   expect(asked).toBeGreaterThan(0)
+}, 120000)
+
+it("창업한 사람이 '혼자 한다'를 고르면 아무도 투자하지 않는다", () => {
+  let refused = 0
+  for (let seed = 1; seed <= 30; seed++) {
+    const s = createGame({ humanName: '나', humans: 2, aiCount: 2, settings: { startAdult: false, difficulty: 'normal' }, seed })
+    let n = 0
+    while (s.phase !== 'gameover' && n++ < 8000) {
+      const pd = s.pending
+      if (pd?.type === 'bizTakeInvest') {
+        const f = s.players[pd.playerId]
+        choose(s, 'no')
+        refused++
+        expect(f.biz?.investors ?? []).toEqual([])
+        expect(s.pending?.type).not.toBe('bizInvest')
+        continue
+      }
+      if (pd && s.players[pd.playerId].human) { choose(s, aiChoose(s)); continue }
+      const p = s.players[s.current]
+      if (p.human) { p.human = false; aiStep(s); p.human = true } else aiStep(s)
+    }
+  }
+  expect(refused).toBeGreaterThan(0)
 }, 120000)
