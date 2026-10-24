@@ -391,6 +391,7 @@ function OnlineGame({ me, room, isHost, renderPlay, onLeave }: { me: Me; room: R
   useEffect(() => {
     const sub = client.models.Action.onCreate({ filter: { roomId: { eq: room.id } } }).subscribe({
       next: (a) => {
+        if (a.kind === 'beat') { lastBeat.current = Date.now(); setHostLost(false); return }
         // 주사위 굴리기 시작 신호: 다른 기기에서도 굴러가는 주사위를 보여 줌 (2026-10-22)
         if (a.kind === 'spin') {
           const q = parse<ActionPayload & { player?: number } | null>(a.payload, null)
@@ -406,6 +407,30 @@ function OnlineGame({ me, room, isHost, renderPlay, onLeave }: { me: Me; room: R
     })
     return () => sub.unsubscribe()
   }, [room.id, me.userId])
+
+  // 방장 연결 끊김 알아채기 (2026-10-24, 13-review의 A): 방장 기기가 15초마다 신호,
+  // 손님은 45초 동안 신호도 상태 변화도 없으면 안내. 창 닫기·인터넷 끊김·폰 화면 끄기도 잡음
+  const lastBeat = useRef(Date.now())
+  const [hostLost, setHostLost] = useState(false)
+  const over = lobby.game?.phase === 'gameover' || hostGame?.phase === 'gameover'
+  const meRef = useRef(me)
+  meRef.current = me
+  useEffect(() => {
+    if (!isHost || over) return
+    const beat = () => void sendAction(room.id, meRef.current, 'beat').catch(() => {})
+    beat()
+    const t = setInterval(beat, 15000)
+    return () => clearInterval(t)
+  }, [isHost, over, room.id])
+  useEffect(() => { lastBeat.current = Date.now(); setHostLost(false) }, [room.version]) // 상태가 올라와도 살아 있는 것
+  useEffect(() => {
+    if (isHost || over) return
+    const t = setInterval(() => { if (Date.now() - lastBeat.current > 45000) setHostLost(true) }, 3000)
+    // 내 화면이 꺼졌다 켜지면 그동안 못 받은 신호가 있을 수 있어 다시 기다림
+    const back = () => { if (document.visibilityState === 'visible') lastBeat.current = Date.now() }
+    document.addEventListener('visibilitychange', back)
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', back) }
+  }, [isHost, over])
 
   // 방장이 돌아옴: 상태를 다시 올려서 '방장이 나갔어요'를 지움
   const awayAtStart = useRef(lobby.hostAway)
@@ -439,6 +464,16 @@ function OnlineGame({ me, room, isHost, renderPlay, onLeave }: { me: Me; room: R
           spin: (player) => { if (mine.includes(player) || (isHost && ownersRef.current[player] == null)) void sendAction(room.id, me, 'spin', { player }) },
         },
       })}
+      {!hostAway && hostLost && !isHost && game.phase !== 'gameover' && (
+        <div className="sheet-backdrop mini-backdrop host-away">
+          <div className="sheet mini center">
+            <h2 className="jua">방장과 연결이 끊겼어요</h2>
+            <p>방장의 인터넷이 끊겼거나 앱을 닫은 것 같아요. 방장이 돌아오면 저절로 이어져요</p>
+            <p className="muted">기다리는 중…</p>
+            <button className="wide" onClick={() => void quit()}>나가기</button>
+          </div>
+        </div>
+      )}
       {hostAway && (
         <div className="sheet-backdrop mini-backdrop host-away">
           <div className="sheet mini center">
