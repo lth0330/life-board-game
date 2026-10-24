@@ -415,7 +415,7 @@ function beginTurn(s: GameState) {
         { id: 'keep', label: '계속 경영', desc: `수익 ${BIZ.oldMult}배, 매 턴 행복 -1, 골인할 때 팔아요` },
       ],
     }
-  } else if ((sid === 'young' || sid === 'middle') && p.jobId === 'ceo' && p.biz && p.turnsPlayed - (p.bizOppTurn ?? -99) >= BIZ_OPP.gap && rng.chance(BIZ_OPP.chance)) {
+  } else if ((sid === 'young' || sid === 'middle') && p.jobId === 'ceo' && p.biz && rng.chance(BIZ_OPP.chance)) {
     bizOpportunity(s, p)
   } else if (sid === 'middle' && p.kids.some((k) => isMinor(k) && k.edu === null)) eduPending(s, p)
   else if (p.agency && !p.spouse && (sid === 'young' || sid === 'middle')) agencyTurn(s, p)
@@ -714,7 +714,6 @@ function bizOpportunity(s: GameState, p: Player) {
   const rng = rngOf(s)
   const ev = rng.pick(bizEventsFor(p.biz!.name))
   const cost = bizOppCost(p, ev)
-  p.bizOppTurn = p.turnsPlayed
   s.pending = {
     type: 'bizOpp', playerId: p.id, title: `사업 기회: ${ev.title}`,
     text: `${ev.desc}. 비용 ${won(cost)} · ${BIZ_RISK[ev.risk].name}

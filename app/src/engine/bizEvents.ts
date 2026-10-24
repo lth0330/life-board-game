@@ -23,8 +23,7 @@ export const BIZ_RISK: Record<BizRisk, { cost: number; great: number; ok: number
   wild: { cost: 1, great: 10, ok: 8, reward: 6, name: '아주 위험' },
 }
 export const BIZ_OPP = {
-  chance: 0.2, // 매 턴
-  gap: 2, // 한 번 나오면 적어도 2턴 뒤에
+  chance: 0.2, // 매 턴 (연달아 나올 수도 있음, 2026-10-24 사용자: '2턴 뒤에 다시' 규칙 뺌)
   cost: [500, 1200, 2500], // 회사 크기별 기본 비용 (매 턴 기본 수익과 비슷)
   okBack: 0.5, // 효과 없음: 쓴 돈의 절반이 돌아옴
   failHappy: 2,

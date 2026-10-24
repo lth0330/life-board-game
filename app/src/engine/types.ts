@@ -162,7 +162,6 @@ export interface Player {
   jobTenure: number // 지금 직업에서 일한 턴 (퇴직금 계산)
   biz: Biz | null // 창업한 회사 (회사 크기는 jobRank)
   bizKeep: boolean | null // 노년에 회사를 계속 경영하는지 (null = 아직 안 정함)
-  bizOppTurn?: number // 마지막 사업 기회가 나온 턴 (turnsPlayed, 2026-10-24)
   medals: number[] // 운동선수 메달 (0 금, 1 은, 2 동). 메달마다 매 턴 연금
   exAthlete: number | null // 중년에 은퇴한 운동선수의 마지막 등급 (창업/감독 고르기 전까지)
   exIdol?: number | null // 중년에 은퇴한 아이돌의 마지막 등급 (전직/창업 고르기 전까지, 2026-10-21)
