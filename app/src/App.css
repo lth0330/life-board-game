@@ -1021,3 +1021,29 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 }
 @keyframes rotate-phone { 0%, 30% { transform: rotate(-90deg); } 60%, 100% { transform: rotate(0); } }
 @media (prefers-reduced-motion: reduce) { .rotate-hint .phone { animation: none; } }
+
+/* ───── 단계 끝 대회: 다른 사람 장면 (2026-10-29) ───── */
+/* 폰: 내 게임 위에 작은 칸이 한 줄 / 넓은 화면(700px~): 오른쪽에 세로로 */
+.mini-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; max-height: 100%; min-height: 0; }
+.mini-wrap > .sheet.mini { min-height: 0; flex: 0 1 auto; }
+.watch { display: flex; gap: 6px; width: min(520px, calc(100% - 24px)); flex: none; }
+.watch-card {
+  flex: 1 1 0; min-width: 0; background: var(--paper); border: 3px solid var(--ink); border-radius: 14px;
+  padding: 4px 6px 5px; display: flex; flex-direction: column; gap: 3px; font-size: 12px; box-shadow: 0 3px 0 var(--ink);
+}
+.watch-head { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.watch-head b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.watch-status { text-align: center; color: var(--ink-2, #6b5a48); }
+.watch-card.done .watch-status { font-family: 'Jua', sans-serif; font-size: 14px; color: var(--ink); }
+.watch-card.done.g2 { background: #fff1b8; }
+.watch-card.done.g0 { opacity: 0.75; }
+.watch-scene { pointer-events: none; }
+.watch-scene .tug-track { height: 18px; border-width: 2px; }
+.watch-scene .tug-flag { top: -3px; transition: left 0.25s linear; }
+.watch-scene .mini-big { font-size: 13px; text-align: center; }
+@media (min-width: 700px) {
+  .mini-wrap.has-watch { flex-direction: row; justify-content: center; align-items: center; }
+  .mini-wrap.has-watch > .watch { flex-direction: column; width: 190px; order: 2; }
+  .mini-wrap.has-watch > .sheet.mini { width: min(520px, calc(100% - 230px)); margin: 0; }
+  .watch-card { flex: none; font-size: 13px; }
+}

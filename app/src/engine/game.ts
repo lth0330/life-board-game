@@ -1961,18 +1961,21 @@ function startMini(s: GameState, p: Player, game: MiniId, target?: string) {
 }
 
 // 사람이 미니게임을 마치면 화면에서 부름. grade: 0 실패, 1 성공, 2 대성공 / 대결 timing이면 점수(0~100)
-export function finishMini(s: GameState, value: number) {
+// who: 단계 끝 대회는 모두 동시에 하므로 누가 끝냈는지 (없으면 playerId)
+export function finishMini(s: GameState, value: number, who?: number) {
   const m = s.mini
   if (!m) return
-  const p = s.players[m.playerId]
-  s.mini = null
   if (m.contest) {
-    const results = { ...m.contest.results, [p.id]: Math.max(0, Math.min(2, Math.round(value))) }
-    const [next, ...queue] = m.contest.queue
-    if (next !== undefined) {
-      s.mini = { game: m.game, playerId: next, level: miniLevel(s.players[next], m.game), contest: { results, queue } }
+    const id = who ?? m.playerId
+    if (!m.contest.queue.includes(id)) return
+    const results = { ...m.contest.results, [id]: Math.max(0, Math.min(2, Math.round(value))) }
+    const queue = m.contest.queue.filter((x) => x !== id)
+    if (queue.length) {
+      s.mini = { game: m.game, playerId: queue[0], level: miniLevel(s.players[queue[0]], m.game), contest: { ...m.contest, results, queue } }
       return
     }
+    s.mini = null
+    const p = s.players[id]
     const start = s.logCount
     resolveContest(s, m.game as MiniId, results)
     // 결과 창은 모두의 등수를 보여 줌 (showPop은 한 사람 것만 모음). 다음 단계 첫 사건 창보다 먼저 보이게 나중에 넣음
@@ -1982,6 +1985,8 @@ export function finishMini(s: GameState, value: number) {
     s.popup = { id: (s.popup?.id ?? 0) + 1, art: 'trophy', title, text: lines.map((l) => (l.playerId === null ? l.text : `${s.players[l.playerId].name}: ${l.text}`)).join('\n'), tone: 'good', playerId: p.id }
     return
   }
+  const p = s.players[m.playerId]
+  s.mini = null
   if (m.duel?.queue?.length) { // 대결에서 아직 안 한 사람이 있으면 그 사람 차례 (온라인)
     const next = s.players[m.duel.queue[0]]
     s.mini = { game: m.game, playerId: next.id, level: miniLevel(next, m.game), duel: { ids: m.duel.ids, results: { ...m.duel.results, [p.id]: value }, queue: m.duel.queue.slice(1) } }
@@ -1998,8 +2003,13 @@ export function finishMini(s: GameState, value: number) {
 // 미니게임 주인이 AI가 됐을 때 (온라인에서 하던 사람이 나감) AI 결과로 끝냄
 export function aiFinishMini(s: GameState) {
   const m = s.mini
-  if (!m || s.players[m.playerId].human) return
+  if (!m) return
   const rng = rngOf(s)
+  if (m.contest) { // 대회: 나간 사람 모두 AI 결과로
+    for (const id of m.contest.queue) if (!s.players[id].human) finishMini(s, aiGrade(rng, miniLevel(s.players[id], m.game)), id)
+    return
+  }
+  if (s.players[m.playerId].human) return
   const q = s.players[m.playerId]
   if (m.duel) { finishMini(s, timingScore(rng, q)); return }
   finishMini(s, aiGrade(rng, m.level))
@@ -2031,9 +2041,10 @@ function startContest(s: GameState): boolean {
   const results: Record<number, number> = {}
   for (const q of s.players) if (!q.human) results[q.id] = aiGrade(rng, miniLevel(q, game))
   log(s, null, `${st.name} 단계 끝! ${CONTEST_NAMES[st.id]}: ${MINI_NAMES[game]}`, 'info')
-  const [first, ...queue] = s.players.filter((q) => q.human).map((q) => q.id)
-  if (first === undefined) { resolveContest(s, game, results); return false }
-  s.mini = { game, playerId: first, level: miniLevel(s.players[first], game), contest: { results, queue } }
+  // 사람은 모두 동시에 (각자 기기, 한 기기에 여럿이면 차례로). queue = 아직 안 끝낸 사람
+  const queue = s.players.filter((q) => q.human).map((q) => q.id)
+  if (!queue.length) { resolveContest(s, game, results); return false }
+  s.mini = { game, playerId: queue[0], level: miniLevel(s.players[queue[0]], game), contest: { results, queue, seed: rng.int(1, 1e9) } }
   s.phase = 'mini'
   return true
 }

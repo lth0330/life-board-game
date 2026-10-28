@@ -6,6 +6,7 @@ import type { MiniState } from '../engine/types'
 import { Character, type Pose } from '../art/Character'
 import { DEFAULT_OUTFIT, type Outfit } from '../engine/outfit'
 import { Cup, DieFace, MiniIcon, PlayingCard } from '../art/MiniArt'
+import type { MiniView } from './miniView'
 
 // 미니게임 화면. 결과: 0 실패, 1 성공, 2 대성공 (대결 timing은 0~100점)
 // level 0 쉬움 ~ 2 어려움 (능력치가 높을수록 쉬움)
@@ -19,6 +20,16 @@ interface Props {
   outfit?: Outfit // 이 미니게임을 하는 사람 옷차림 (춤 동작·달리기·공 던지기 그림)
   age?: number
   contest?: string // 단계 끝 대회 이름 · 하는 사람
+  onView?: (v: MiniView) => void // 하는 장면을 다른 사람에게 보여 주기 (대회, 2026-10-29)
+  onPlay?: () => void // 진짜 시작을 눌렀을 때
+  watch?: ReactNode // 다른 사람 장면 칸
+}
+
+type Report = (v: Omit<MiniView, 'phase' | 'practice'>) => void
+// 다른 사람 칸에 그리는 장면
+export function MiniScene({ game, view }: { game: string; view: MiniView }) {
+  if (game === 'tug') return <TugScene pos={view.pos ?? 0} left={view.left ?? 6} small />
+  return null
 }
 
 // 설명서: 게임 방법
@@ -59,7 +70,7 @@ const MINI_THEME: Record<string, string> = {
 }
 const THEME_LANDMARK: Record<string, string> = { sport: '운동회', brain: '두뇌 올림피아드', fest: '축제 거리', casino: '카지노', travel: '세계일주' }
 
-export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAULT_OUTFIT, age, contest }: Props) {
+export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAULT_OUTFIT, age, contest, onView, onPlay, watch }: Props) {
   // 시작 화면(설명서·연습·시작) → 연습이면 결과를 보여 주고 다시 시작 화면, 시작이면 진짜 결과
   const [mode, setMode] = useState<'intro' | 'help' | 'practice' | 'real'>('intro')
   const [practiced, setPracticed] = useState(0)
@@ -85,13 +96,32 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
     setResult(v)
   }, [])
   const isDuel = !!mini.duel
+  // 장면 보내기: 너무 자주 보내지 않게 0.25초에 한 번 (마지막 것은 꼭 보냄)
+  const viewRef = useRef(onView)
+  viewRef.current = onView
+  const lastSent = useRef(0)
+  const pendingView = useRef<MiniView | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const sendView = useCallback((v: MiniView, now = false) => {
+    if (!viewRef.current) return
+    pendingView.current = v
+    const flush = () => { timer.current = null; lastSent.current = Date.now(); if (pendingView.current) viewRef.current?.(pendingView.current); pendingView.current = null }
+    const wait = 250 - (Date.now() - lastSent.current)
+    if (now || wait <= 0) { if (timer.current) clearTimeout(timer.current); flush() } else if (!timer.current) timer.current = setTimeout(flush, wait)
+  }, [])
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
+  const report: Report = useCallback((v) => sendView({ phase: 'play', practice: modeRef.current === 'practice', ...v }), [sendView])
+  useEffect(() => {
+    if (mode === 'intro') sendView({ phase: 'ready' }, true)
+  }, [mode, sendView])
+  useEffect(() => { if (result !== null) sendView({ phase: 'done' }, true) }, [result, sendView])
   const resultText = (v: number) => (isDuel ? `${v}점!` : ['아쉬워요', '성공!', '대성공!'][v])
-  const play = (m: 'practice' | 'real') => { setPracticeResult(null); setRound((r) => r + 1); setMode(m) }
+  const play = (m: 'practice' | 'real') => { setPracticeResult(null); setRound((r) => r + 1); setMode(m); if (m === 'real') onPlay?.() }
   const canPractice = practiced < practiceLimit
   const body = (() => {
     switch (mini.game) {
       case 'timing': return <Timing level={mini.level} rounds={1} duel={isDuel} onDone={done} />
-      case 'tug': return <Tug level={mini.level} onDone={done} />
+      case 'tug': return <Tug level={mini.level} onDone={done} report={report} />
       case 'throw': return <Throw level={mini.level} outfit={outfit} age={age} onDone={done} />
       case 'confess': return <Confess level={mini.level} onDone={done} />
       case 'rhythm': return <Rhythm level={mini.level} onDone={done} />
@@ -112,6 +142,8 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
   })()
   return (
     <div className="sheet-backdrop mini-backdrop">
+      <div className={`mini-wrap${watch ? ' has-watch' : ''}`}>
+      {watch}
       <div className={`sheet mini theme-${MINI_THEME[mini.game] ?? 'duel'}`}>
         <div className="mini-art">{isDuel ? <EventArt type="afterRoll" /> : <Landmark name={THEME_LANDMARK[MINI_THEME[mini.game]] ?? ''} />}</div>
         <div className="mini-head">
@@ -152,6 +184,7 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
             <button className="wide big" onClick={() => onFinish(result)}>확인</button>
           </div>
         ))}
+      </div>
       </div>
     </div>
   )
@@ -256,7 +289,17 @@ function ArrowKeys({ pick }: { pick: (a: string) => void }) {
   return <KeyHint>방향키 ↑ ↓ ← →</KeyHint>
 }
 
-function Tug({ level, onDone }: { level: number; onDone: (v: number) => void }) {
+// 줄다리기 장면 (내 화면과 다른 사람 칸이 같이 씀). pos 100이면 내가 이김
+function TugScene({ pos, left, small }: { pos: number; left: number; small?: boolean }) {
+  return (
+    <>
+      <div className="tug-track"><div className="tug-flag" style={{ left: `${50 + pos / 2}%` }}><MiniIcon name="flag" size={small ? 18 : 34} /></div></div>
+      <div className="mini-big jua">{left}초</div>
+    </>
+  )
+}
+
+function Tug({ level, onDone, report }: { level: number; onDone: (v: number) => void; report?: Report }) {
   const pull = [12, 19, 26][level] // 상대가 1초에 당기는 양
   const [pos, setPos] = useState(0) // 100이면 내가 이김
   const [left, setLeft] = useState(6)
@@ -275,10 +318,11 @@ function Tug({ level, onDone }: { level: number; onDone: (v: number) => void }) 
       leftRef.current = Math.max(0, 6 - el)
       setPos(posRef.current)
       setLeft(Math.ceil(leftRef.current))
+      report?.({ pos: Math.round(posRef.current), left: Math.ceil(leftRef.current) })
       if (el >= 6) { clearInterval(t); finish(posRef.current >= 50 ? 1 : 0) }
     }, 100)
     return () => clearInterval(t)
-  }, [started, pull, finish])
+  }, [started, pull, finish, report])
   const tap = (side: 'L' | 'R') => {
     if (ended.current) return
     if (!started) setStarted(true)
@@ -286,6 +330,7 @@ function Tug({ level, onDone }: { level: number; onDone: (v: number) => void }) 
     lastSide.current = side
     posRef.current = Math.min(100, posRef.current + 7)
     setPos(posRef.current)
+    report?.({ pos: Math.round(posRef.current), left: Math.ceil(leftRef.current) })
     if (posRef.current >= 100) finish(leftRef.current >= 2 ? 2 : 1)
   }
   // 키보드: 왼손 ← 또는 A, 오른손 → 또는 L
@@ -294,8 +339,7 @@ function Tug({ level, onDone }: { level: number; onDone: (v: number) => void }) 
   return (
     <div className="mini-body">
       <p>왼손·오른손을 <b>번갈아</b> 눌러 줄을 당기세요! (6초)</p>
-      <div className="tug-track"><div className="tug-flag" style={{ left: `${50 + pos / 2}%` }}><MiniIcon name="flag" size={34} /></div></div>
-      <div className="mini-big jua">{left}초</div>
+      <TugScene pos={pos} left={left} />
       <div className="mini-grid two">
         <button onPointerDown={(e) => { e.preventDefault(); tap('L') }}>왼손{keyHint && <small className="key-hint">← 또는 A</small>}</button>
         <button onPointerDown={(e) => { e.preventDefault(); tap('R') }}>오른손{keyHint && <small className="key-hint">→ 또는 L</small>}</button>

@@ -4,7 +4,7 @@ import { Character, type Expr } from './art/Character'
 import { aiStep } from './engine/ai'
 import { CARS, DICE_ITEMS, MINI_PRACTICE_LIMIT } from './engine/data'
 import {
-  ageOf, turnIncome, loanTotal, moodLevel, MOOD_FACES, MOOD_HELP, MOOD_NAMES, canAct, canUseCar, createGame, cur, fortuneName, miniGuide, canSeekJob, stageOf, CONTEST_NAMES,
+  ageOf, turnIncome, loanTotal, moodLevel, MOOD_FACES, MOOD_HELP, MOOD_NAMES, canAct, canUseCar, createGame, cur, fortuneName, miniGuide, canSeekJob, stageOf, CONTEST_NAMES, miniLevel,
 } from './engine/game'
 import { applyOp, type Op } from './engine/ops'
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
@@ -22,6 +22,8 @@ import { autoEmote } from './ui/emoteData'
 import { Confetti, DICE_THROW_MS, DiceThrow, StageCard } from './ui/Effects'
 import { Manual } from './ui/Manual'
 import { MiniGame } from './ui/MiniGames'
+import type { MiniView } from './ui/miniView'
+import { MiniWatch, type Watcher } from './ui/MiniWatch'
 import { BackButton, Frame, MenuScreen, SetupScreen, TitleScreen, type Speed } from './ui/Screens'
 import { CardsSheet, FinanceSheet, GameOver, JobsSheet, MyInfoSheet, PeopleSheet, StageSummary, TeamBadge } from './ui/Sheets'
 import { playerLine, won } from './ui/format'
@@ -252,6 +254,8 @@ export interface OnlinePlay {
   emote?: (player: number, expr: Expr) => void
   incoming?: { player: number; expr: Expr; id: string } | null
   spin?: (player: number) => void // 주사위 굴리기 시작을 다른 기기에 알림 (2026-10-22)
+  miniView?: (player: number, v: MiniView) => void // 대회 중 내 장면을 다른 기기에 (2026-10-29)
+  miniViews?: Record<number, MiniView> // 다른 기기 사람의 최근 장면
   incomingSpin?: { player: number; id: string } | null // 다른 기기에서 굴리기 시작함
   chat?: ChatMsg[] // 채팅 (2026-10-21)
   sendChat?: (text: string) => boolean
@@ -403,11 +407,29 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
   const st = stageOf(game)
   useEffect(() => { setBgmStage(st.id) }, [st.id])
 
+  // ── 단계 끝 대회 ──
+  const contest = game.mini?.contest
+  const myContestant = contest?.queue.find((i) => isMine(i))
+  const [contestStart, setContestStart] = useState<number | null>(null) // 내가 시작을 누른 때 (AI 흉내는 그때부터)
+  const [waitStart, setWaitStart] = useState(0)
+  const contestKey = contest ? `${game.turn}-${contest.seed}` : ''
+  useEffect(() => { setContestStart(null); setWaitStart(Date.now()) }, [contestKey])
+  const watchers = (me: number | null): Watcher[] => {
+    if (!contest || !game.mini) return []
+    return game.players.filter((q) => q.id !== me && !(me === null && isMine(q.id))).map((q) => ({
+      id: q.id, name: q.name, color: q.color, outfit: q.outfit, age: ageOf(game, q),
+      kind: !q.human ? 'ai' : isMine(q.id) ? 'local' : 'remote',
+      view: online?.miniViews?.[q.id]?.k === contest.seed ? online?.miniViews?.[q.id] : null,
+      grade: !q.human || !contest.queue.includes(q.id) ? contest.results[q.id] : undefined,
+      level: miniLevel(q, game.mini!.game),
+    }))
+  }
+
   // ── AI 진행 ──
   useEffect(() => {
     if (game.phase === 'gameover' || busy || (online && !online.host)) return // AI는 방장 기기만 돌림
     const aiPending = game.pending && !game.players[game.pending.playerId].human
-    const aiMini = !!game.mini && !game.players[game.mini.playerId].human // 온라인에서 미니게임 하던 사람이 나감
+    const aiMini = !!game.mini && (game.mini.contest ? game.mini.contest.queue.some((i) => !game.players[i].human) : !game.players[game.mini.playerId].human) // 온라인에서 미니게임 하던 사람이 나감
     const aiTurn = !game.pending && !game.mini && !p.human && game.phase === 'roll'
     if (!aiPending && !aiMini && !aiTurn) return
     const t = setTimeout(() => {
@@ -726,11 +748,31 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
           : <EventPopup art={popShow.art} title={popShow.title} text={popShow.text} tone={popShow.tone} who={game.players[popShow.playerId].name} hint={popMine} onClose={() => setPopShow(null)} />
       )}
 
-      {!busy && game.mini && isMine(game.mini.playerId) && (
-        <MiniGame key={`${game.turn}-${game.mini.game}-${game.mini.playerId}`} mini={game.mini} guide={miniGuide(game, game.mini.game, !!game.mini.duel, !!game.mini.contest)} contest={game.mini.contest ? `🏆 ${CONTEST_NAMES[stageOf(game).id]} · ${game.players[game.mini.playerId].name}` : undefined} practiceLimit={online ? MINI_PRACTICE_LIMIT.online : MINI_PRACTICE_LIMIT.local} outfit={game.players[game.mini.playerId].outfit} age={ageOf(game, game.players[game.mini.playerId])} onFinish={(v) => run(['finishMini', v])} />
+      {!busy && game.mini && !contest && isMine(game.mini.playerId) && (
+        <MiniGame key={`${game.turn}-${game.mini.game}-${game.mini.playerId}`} mini={game.mini} guide={miniGuide(game, game.mini.game, !!game.mini.duel)} practiceLimit={online ? MINI_PRACTICE_LIMIT.online : MINI_PRACTICE_LIMIT.local} outfit={game.players[game.mini.playerId].outfit} age={ageOf(game, game.players[game.mini.playerId])} onFinish={(v) => run(['finishMini', v])} />
       )}
-      {!busy && game.mini && !isMine(game.mini.playerId) && game.players[game.mini.playerId].human && (
-        <div className="speech waiting-note" role="status">{game.players[game.mini.playerId].name}님이 {game.mini.contest ? `${CONTEST_NAMES[stageOf(game).id]} 중` : '미니게임 중'}…</div>
+      {!busy && game.mini && !contest && !isMine(game.mini.playerId) && game.players[game.mini.playerId].human && (
+        <div className="speech waiting-note" role="status">{game.players[game.mini.playerId].name}님이 미니게임 중…</div>
+      )}
+      {/* 단계 끝 대회: 모두 동시에, 내 게임은 크게 + 다른 사람 장면은 작게 (2026-10-29) */}
+      {!busy && game.mini && contest && myContestant !== undefined && (
+        <MiniGame key={`${game.turn}-${game.mini.game}-${myContestant}`} mini={{ ...game.mini, playerId: myContestant, level: miniLevel(game.players[myContestant], game.mini.game) }}
+          guide={miniGuide(game, game.mini.game, false, true)} contest={`🏆 ${CONTEST_NAMES[stageOf(game).id]} · ${game.players[myContestant].name}`}
+          practiceLimit={online ? MINI_PRACTICE_LIMIT.online : MINI_PRACTICE_LIMIT.local} outfit={game.players[myContestant].outfit} age={ageOf(game, game.players[myContestant])}
+          onView={online?.miniView ? (v) => online.miniView?.(myContestant, { ...v, k: contest.seed }) : undefined} onPlay={() => setContestStart((c) => c ?? Date.now())}
+          watch={<MiniWatch game={game.mini.game} people={watchers(myContestant)} startAt={contestStart} seed={contest.seed ?? 1} />}
+          onFinish={(v) => run(['finishMini', v, myContestant])} />
+      )}
+      {!busy && game.mini && contest && myContestant === undefined && (
+        <div className="sheet-backdrop mini-backdrop">
+          <div className="mini-wrap has-watch">
+            <MiniWatch game={game.mini.game} people={watchers(null)} startAt={contestStart ?? waitStart} seed={contest.seed ?? 1} />
+            <div className="sheet mini center">
+              <h2 className="jua">🏆 {CONTEST_NAMES[stageOf(game).id]}</h2>
+              <p>다른 사람이 끝날 때까지 기다리는 중…</p>
+            </div>
+          </div>
+        </div>
       )}
 
       {sheet === 'finance' && (

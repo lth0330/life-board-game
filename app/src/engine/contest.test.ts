@@ -1,7 +1,8 @@
 // 단계 끝 대회 (2026-10-29): 어린이·학생·청년·중년이 끝날 때 모두 같은 미니게임, 1·2등 보상
 import { expect, it } from 'vitest'
 import { aiChoose, aiStep } from './ai'
-import { choose, createGame, finishMini } from './game'
+import { aiFinishMini, choose, createGame, finishMini } from './game'
+import { opActor } from './ops'
 
 it('단계가 끝날 때마다 대회를 하고, 끝나면 다음 단계로 간다', () => {
   const s = createGame({ humanName: '나', humans: 1, aiCount: 3, settings: { startAdult: false, difficulty: 'normal' }, seed: 7 })
@@ -44,4 +45,28 @@ it('사람이 여럿이면 차례대로 하고, 모두 실패하면 상이 없�
   finishMini(s, 0)
   expect(s.stageIdx).toBe(1)
   expect(s.popup?.text).toContain('상이 없어요')
+})
+
+it('사람이 여럿이면 동시에: 누가 먼저 끝내도 되고, 끝낸 사람은 다시 못 보냄', () => {
+  const s = createGame({ humanName: '나', humans: 3, aiCount: 1, settings: { startAdult: false, difficulty: 'normal' }, seed: 5 })
+  let n = 0
+  while (!s.mini?.contest && n++ < 4000) {
+    if (s.pending && s.players[s.pending.playerId].human) { choose(s, aiChoose(s)); continue }
+    if (s.mini) { finishMini(s, 1); continue }
+    const p = s.players[s.current]
+    if (p.human) { p.human = false; aiStep(s); p.human = true } else aiStep(s)
+  }
+  expect(s.mini?.contest?.queue).toEqual([0, 1, 2])
+  expect(opActor(s, ['finishMini', 2, 2])).toBe(2)
+  expect(opActor(s, ['finishMini', 2, 3])).toBe(null) // AI는 이미 결과가 있음
+  finishMini(s, 2, 2)
+  expect(s.mini?.contest?.queue).toEqual([0, 1])
+  expect(opActor(s, ['finishMini', 0, 2])).toBe(null)
+  finishMini(s, 0, 2) // 두 번 보내도 무시
+  expect(s.mini?.contest?.results[2]).toBe(2)
+  finishMini(s, 1, 0)
+  s.players[1].human = false // 온라인에서 나감 → AI가 끝냄
+  aiFinishMini(s)
+  expect(s.mini?.contest).toBeFalsy()
+  expect(s.stageIdx).toBe(1)
 })

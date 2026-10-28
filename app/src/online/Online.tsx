@@ -6,6 +6,7 @@ import { applyOp, opActor, type Op } from '../engine/ops'
 import type { GameState } from '../engine/types'
 import { Frame } from '../ui/Screens'
 import { EMOTES } from '../ui/emoteData'
+import type { MiniView } from '../ui/miniView'
 import type { Expr } from '../art/Character'
 import type { OnlinePlay } from '../App'
 import { Character } from '../art/Character'
@@ -336,6 +337,7 @@ function OnlineGame({ me, room, isHost, renderPlay, onLeave }: { me: Me; room: R
   // 표정: 모든 기기가 표정 행동을 직접 받아서 띄움 (게임 상태는 다시 올리지 않음)
   const [incoming, setIncoming] = useState<{ player: number; expr: Expr; id: string } | null>(null)
   const [incomingSpin, setIncomingSpin] = useState<{ player: number; id: string } | null>(null) // 다른 기기에서 주사위를 굴리기 시작함
+  const [miniViews, setMiniViews] = useState<Record<number, MiniView>>({})
   const ownersNow = useRef(owners)
   ownersNow.current = isHost ? ownersRef.current : owners
   // 채팅 (2026-10-21): 행동 기록으로 주고받음. 새로고침하면 지난 채팅은 사라짐 (하루 뒤 서버에서도 지워짐)
@@ -396,6 +398,14 @@ function OnlineGame({ me, room, isHost, renderPlay, onLeave }: { me: Me; room: R
         if (a.kind === 'spin') {
           const q = parse<ActionPayload & { player?: number } | null>(a.payload, null)
           if (q && q.userId !== me.userId && typeof q.player === 'number') setIncomingSpin({ player: q.player, id: a.id })
+          return
+        }
+        // 대회 중 다른 사람 장면 (2026-10-29)
+        if (a.kind === 'mini') {
+          const q = parse<ActionPayload & { player?: number; v?: MiniView } | null>(a.payload, null)
+          if (!q || q.userId === me.userId || typeof q.player !== 'number' || !q.v || ownersNow.current[q.player] !== q.userId) return
+          const { player, v } = q
+          setMiniViews((m) => ({ ...m, [player]: v }))
           return
         }
         if (a.kind !== 'emote') return
@@ -459,7 +469,8 @@ function OnlineGame({ me, room, isHost, renderPlay, onLeave }: { me: Me; room: R
         online: {
           mine, host: isHost, send: (op) => void sendAction(room.id, me, 'op', { op }),
           emote: (player, expr) => { if (mine.includes(player)) void sendAction(room.id, me, 'emote', { player, expr }) },
-          incoming, chat, sendChat, incomingSpin,
+          incoming, chat, sendChat, incomingSpin, miniViews,
+          miniView: (player, v) => { if (mine.includes(player)) void sendAction(room.id, me, 'mini', { player, v }).catch(() => {}) },
           // 내 사람이나(방장이면 AI도) 굴리기 시작할 때 다른 기기에 알림
           spin: (player) => { if (mine.includes(player) || (isHost && ownersRef.current[player] == null)) void sendAction(room.id, me, 'spin', { player }) },
         },

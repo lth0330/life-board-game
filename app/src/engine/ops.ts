@@ -9,7 +9,7 @@ import type { DiceItem, GameState, InsuranceKind, Sector } from './types'
 export type Op =
   | ['roll', number, boolean, DiceItem | null]
   | ['choose', string]
-  | ['finishMini', number]
+  | ['finishMini', number, number?] // 대회는 누가 끝냈는지도
   | ['buyLottery'] | ['cureAddiction'] | ['seekJob'] | ['playChance'] | ['startSabotage']
   | ['tradeStock', Sector, number]
   | ['toggleInsurance', InsuranceKind]
@@ -25,7 +25,7 @@ export function applyOp(s: GameState, op: Op) {
   switch (op[0]) {
     case 'roll': return roll(s, op[1], op[2], op[3])
     case 'choose': return choose(s, op[1])
-    case 'finishMini': return finishMini(s, op[1])
+    case 'finishMini': return finishMini(s, op[1], op[2])
     case 'buyLottery': return buyLottery(s)
     case 'cureAddiction': return cureAddiction(s)
     case 'seekJob': return seekJob(s)
@@ -46,6 +46,10 @@ export function applyOp(s: GameState, op: Op) {
 // 이 행동을 할 수 있는 플레이어: 고르기는 선택 창 주인, 미니게임은 그 미니게임 주인, 나머지는 지금 차례인 사람
 export function opActor(s: GameState, op: Op): number | null {
   if (op[0] === 'choose') return s.pending?.playerId ?? null
-  if (op[0] === 'finishMini') return s.mini?.playerId ?? null
+  if (op[0] === 'finishMini') {
+    const c = s.mini?.contest
+    if (c) { const who = op[2] ?? s.mini!.playerId; return c.queue.includes(who) ? who : null }
+    return s.mini?.playerId ?? null
+  }
   return cur(s).id
 }
