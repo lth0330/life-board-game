@@ -2031,6 +2031,15 @@ export const CONTEST_NAMES: Partial<Record<StageId, string>> = { child: '꼬마 
 // 청년·중년은 돈 (2등은 절반), 어린이·학생은 그 게임 능력치 +1
 const CONTEST_PRIZE: Partial<Record<StageId, number>> = { young: 300, middle: 500 }
 
+// 대회 '준비 완료': 사람이 모두 누르면 go (화면에서 3·2·1 뒤 다 같이 시작)
+export function contestReady(s: GameState, who: number) {
+  const c = s.mini?.contest
+  if (!c || c.go || !c.queue.includes(who)) return
+  const ready = [...new Set([...(c.ready ?? []), who])]
+  c.ready = ready
+  if (c.queue.every((i) => ready.includes(i))) c.go = true
+}
+
 // 대회를 열면 true (사람이 할 차례가 남음). 사람이 없으면 바로 끝내고 false
 function startContest(s: GameState): boolean {
   const st = stageOf(s)

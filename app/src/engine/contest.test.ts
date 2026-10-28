@@ -1,7 +1,7 @@
 // 단계 끝 대회 (2026-10-29): 어린이·학생·청년·중년이 끝날 때 모두 같은 미니게임, 1·2등 보상
 import { expect, it } from 'vitest'
 import { aiChoose, aiStep } from './ai'
-import { aiFinishMini, choose, createGame, finishMini } from './game'
+import { aiFinishMini, choose, contestReady, createGame, finishMini } from './game'
 import { opActor } from './ops'
 
 it('단계가 끝날 때마다 대회를 하고, 끝나면 다음 단계로 간다', () => {
@@ -69,4 +69,21 @@ it('사람이 여럿이면 동시에: 누가 먼저 끝내도 되고, 끝낸 사
   aiFinishMini(s)
   expect(s.mini?.contest).toBeFalsy()
   expect(s.stageIdx).toBe(1)
+})
+
+it("'준비 완료'를 모두 눌러야 go, 끝낸 사람·없는 사람은 무시", () => {
+  const s = createGame({ humanName: '나', humans: 2, aiCount: 1, settings: { startAdult: false, difficulty: 'normal' }, seed: 9 })
+  let n = 0
+  while (!s.mini?.contest && n++ < 4000) {
+    if (s.pending && s.players[s.pending.playerId].human) { choose(s, aiChoose(s)); continue }
+    if (s.mini) { finishMini(s, 1); continue }
+    const p = s.players[s.current]
+    if (p.human) { p.human = false; aiStep(s); p.human = true } else aiStep(s)
+  }
+  expect(opActor(s, ['contestReady', 2])).toBe(null)
+  contestReady(s, 0)
+  contestReady(s, 2)
+  expect(s.mini?.contest?.go).toBeFalsy()
+  contestReady(s, 1)
+  expect(s.mini?.contest?.go).toBe(true)
 })

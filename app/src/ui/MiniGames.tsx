@@ -21,16 +21,13 @@ interface Props {
   age?: number
   contest?: string // 단계 끝 대회 이름 · 하는 사람
   onView?: (v: MiniView) => void // 하는 장면을 다른 사람에게 보여 주기 (대회, 2026-10-29)
-  onPlay?: () => void // 진짜 시작을 눌렀을 때
+  // 대회: '준비 완료'를 누르고, 모두 준비되면(go) 3·2·1 뒤 다 같이 시작 (2026-10-29 사용자)
+  ready?: { mine: boolean; go: boolean; onReady: () => void }
   watch?: ReactNode // 다른 사람 장면 칸
 }
 
 type Report = (v: Omit<MiniView, 'phase' | 'practice'>) => void
-// 다른 사람 칸에 그리는 장면
-export function MiniScene({ game, view }: { game: string; view: MiniView }) {
-  if (game === 'tug') return <TugScene pos={view.pos ?? 0} left={view.left ?? 6} small />
-  return null
-}
+
 
 // 설명서: 게임 방법
 const HOW: Record<string, string> = {
@@ -70,7 +67,7 @@ const MINI_THEME: Record<string, string> = {
 }
 const THEME_LANDMARK: Record<string, string> = { sport: '운동회', brain: '두뇌 올림피아드', fest: '축제 거리', casino: '카지노', travel: '세계일주' }
 
-export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAULT_OUTFIT, age, contest, onView, onPlay, watch }: Props) {
+export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAULT_OUTFIT, age, contest, onView, ready, watch }: Props) {
   // 시작 화면(설명서·연습·시작) → 연습이면 결과를 보여 주고 다시 시작 화면, 시작이면 진짜 결과
   const [mode, setMode] = useState<'intro' | 'help' | 'practice' | 'real'>('intro')
   const [practiced, setPracticed] = useState(0)
@@ -102,8 +99,10 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
   const lastSent = useRef(0)
   const pendingView = useRef<MiniView | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastView = useRef<MiniView | null>(null)
   const sendView = useCallback((v: MiniView, now = false) => {
     if (!viewRef.current) return
+    lastView.current = v
     pendingView.current = v
     const flush = () => { timer.current = null; lastSent.current = Date.now(); if (pendingView.current) viewRef.current?.(pendingView.current); pendingView.current = null }
     const wait = 250 - (Date.now() - lastSent.current)
@@ -113,30 +112,48 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
   const report: Report = useCallback((v) => sendView({ phase: 'play', practice: modeRef.current === 'practice', ...v }), [sendView])
   useEffect(() => {
     if (mode === 'intro') sendView({ phase: 'ready' }, true)
+    if (mode === 'help') sendView({ phase: 'help' }, true)
   }, [mode, sendView])
-  useEffect(() => { if (result !== null) sendView({ phase: 'done' }, true) }, [result, sendView])
+  useEffect(() => { if (result !== null) sendView({ ...lastView.current, phase: 'done', practice: false }, true) }, [result, sendView])
   const resultText = (v: number) => (isDuel ? `${v}점!` : ['아쉬워요', '성공!', '대성공!'][v])
-  const play = (m: 'practice' | 'real') => { setPracticeResult(null); setRound((r) => r + 1); setMode(m); if (m === 'real') onPlay?.() }
+  const play = (m: 'practice' | 'real') => { setPracticeResult(null); setRound((r) => r + 1); setMode(m) }
+  // 모두 준비되면 3·2·1 (연습 중이었어도 멈추고)
+  const [count, setCount] = useState<number | null>(null)
+  const go = !!ready?.go
+  useEffect(() => {
+    if (!go || modeRef.current === 'real') return
+    setMode('intro')
+    setCount(3)
+    let n = 3
+    const t = setInterval(() => {
+      n -= 1
+      if (n > 0) { setCount(n); return }
+      clearInterval(t)
+      setCount(null)
+      setPracticeResult(null); setRound((r) => r + 1); setMode('real')
+    }, 1000)
+    return () => clearInterval(t)
+  }, [go])
   const canPractice = practiced < practiceLimit
   const body = (() => {
     switch (mini.game) {
       case 'timing': return <Timing level={mini.level} rounds={1} duel={isDuel} onDone={done} />
       case 'tug': return <Tug level={mini.level} onDone={done} report={report} />
-      case 'throw': return <Throw level={mini.level} outfit={outfit} age={age} onDone={done} />
+      case 'throw': return <Throw level={mini.level} outfit={outfit} age={age} onDone={done} report={report} />
       case 'confess': return <Confess level={mini.level} onDone={done} />
-      case 'rhythm': return <Rhythm level={mini.level} onDone={done} />
-      case 'dance': return <Dance level={mini.level} outfit={outfit} age={age} onDone={done} />
-      case 'race': return <Mash level={mini.level} outfit={outfit} age={age} onDone={done} />
-      case 'memory': return <Memory level={mini.level} symbols={MEMORY_ICONS} draw={(x) => <MiniIcon name={x} size={34} />} onDone={done} />
-      case 'photo': return <Memory level={mini.level} symbols={Object.keys(CITY_ICON)} draw={(x) => <span className="city"><MiniIcon name={CITY_ICON[x]} size={30} /><small>{x}</small></span>} onDone={done} />
-      case 'pairs': return <Pairs level={mini.level} onDone={done} />
-      case 'quickmath': return <QuickMath level={mini.level} onDone={done} />
+      case 'rhythm': return <Rhythm level={mini.level} onDone={done} report={report} />
+      case 'dance': return <Dance level={mini.level} outfit={outfit} age={age} onDone={done} report={report} />
+      case 'race': return <Mash level={mini.level} outfit={outfit} age={age} onDone={done} report={report} />
+      case 'memory': return <Memory level={mini.level} symbols={MEMORY_ICONS} draw={(x) => <MiniIcon name={x} size={34} />} onDone={done} report={report} />
+      case 'photo': return <Memory level={mini.level} symbols={Object.keys(CITY_ICON)} draw={(x) => <span className="city"><MiniIcon name={CITY_ICON[x]} size={30} /><small>{x}</small></span>} iconOf={cityIcon} onDone={done} report={report} />
+      case 'pairs': return <Pairs level={mini.level} onDone={done} report={report} />
+      case 'quickmath': return <QuickMath level={mini.level} onDone={done} report={report} />
       case 'firstImpression': return <FirstImpression level={mini.level} seen={seen.current} onDone={done} />
       case 'oddEven': return <OddEven level={mini.level} onDone={done} />
       case 'highLow': return <HighLow onDone={done} />
       case 'slot': return <Slot level={mini.level} onDone={done} />
-      case 'snap': return <Snap level={mini.level} onDone={done} />
-      case 'pack': return <Pack level={mini.level} onDone={done} />
+      case 'snap': return <Snap level={mini.level} onDone={done} report={report} />
+      case 'pack': return <Pack level={mini.level} onDone={done} report={report} />
       default: return <Pack level={mini.level} onDone={done} />
     }
   })()
@@ -152,13 +169,16 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
         </div>
         {contest && <p className="note jua">{contest}</p>}
         {mini.stake ? <p className="note">판돈 {mini.stake.toLocaleString('ko-KR')}만</p> : null}
-        {mode === 'intro' && (
+        {mode === 'intro' && count !== null && <div className="mini-count jua" key={count}>{count}</div>}
+        {mode === 'intro' && count === null && (
           <div className="mini-intro">
             <button className="wide" onClick={() => setMode('help')}>📖 설명서</button>
-            <button className="wide" disabled={!canPractice} onClick={() => { setPracticed((n) => n + 1); play('practice') }}>
+            <button className="wide" disabled={!canPractice || ready?.mine} onClick={() => { setPracticed((n) => n + 1); play('practice') }}>
               🔁 연습하기{Number.isFinite(practiceLimit) ? ` (남은 ${practiceLimit - practiced}번)` : ''}
             </button>
-            <button className="wide big" onClick={() => play('real')}>▶ 시작</button>
+            {!ready && <button className="wide big" onClick={() => play('real')}>▶ 시작</button>}
+            {ready && !ready.mine && <button className="wide big" onClick={ready.onReady}>✋ 준비 완료</button>}
+            {ready?.mine && <p className="center muted">✅ 준비 완료! 모두 준비되면 다 같이 시작해요</p>}
           </div>
         )}
         {mode === 'help' && (
@@ -289,11 +309,11 @@ function ArrowKeys({ pick }: { pick: (a: string) => void }) {
   return <KeyHint>방향키 ↑ ↓ ← →</KeyHint>
 }
 
-// 줄다리기 장면 (내 화면과 다른 사람 칸이 같이 씀). pos 100이면 내가 이김
-function TugScene({ pos, left, small }: { pos: number; left: number; small?: boolean }) {
+// 줄다리기 장면. pos 100이면 내가 이김
+function TugScene({ pos, left }: { pos: number; left: number }) {
   return (
     <>
-      <div className="tug-track"><div className="tug-flag" style={{ left: `${50 + pos / 2}%` }}><MiniIcon name="flag" size={small ? 18 : 34} /></div></div>
+      <div className="tug-track"><div className="tug-flag" style={{ left: `${50 + pos / 2}%` }}><MiniIcon name="flag" size={34} /></div></div>
       <div className="mini-big jua">{left}초</div>
     </>
   )
@@ -351,7 +371,7 @@ function Tug({ level, onDone, report }: { level: number; onDone: (v: number) => 
 
 // 공 던지기: 누르고 있으면 힘이 찼다 빠졌다 함. 목표 칸에서 손을 떼기
 // 2026-10-22: 막대 위에 장면 (내 캐릭터가 던진 공이 힘만큼 날아가 바구니로)
-function Throw({ level, outfit, age, onDone }: { level: number; outfit: Outfit; age?: number; onDone: (v: number) => void }) {
+function Throw({ level, outfit, age, onDone, report }: { level: number; outfit: Outfit; age?: number; onDone: (v: number) => void; report?: Report }) {
   const w = [20, 13, 8][level] // 목표 칸 너비
   const speed = [0.8, 1.1, 1.4][level]
   const target = useMemo(() => 55 + rand(25), [])
@@ -366,6 +386,7 @@ function Throw({ level, outfit, age, onDone }: { level: number; outfit: Outfit; 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [state, powerAt])
+  useEffect(() => { report?.({ pos: Math.round(power), target, zone: w, n: state === 'done' ? 2 : state === 'hold' ? 1 : 0 }) }, [power, state, target, w, report])
   const down = () => { if (state !== 'ready') return; t0.current = performance.now(); setState('hold') }
   const up = () => {
     if (state !== 'hold') return
@@ -429,7 +450,7 @@ function Confess({ level, onDone }: { level: number; onDone: (v: number) => void
 }
 
 // 무대 공연: 음표 4개가 떨어짐. 선에 닿을 때 누르기
-function Rhythm({ level, onDone }: { level: number; onDone: (v: number) => void }) {
+function Rhythm({ level, onDone, report }: { level: number; onDone: (v: number) => void; report?: Report }) {
   const fall = [1600, 1250, 1000][level] // 위에서 선까지 걸리는 시간(ms)
   const perfect = [130, 100, 70][level]
   const good = [240, 180, 130][level]
@@ -461,6 +482,9 @@ function Rhythm({ level, onDone }: { level: number; onDone: (v: number) => void 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [hits, good, onDone])
+  useEffect(() => {
+    report?.({ marks, ys: hits.map((h, i) => { const y = ((now - (h - fall)) / fall) * 85; return marks[i] !== null || y < -10 || y > 100 ? -1 : Math.round(y) }) })
+  }, [now, marks, hits, fall, report])
   const press = () => {
     const el = performance.now() - t0.current
     const m = marksRef.current
@@ -497,7 +521,7 @@ const ARROWS = ['↑', '↓', '←', '→']
 // 춤: 화살표 대신 내 캐릭터가 춤 동작을 보여 줌 (2026-10-17 사용자). ← 왼팔 · ↑ 두 팔 · → 오른팔 · ↓ 팔 벌리기
 const POSE_OF: Record<string, Pose> = { '←': 'left', '↑': 'up', '→': 'right', '↓': 'out' }
 const POSE_NAME: Record<string, string> = { '←': '왼팔', '↑': '만세', '→': '오른팔', '↓': '팔 벌리기' }
-function Dance({ level, outfit, age, onDone }: { level: number; outfit: Outfit; age?: number; onDone: (v: number) => void }) {
+function Dance({ level, outfit, age, onDone, report }: { level: number; outfit: Outfit; age?: number; onDone: (v: number) => void; report?: Report }) {
   const len = [5, 6, 7][level]
   const seq = useMemo(() => Array.from({ length: len }, () => ARROWS[rand(4)]), [len])
   const [shown, setShown] = useState(0) // 지금까지 보여 준 개수 (len이면 내 차례)
@@ -508,6 +532,7 @@ function Dance({ level, outfit, age, onDone }: { level: number; outfit: Outfit; 
     return () => clearTimeout(t)
   }, [shown, len])
   const showing = shown < len
+  useEffect(() => { report?.({ show: showing, seq: (showing ? [seq[shown]] : picked).map((a) => POSE_OF[a]), n: shown, m: len }) }, [showing, shown, picked, seq, len, report])
   const pick = (a: string) => {
     if (showing || picked.length >= len) return
     const next = [...picked, a]
@@ -535,7 +560,7 @@ function Dance({ level, outfit, age, onDone }: { level: number; outfit: Outfit; 
 
 // 5초 동안 많이 누르기 (운동회 달리기). 체력이 높으면 목표가 낮음
 // 2026-10-22: 트랙 위에서 내 캐릭터가 누른 만큼 달려 나감
-function Mash({ level, outfit, age, onDone }: { level: number; outfit: Outfit; age?: number; onDone: (v: number) => void }) {
+function Mash({ level, outfit, age, onDone, report }: { level: number; outfit: Outfit; age?: number; onDone: (v: number) => void; report?: Report }) {
   const goal = [20, 28, 36][level]
   const [count, setCount] = useState(0)
   const [left, setLeft] = useState(5)
@@ -554,6 +579,7 @@ function Mash({ level, outfit, age, onDone }: { level: number; outfit: Outfit; a
     }), 1000)
     return () => clearInterval(t)
   }, [started, goal, onDone])
+  useEffect(() => { report?.({ n: count, m: goal, left }) }, [count, goal, left, report])
   const press = () => { if (left <= 0) return; if (!started) setStarted(true); countRef.current++; setCount(countRef.current) }
   // 키보드: 스페이스바 연타 (꾹 누르기는 한 번만)
   useKeys({ Space: press, Enter: press })
@@ -578,12 +604,15 @@ function Mash({ level, outfit, age, onDone }: { level: number; outfit: Outfit; a
 // 그림 (2026-10-22): 기억력은 그림 6개, 여행 코스는 랜드마크 + 도시 이름
 const MEMORY_ICONS = ['apple', 'star', 'heart', 'fish', 'umbrella', 'crown']
 const CITY_ICON: Record<string, string> = { 파리: 'eiffel', 뉴욕: 'liberty', 카이로: 'pyramid', 이스터섬: 'moai', 독일: 'castle', 런던: 'ferris' }
-function Memory({ level, symbols, draw = (x) => x, onDone }: { level: number; symbols: string[]; draw?: (x: string) => ReactNode; onDone: (v: number) => void }) {
+const cityIcon = (x: string) => CITY_ICON[x]
+const same = (x: string) => x
+function Memory({ level, symbols, draw = (x) => x, iconOf = same, onDone, report }: { level: number; symbols: string[]; draw?: (x: string) => ReactNode; iconOf?: (x: string) => string; onDone: (v: number) => void; report?: Report }) {
   const len = [4, 5, 6][level]
   const seq = useMemo(() => Array.from({ length: len }, () => symbols[rand(symbols.length)]), [len, symbols])
   const [show, setShow] = useState(true)
   const [picked, setPicked] = useState<string[]>([])
   useEffect(() => { const t = setTimeout(() => setShow(false), 1200 + len * 500); return () => clearTimeout(t) }, [len])
+  useEffect(() => { report?.({ show, seq: (show ? seq : picked).map(iconOf), m: len }) }, [show, seq, picked, len, iconOf, report])
   // 잘못 누르면 하나 지우기, 다 고르면 '확인'으로 끝 (2026-10-21 사용자)
   const pick = (x: string) => { if (picked.length < len) setPicked([...picked, x]) }
   const confirm = () => {
@@ -616,7 +645,7 @@ function Memory({ level, symbols, draw = (x) => x, onDone }: { level: number; sy
 }
 
 // 같은 그림 찾기. 지력이 높으면 짝이 적음
-function Pairs({ level, onDone }: { level: number; onDone: (v: number) => void }) {
+function Pairs({ level, onDone, report }: { level: number; onDone: (v: number) => void; report?: Report }) {
   const n = [3, 4, 6][level]
   const deck = useMemo(() => shuffle([...MEMORY_ICONS.slice(0, n), ...MEMORY_ICONS.slice(0, n)]), [n])
   const [open, setOpen] = useState<number[]>([])
@@ -632,6 +661,7 @@ function Pairs({ level, onDone }: { level: number; onDone: (v: number) => void }
     if (found.length === deck.length) { doneRef.current = true; onDone(left >= 8 ? 2 : 1) }
     else if (left <= 0) { doneRef.current = true; onDone(0) }
   }, [found, left, deck.length, onDone])
+  useEffect(() => { report?.({ seq: deck, open, found, left: Math.max(0, left) }) }, [deck, open, found, left, report])
   const flip = (i: number) => {
     if (open.includes(i) || found.includes(i) || open.length === 2) return
     const next = [...open, i]
@@ -658,7 +688,7 @@ function Pairs({ level, onDone }: { level: number; onDone: (v: number) => void }
 }
 
 // 빠른 계산 5문제. 지력이 높으면 숫자가 작고 시간이 길다. 어느 기기든 눌러서 답함 (2026-10-21 사용자)
-function QuickMath({ level, onDone }: { level: number; onDone: (v: number) => void }) {
+function QuickMath({ level, onDone, report }: { level: number; onDone: (v: number) => void; report?: Report }) {
   const max = [10, 30, 70][level]
   const qs = useMemo(() => Array.from({ length: 5 }, () => {
     const a = rand(max) + 1, b = rand(max) + 1
@@ -676,6 +706,7 @@ function QuickMath({ level, onDone }: { level: number; onDone: (v: number) => vo
     if (i >= qs.length || left <= 0) { doneRef.current = true; onDone(right >= 5 ? 2 : right >= 3 ? 1 : 0) }
   }, [i, left, right, qs.length, onDone])
   const q = qs[Math.min(i, qs.length - 1)]
+  useEffect(() => { report?.({ n: i, m: qs.length, right, left: Math.max(0, left), item: `${q.a} + ${q.b}` }) }, [i, qs.length, right, left, q, report])
   const answer = (o: number) => { if (doneRef.current) return; if (o === q.ans) setRight((r) => r + 1); setI((x) => x + 1) }
   return (
     <div className="mini-body">
@@ -823,7 +854,7 @@ function Slot({ level, onDone }: { level: number; onDone: (v: number) => void })
 
 // 세계일주 사진 찍기 (2026-10-21 사용자, 수도 맞히기 대신): 랜드마크가 왔다 갔다, 사진 틀 안에 왔을 때 찰칵 (3장)
 const SNAP_SPOTS = ['eiffel', 'liberty', 'castle', 'moai', 'pyramid', 'ferris']
-function Snap({ level, onDone }: { level: number; onDone: (v: number) => void }) {
+function Snap({ level, onDone, report }: { level: number; onDone: (v: number) => void; report?: Report }) {
   const zone = [24, 17, 12][level] // 사진 틀 너비 (%)
   const speed = [0.6, 0.85, 1.1][level]
   const spots = useMemo(() => shuffle(SNAP_SPOTS).slice(0, 3), [])
@@ -839,6 +870,8 @@ function Snap({ level, onDone }: { level: number; onDone: (v: number) => void })
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [posAt, flash])
+  const spotNow = spots[Math.max(0, Math.min(shots.length - (flash ? 1 : 0), 2))]
+  useEffect(() => { report?.({ pos: Math.round(pos), zone, marks: shots.map((b) => (b ? 1 : 0)), item: spotNow }) }, [pos, zone, shots, spotNow, report])
   const shoot = () => {
     if (flash || shots.length >= 3) return
     const at = posAt(performance.now())
@@ -871,7 +904,7 @@ function Snap({ level, onDone }: { level: number; onDone: (v: number) => void })
 // 세계일주 짐 싸기 (2026-10-21 사용자, 기념품 고르기 대신): 하나씩 나오는 물건을 여행에 챙길지 고르기. 지력이 높으면 시간이 길다
 const PACK_GOOD: [string, string][] = [['passport', '여권'], ['toothbrush', '칫솔'], ['charger', '충전기'], ['shirt', '옷'], ['sunscreen', '선크림'], ['camera', '카메라'], ['wallet', '지갑'], ['sunglasses', '선글라스']]
 const PACK_BAD: [string, string][] = [['piano', '피아노'], ['plant', '화분'], ['sofa', '소파'], ['bowling', '볼링공'], ['bike', '자전거'], ['watermelon', '수박'], ['fishbowl', '어항'], ['tv', '텔레비전']]
-function Pack({ level, onDone }: { level: number; onDone: (v: number) => void }) {
+function Pack({ level, onDone, report }: { level: number; onDone: (v: number) => void; report?: Report }) {
   const limit = [2600, 2000, 1500][level]
   const items = useMemo(() => shuffle([...shuffle(PACK_GOOD).slice(0, 5).map((x) => ({ x, good: true })), ...shuffle(PACK_BAD).slice(0, 3).map((x) => ({ x, good: false }))]), [])
   const [i, setI] = useState(0)
@@ -895,6 +928,7 @@ function Pack({ level, onDone }: { level: number; onDone: (v: number) => void })
     const t = setTimeout(() => pick(null), limit) // 시간이 지나면 틀린 것
     return () => clearTimeout(t)
   }, [i, mark, limit, pick])
+  useEffect(() => { report?.({ item: items[i].x[0], n: i, m: items.length, right, ok: mark }) }, [i, items, right, mark, report])
   useKeys({ ArrowLeft: () => pick(true), ArrowRight: () => pick(false) })
   return (
     <div className="mini-body">

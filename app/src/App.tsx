@@ -4,7 +4,7 @@ import { Character, type Expr } from './art/Character'
 import { aiStep } from './engine/ai'
 import { CARS, DICE_ITEMS, MINI_PRACTICE_LIMIT } from './engine/data'
 import {
-  ageOf, turnIncome, loanTotal, moodLevel, MOOD_FACES, MOOD_HELP, MOOD_NAMES, canAct, canUseCar, createGame, cur, fortuneName, miniGuide, canSeekJob, stageOf, CONTEST_NAMES, miniLevel,
+  ageOf, turnIncome, loanTotal, moodLevel, MOOD_FACES, MOOD_HELP, MOOD_NAMES, canAct, canUseCar, createGame, cur, fortuneName, miniGuide, canSeekJob, stageOf, CONTEST_NAMES, miniLevel, contestReady,
 } from './engine/game'
 import { applyOp, type Op } from './engine/ops'
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
@@ -410,10 +410,16 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
   // ── 단계 끝 대회 ──
   const contest = game.mini?.contest
   const myContestant = contest?.queue.find((i) => isMine(i))
-  const [contestStart, setContestStart] = useState<number | null>(null) // 내가 시작을 누른 때 (AI 흉내는 그때부터)
-  const [waitStart, setWaitStart] = useState(0)
+  const [contestStart, setContestStart] = useState<number | null>(null) // 다 같이 시작한 때 (3·2·1 뒤, AI 흉내는 그때부터)
   const contestKey = contest ? `${game.turn}-${contest.seed}` : ''
-  useEffect(() => { setContestStart(null); setWaitStart(Date.now()) }, [contestKey])
+  const contestGo = !!contest?.go
+  useEffect(() => { setContestStart(contestGo ? Date.now() + 3000 : null) }, [contestKey, contestGo])
+  // 60초 안에 '준비 완료'를 안 누른 사람이 있으면 저절로 준비 (방장 기기·혼자 하기에서)
+  useEffect(() => {
+    if (!contestKey || contestGo || (online && !online.host)) return
+    const t = setTimeout(() => act((s) => { for (const i of s.mini?.contest?.queue ?? []) contestReady(s, i) }), 60000)
+    return () => clearTimeout(t)
+  }, [contestKey, contestGo, online, act])
   const watchers = (me: number | null): Watcher[] => {
     if (!contest || !game.mini) return []
     return game.players.filter((q) => q.id !== me && !(me === null && isMine(q.id))).map((q) => ({
@@ -421,6 +427,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
       kind: !q.human ? 'ai' : isMine(q.id) ? 'local' : 'remote',
       view: online?.miniViews?.[q.id]?.k === contest.seed ? online?.miniViews?.[q.id] : null,
       grade: !q.human || !contest.queue.includes(q.id) ? contest.results[q.id] : undefined,
+      ready: !q.human || !!contest.ready?.includes(q.id), go: !!contest.go,
       level: miniLevel(q, game.mini!.game),
     }))
   }
@@ -759,14 +766,15 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
         <MiniGame key={`${game.turn}-${game.mini.game}-${myContestant}`} mini={{ ...game.mini, playerId: myContestant, level: miniLevel(game.players[myContestant], game.mini.game) }}
           guide={miniGuide(game, game.mini.game, false, true)} contest={`🏆 ${CONTEST_NAMES[stageOf(game).id]} · ${game.players[myContestant].name}`}
           practiceLimit={online ? MINI_PRACTICE_LIMIT.online : MINI_PRACTICE_LIMIT.local} outfit={game.players[myContestant].outfit} age={ageOf(game, game.players[myContestant])}
-          onView={online?.miniView ? (v) => online.miniView?.(myContestant, { ...v, k: contest.seed }) : undefined} onPlay={() => setContestStart((c) => c ?? Date.now())}
+          onView={online?.miniView ? (v) => online.miniView?.(myContestant, { ...v, k: contest.seed }) : undefined}
+          ready={{ mine: !!contest.ready?.includes(myContestant), go: !!contest.go, onReady: () => { for (const i of contest.queue) if (isMine(i)) run(['contestReady', i]) } }}
           watch={<MiniWatch game={game.mini.game} people={watchers(myContestant)} startAt={contestStart} seed={contest.seed ?? 1} />}
           onFinish={(v) => run(['finishMini', v, myContestant])} />
       )}
       {!busy && game.mini && contest && myContestant === undefined && (
         <div className="sheet-backdrop mini-backdrop">
           <div className="mini-wrap has-watch">
-            <MiniWatch game={game.mini.game} people={watchers(null)} startAt={contestStart ?? waitStart} seed={contest.seed ?? 1} />
+            <MiniWatch game={game.mini.game} people={watchers(null)} startAt={contestStart} seed={contest.seed ?? 1} />
             <div className="sheet mini center">
               <h2 className="jua">🏆 {CONTEST_NAMES[stageOf(game).id]}</h2>
               <p>다른 사람이 끝날 때까지 기다리는 중…</p>

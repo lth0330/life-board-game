@@ -119,7 +119,9 @@ export interface MiniState {
   stake?: number // 카지노 판돈
   target?: string // 축제 거리에서 고른 상대 ('old:이름:등급' 또는 'new')
   duel?: { ids: number[]; results: Record<number, number>; queue?: number[] } // queue: 아직 안 한 사람 (온라인)
-  contest?: { results: Record<number, number>; queue: number[]; seed?: number } // 단계 끝 대회: 모두 같은 미니게임을 동시에. results는 등급(0~2), queue는 아직 안 끝낸 사람, seed는 AI 장면용
+  // 단계 끝 대회: 모두 같은 미니게임을 동시에. results는 등급(0~2), queue는 아직 안 끝낸 사람, seed는 AI 장면용
+  // ready: '준비 완료'를 누른 사람, go: 모두 준비돼서 3·2·1 뒤 다 같이 시작 (2026-10-29)
+  contest?: { results: Record<number, number>; queue: number[]; seed?: number; ready?: number[]; go?: boolean }
 }
 
 // 창업한 회사. 회사 크기는 Player.jobRank. avg: 세 능력치 평균으로 / ranks·base·sale: 업종만의 단계 이름·수입·판 값
