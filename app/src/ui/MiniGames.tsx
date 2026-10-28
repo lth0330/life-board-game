@@ -18,6 +18,7 @@ interface Props {
   practiceLimit: number // 연습 횟수 (혼자 무제한, 온라인 3번)
   outfit?: Outfit // 이 미니게임을 하는 사람 옷차림 (춤 동작·달리기·공 던지기 그림)
   age?: number
+  contest?: string // 단계 끝 대회 이름 · 하는 사람
 }
 
 // 설명서: 게임 방법
@@ -32,7 +33,7 @@ const HOW: Record<string, string> = {
   firstImpression: '상황에 맞는 가장 좋은 말이나 행동을 고르세요.',
   rhythm: '음표 4개가 위에서 떨어져요. 노란 선에 닿을 때 "지금!"을 누르세요. 너무 일찍 누르면 그 음표는 놓쳐요.',
   confess: '하트가 콩닥콩닥 커졌다 작아져요. 가장 커졌을 때 "고백!"을 누르세요.',
-  dance: '화살표 춤 동작이 하나씩 나와요. 다 본 뒤 같은 순서로 화살표를 누르세요.',
+  dance: '캐릭터가 춤 동작을 하나씩 보여 줘요. 다 본 뒤 같은 순서로 동작 버튼을 누르세요.',
   oddEven: '주사위 두 개가 구르다가 컵에 덮여요. 컵 속 두 주사위의 합이 홀수일지 짝수일지 맞히세요.',
   highLow: '다음 카드가 지금 카드보다 높을지 낮을지 두 번 맞히세요. 카드는 1~13이에요.',
   slot: '시작을 누르면 릴 3개가 돌아요. 버튼으로 하나씩 멈춰서 같은 그림을 맞추세요.',
@@ -58,7 +59,7 @@ const MINI_THEME: Record<string, string> = {
 }
 const THEME_LANDMARK: Record<string, string> = { sport: '운동회', brain: '두뇌 올림피아드', fest: '축제 거리', casino: '카지노', travel: '세계일주' }
 
-export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAULT_OUTFIT, age }: Props) {
+export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAULT_OUTFIT, age, contest }: Props) {
   // 시작 화면(설명서·연습·시작) → 연습이면 결과를 보여 주고 다시 시작 화면, 시작이면 진짜 결과
   const [mode, setMode] = useState<'intro' | 'help' | 'practice' | 'real'>('intro')
   const [practiced, setPracticed] = useState(0)
@@ -117,6 +118,7 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
           <h2 className="jua">{MINI_NAMES[mini.game]}</h2>
           <span className="mini-level">난이도 {LEVEL_NAME[mini.level]}</span>
         </div>
+        {contest && <p className="note jua">{contest}</p>}
         {mini.stake ? <p className="note">판돈 {mini.stake.toLocaleString('ko-KR')}만</p> : null}
         {mode === 'intro' && (
           <div className="mini-intro">

@@ -4,7 +4,7 @@ import { Character, type Expr } from './art/Character'
 import { aiStep } from './engine/ai'
 import { CARS, DICE_ITEMS, MINI_PRACTICE_LIMIT } from './engine/data'
 import {
-  ageOf, turnIncome, loanTotal, moodLevel, MOOD_FACES, MOOD_HELP, MOOD_NAMES, canAct, canUseCar, createGame, cur, fortuneName, miniGuide, canSeekJob, stageOf,
+  ageOf, turnIncome, loanTotal, moodLevel, MOOD_FACES, MOOD_HELP, MOOD_NAMES, canAct, canUseCar, createGame, cur, fortuneName, miniGuide, canSeekJob, stageOf, CONTEST_NAMES,
 } from './engine/game'
 import { applyOp, type Op } from './engine/ops'
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
@@ -716,7 +716,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
         )
       })()}
 
-      {summaryOpen && !walking && <StageSummary s={game} onClose={() => (online ? setClosedSummary(game.stageIdx) : act((s) => { s.summary = null }))} />}
+      {summaryOpen && !walking && !popShow && <StageSummary s={game} onClose={() => (online ? setClosedSummary(game.stageIdx) : act((s) => { s.summary = null }))} />}
 
       {wheel && <Roulette title={wheel.title} chance={wheel.chance} ok={wheel.ok} who={game.players[wheel.playerId].name} manual={isMine(wheel.playerId) && game.players[wheel.playerId].human} onDone={closeWheel} />}
 
@@ -727,10 +727,10 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
       )}
 
       {!busy && game.mini && isMine(game.mini.playerId) && (
-        <MiniGame key={`${game.turn}-${game.mini.game}`} mini={game.mini} guide={miniGuide(game, game.mini.game, !!game.mini.duel)} practiceLimit={online ? MINI_PRACTICE_LIMIT.online : MINI_PRACTICE_LIMIT.local} outfit={game.players[game.mini.playerId].outfit} age={ageOf(game, game.players[game.mini.playerId])} onFinish={(v) => run(['finishMini', v])} />
+        <MiniGame key={`${game.turn}-${game.mini.game}-${game.mini.playerId}`} mini={game.mini} guide={miniGuide(game, game.mini.game, !!game.mini.duel, !!game.mini.contest)} contest={game.mini.contest ? `🏆 ${CONTEST_NAMES[stageOf(game).id]} · ${game.players[game.mini.playerId].name}` : undefined} practiceLimit={online ? MINI_PRACTICE_LIMIT.online : MINI_PRACTICE_LIMIT.local} outfit={game.players[game.mini.playerId].outfit} age={ageOf(game, game.players[game.mini.playerId])} onFinish={(v) => run(['finishMini', v])} />
       )}
       {!busy && game.mini && !isMine(game.mini.playerId) && game.players[game.mini.playerId].human && (
-        <div className="speech waiting-note" role="status">{game.players[game.mini.playerId].name}님이 미니게임 중…</div>
+        <div className="speech waiting-note" role="status">{game.players[game.mini.playerId].name}님이 {game.mini.contest ? `${CONTEST_NAMES[stageOf(game).id]} 중` : '미니게임 중'}…</div>
       )}
 
       {sheet === 'finance' && (

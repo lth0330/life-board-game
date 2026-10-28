@@ -1,7 +1,7 @@
 // 동업 (2026-10-24): 창업하면 다른 사람이 1,000만 투자 = 회사 몫 10%, 수익·매각만 나눔
 import { expect, it } from 'vitest'
 import { aiChoose, aiStep } from './ai'
-import { createGame, choose } from './game'
+import { createGame, choose, finishMini } from './game'
 import { BIZ } from './data'
 
 it('AI끼리 하면 동업이 생기고, 한 사람은 한 회사에 한 번만 투자한다', () => {
@@ -42,6 +42,7 @@ it('사람에게는 투자를 묻고, 투자하면 돈이 창업한 사람에게
         continue
       }
       if (pd && s.players[pd.playerId].human) { choose(s, aiChoose(s)); continue }
+      if (s.mini && s.players[s.mini.playerId].human) { finishMini(s, 1); continue } // 단계 끝 대회
       const p = s.players[s.current]
       if (p.human) { p.human = false; aiStep(s); p.human = true } else aiStep(s)
     }
@@ -65,6 +66,7 @@ it("창업한 사람이 '혼자 한다'를 고르면 아무도 투자하지 않�
         continue
       }
       if (pd && s.players[pd.playerId].human) { choose(s, aiChoose(s)); continue }
+      if (s.mini && s.players[s.mini.playerId].human) { finishMini(s, 1); continue } // 단계 끝 대회
       const p = s.players[s.current]
       if (p.human) { p.human = false; aiStep(s); p.human = true } else aiStep(s)
     }

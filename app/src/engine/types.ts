@@ -23,6 +23,8 @@ export interface Kid {
   bornAge: number // 부모 나이 기준으로 아이가 0살이던 때 (입양은 부모 나이 - 아이 나이)
   edu: 0 | 1 | 2 | null // 교육 투자: 안 함 / 보통 / 많이 (중년 시작 때나 입양할 때 고름)
   result: 0 | 1 | 2 | null // 성인이 된 뒤: 잘 안 풀림 / 보통 / 크게 성공
+  married?: boolean // 어른이 된 뒤 결혼함
+  grandkid?: boolean // 손주를 낳음
 }
 export type PointKind = 'shop' | 'marriage'
 export type Personality = 'investor' | 'elite' | 'family' | 'gambler' | 'safe'
@@ -117,6 +119,7 @@ export interface MiniState {
   stake?: number // 카지노 판돈
   target?: string // 축제 거리에서 고른 상대 ('old:이름:등급' 또는 'new')
   duel?: { ids: number[]; results: Record<number, number>; queue?: number[] } // queue: 아직 안 한 사람 (온라인)
+  contest?: { results: Record<number, number>; queue: number[] } // 단계 끝 대회: 모두 같은 미니게임, results는 등급(0~2)
 }
 
 // 창업한 회사. 회사 크기는 Player.jobRank. avg: 세 능력치 평균으로 / ranks·base·sale: 업종만의 단계 이름·수입·판 값

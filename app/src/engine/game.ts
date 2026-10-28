@@ -11,7 +11,7 @@ import { makeRng, type Rng } from './rng'
 import { DILEMMAS, findEvent, SPECIALS, specialDesc, type SpecialEvent, type SpecialOption } from './special'
 import { speechLine, type SpeechKey } from './speech'
 import type {
-  ChanceCard, ChoiceOption, DiceItem, DuelId, GameState, InsuranceKind, JobDef, MiniId, Personality, Player,
+  ChanceCard, ChoiceOption, DiceItem, DuelId, GameState, InsuranceKind, JobDef, MiniId, Pending, Personality, Player,
   Biz, Kid, SabotageCard, Sector, Settings, Stage, StageId, StatKey, Suitor, Tile,
 } from './types'
 
@@ -919,6 +919,28 @@ function kidsTick(s: GameState, p: Player) {
     if (k.result !== null || age - k.bornAge < 7 || !rng.chance(KIDS.eduGood[k.edu ?? 0])) continue
     if (rng.chance(0.5)) { p.happy += 3; log(s, p.id, '아이가 공부를 잘해서 상을 받아 왔다 (행복 +3)', 'good') }
     else { const g = scaleOf(s) * 2; p.money += g; p.happy += 1; log(s, p.id, `아이가 대회에서 상금·장학금을 받아 왔다 +${won(g)}`, 'good') }
+  }
+  // 어른이 된 자녀의 결혼·손주: 다른 플레이어가 축의금을 냄 (돈이 모자라면 마음만)
+  for (const k of p.kids) {
+    if (k.result === null || k.grandkid) continue
+    const wed = !k.married
+    if (!rng.chance(wed ? KIDS.wedChance : KIDS.grandChance)) continue
+    if (wed) k.married = true
+    else k.grandkid = true
+    const gift = wed ? KIDS.wedGift : KIDS.grandGift
+    const who = k.adopted ? '입양한 아이' : '아이'
+    let got = 0
+    for (const q of s.players) {
+      if (q.id === p.id) continue
+      if (q.money < gift) { log(s, q.id, `${p.name}의 ${wed ? '자녀 결혼' : '손주 탄생'}: 형편이 어려워 마음만 보냈다`, 'info'); continue }
+      q.money -= gift
+      got += gift
+      log(s, q.id, `${p.name}의 ${wed ? '자녀 결혼식 축의금' : '손주 탄생 축하금'} -${won(gift)}`, 'info')
+    }
+    p.money += got
+    p.happy += wed ? 3 : 4
+    log(s, p.id, `${wed ? `${who}가 결혼했다!` : '손주가 태어났다!'} 행복 +${wed ? 3 : 4}${got ? `, 축의금 +${won(got)}` : ''}`, 'good')
+    s.banner = { title: wed ? '자녀 결혼!' : '손주 탄생!', text: p.name, tone: 'good' }
   }
   // 육순·칠순: 어른이 된 자녀가 용돈을 드림
   for (const m of [60, 70]) {
@@ -1933,10 +1955,7 @@ function startMini(s: GameState, p: Player, game: MiniId, target?: string) {
     return
   }
   // AI: 능력치에 비례한 확률로 결과
-  const rng = rngOf(s)
-  const great = [0.55, 0.32, 0.15][level]
-  const r = rng.next()
-  const grade = r < great ? 2 : r < great + 0.35 ? 1 : 0
+  const grade = aiGrade(rngOf(s), level)
   log(s, p.id, `[${MINI_NAMES[game]}] ${['실패', '성공', '대성공'][grade]}`, grade ? 'good' : 'bad')
   miniReward(s, p, game, grade, stake, target)
 }
@@ -1947,6 +1966,22 @@ export function finishMini(s: GameState, value: number) {
   if (!m) return
   const p = s.players[m.playerId]
   s.mini = null
+  if (m.contest) {
+    const results = { ...m.contest.results, [p.id]: Math.max(0, Math.min(2, Math.round(value))) }
+    const [next, ...queue] = m.contest.queue
+    if (next !== undefined) {
+      s.mini = { game: m.game, playerId: next, level: miniLevel(s.players[next], m.game), contest: { results, queue } }
+      return
+    }
+    const start = s.logCount
+    resolveContest(s, m.game as MiniId, results)
+    // 결과 창은 모두의 등수를 보여 줌 (showPop은 한 사람 것만 모음). 다음 단계 첫 사건 창보다 먼저 보이게 나중에 넣음
+    const lines = s.log.slice(-(s.logCount - start))
+    const title = `${CONTEST_NAMES[stageOf(s).id]} 결과`
+    nextStage(s)
+    s.popup = { id: (s.popup?.id ?? 0) + 1, art: 'trophy', title, text: lines.map((l) => (l.playerId === null ? l.text : `${s.players[l.playerId].name}: ${l.text}`)).join('\n'), tone: 'good', playerId: p.id }
+    return
+  }
   if (m.duel?.queue?.length) { // 대결에서 아직 안 한 사람이 있으면 그 사람 차례 (온라인)
     const next = s.players[m.duel.queue[0]]
     s.mini = { game: m.game, playerId: next.id, level: miniLevel(next, m.game), duel: { ids: m.duel.ids, results: { ...m.duel.results, [p.id]: value }, queue: m.duel.queue.slice(1) } }
@@ -1967,9 +2002,69 @@ export function aiFinishMini(s: GameState) {
   const rng = rngOf(s)
   const q = s.players[m.playerId]
   if (m.duel) { finishMini(s, timingScore(rng, q)); return }
+  finishMini(s, aiGrade(rng, m.level))
+}
+
+// AI 미니게임 등급: 쉬울수록 대성공이 잘 나옴
+function aiGrade(rng: Rng, level: number) {
+  const great = [0.55, 0.32, 0.15][level] ?? 0.32
   const r = rng.next()
-  const great = [0.55, 0.32, 0.15][m.level] ?? 0.32
-  finishMini(s, r < great ? 2 : r < great + 0.35 ? 1 : 0)
+  return r < great ? 2 : r < great + 0.35 ? 1 : 0
+}
+
+// ───────── 단계 끝 대회 (2026-10-29 사용자) ─────────
+// 어린이·학생·청년·중년이 끝날 때 모두 같은 미니게임. 가장 잘한 등급이 1등, 그다음이 2등 (같은 등급이면 같은 등수, 실패는 상 없음)
+const CONTEST_GAMES: Partial<Record<StageId, MiniId[]>> = {
+  child: ['race', 'tug', 'throw'], student: ['memory', 'pairs', 'quickmath'], young: ['rhythm', 'dance'], middle: ['snap', 'pack', 'photo'],
+}
+export const CONTEST_NAMES: Partial<Record<StageId, string>> = { child: '꼬마 운동회', student: '두뇌 대회', young: '청춘 무대', middle: '여행 사진 대회' }
+// 청년·중년은 돈 (2등은 절반), 어린이·학생은 그 게임 능력치 +1
+const CONTEST_PRIZE: Partial<Record<StageId, number>> = { young: 300, middle: 500 }
+
+// 대회를 열면 true (사람이 할 차례가 남음). 사람이 없으면 바로 끝내고 false
+function startContest(s: GameState): boolean {
+  const st = stageOf(s)
+  const games = CONTEST_GAMES[st.id]
+  if (!games) return false
+  const rng = rngOf(s)
+  const game = rng.pick(games)
+  const results: Record<number, number> = {}
+  for (const q of s.players) if (!q.human) results[q.id] = aiGrade(rng, miniLevel(q, game))
+  log(s, null, `${st.name} 단계 끝! ${CONTEST_NAMES[st.id]}: ${MINI_NAMES[game]}`, 'info')
+  const [first, ...queue] = s.players.filter((q) => q.human).map((q) => q.id)
+  if (first === undefined) { resolveContest(s, game, results); return false }
+  s.mini = { game, playerId: first, level: miniLevel(s.players[first], game), contest: { results, queue } }
+  s.phase = 'mini'
+  return true
+}
+
+function resolveContest(s: GameState, game: MiniId, res: Record<number, number>) {
+  const st = stageOf(s)
+  const names = ['실패', '성공', '대성공']
+  log(s, null, s.players.map((q) => `${q.name} ${names[res[q.id] ?? 0]}`).join(', '), 'info')
+  const grades = [...new Set(Object.values(res))].filter((g) => g >= 1).sort((a, b) => b - a).slice(0, 2)
+  if (!grades.length) { log(s, null, '아무도 성공하지 못해서 상이 없어요', 'info'); return }
+  const prize = CONTEST_PRIZE[st.id]
+  const key = MINI_STAT[game]
+  grades.forEach((g, rank) => {
+    for (const q of s.players) {
+      if (res[q.id] !== g) continue
+      if (prize) {
+        const money = rank === 0 ? prize : prize / 2
+        q.money += money
+        if (rank === 0) q.happy += 2
+        log(s, q.id, `${rank + 1}등! +${won(money)}${rank === 0 ? ', 행복 +2' : ''}`, 'good')
+      } else if (rank === 0 && key && key !== 'fortune') {
+        q.stats[key] = clampStat(q.stats[key] + 1)
+        q.happy += 2
+        log(s, q.id, `1등! ${STAT_NAMES[key]} +1, 행복 +2`, 'good')
+      } else {
+        q.happy += 1
+        log(s, q.id, `${rank + 1}등! 행복 +1`, 'good')
+      }
+      if (rank === 0) say(s, q, 'duelWin')
+    }
+  })
 }
 
 // 데이트로 오르는 호감도: 등급이 낮을수록, 내 매력이 높을수록 많이 오름
@@ -1999,7 +2094,14 @@ function addAffinityOrMeet(s: GameState, p: Player, amount: number, target?: str
 
 
 // 미니게임 설명서에 보여 줄 '무엇이 쉽게 해 주나'와 보상 (miniReward와 같은 내용)
-export function miniGuide(s: GameState, game: MiniId | DuelId, duel: boolean): { stat: string; reward: string } {
+export function miniGuide(s: GameState, game: MiniId | DuelId, duel: boolean, contest = false): { stat: string; reward: string } {
+  if (contest) {
+    const k = MINI_STAT[game as MiniId]
+    const prize = CONTEST_PRIZE[stageOf(s).id]
+    const stat = k && k !== 'fortune' ? `모두 같은 게임을 해요 · ${STAT_NAMES[k]}이 높을수록 쉬워요` : '모두 같은 게임을 해요'
+    const reward = prize ? `1등 ${won(prize)}·행복 +2 / 2등 ${won(prize / 2)} / 실패는 상 없음` : `1등 ${k && k !== 'fortune' ? STAT_NAMES[k] : '능력치'} +1·행복 +2 / 2등 행복 +1 / 실패는 상 없음`
+    return { stat, reward }
+  }
   if (duel) return { stat: '같은 칸에 선 사람끼리 점수로 겨뤄요', reward: `1등이 꼴찌에게서 ${won(DUEL_STAKE[stageOf(s).id] ?? scaleOf(s))}을 받아요` }
   const k = MINI_STAT[game as MiniId]
   const stat = k === 'fortune' ? '운세가 좋을수록 유리해요' : k ? `${STAT_NAMES[k]}이 높을수록 쉬워요` : '운에 맡겨요'
@@ -3405,7 +3507,7 @@ function endTurn(s: GameState) {
   s.lastRoll = null
   s.move = null
   s.mini = null
-  if (st.rolls && s.players.every((q) => q.rollsLeft <= 0)) { nextStage(s); return }
+  if (st.rolls && s.players.every((q) => q.rollsLeft <= 0)) { if (!startContest(s)) nextStage(s); return }
   if (!st.rolls && s.players.every((q) => q.finished)) {
     s.phase = 'gameover'
     s.banner = { title: '게임 끝!', text: '최종 점수를 확인하세요', tone: 'info' }

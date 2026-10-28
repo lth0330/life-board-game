@@ -3,7 +3,7 @@ import { expect, it } from 'vitest'
 import { aiChoose, aiStep } from './ai'
 import { BIZ_EVENTS, BIZ_OPP } from './bizEvents'
 import { BUSINESSES, CAFE } from './data'
-import { choose, createGame } from './game'
+import { choose, createGame, finishMini } from './game'
 
 it('모든 업종에 자기 사업 기회가 있다', () => {
   for (const b of [...Object.values(BUSINESSES), CAFE]) expect(BIZ_EVENTS[b.name]?.length, b.name).toBeGreaterThan(0)
@@ -32,6 +32,7 @@ it('사람 사업가는 고르고 주사위를 직접 굴리고, 돈은 비용�
         continue
       }
       if (pd && s.players[pd.playerId].human) { choose(s, aiChoose(s)); continue }
+      if (s.mini && s.players[s.mini.playerId].human) { finishMini(s, 1); continue } // 단계 끝 대회
       const p = s.players[s.current]
       if (p.human) { p.human = false; aiStep(s); p.human = true } else aiStep(s)
     }
