@@ -2009,7 +2009,7 @@ export function finishMini(s: GameState, value: number, who?: number) {
     resolveContest(s, m.game as MiniId, results)
     // 결과 창은 모두의 등수를 보여 줌 (showPop은 한 사람 것만 모음). 다음 단계 첫 사건 창보다 먼저 보이게 나중에 넣음
     const lines = s.log.slice(-(s.logCount - start))
-    const title = `${CONTEST_NAMES[stageOf(s).id]} 결과`
+    const title = `${contestName(s, m.game)} 결과`
     nextStage(s)
     s.popup = { id: (s.popup?.id ?? 0) + 1, art: 'trophy', title, text: lines.map((l) => (l.playerId === null ? l.text : `${s.players[l.playerId].name}: ${l.text}`)).join('\n'), tone: 'good', playerId: p.id }
     return
@@ -2057,6 +2057,9 @@ const CONTEST_GAMES: Partial<Record<StageId, MiniId[]>> = {
   child: ['race', 'tug', 'throw'], student: ['memory', 'pairs', 'quickmath'], young: ['rhythm', 'dance'], middle: ['snap', 'pack', 'photo'],
 }
 export const CONTEST_NAMES: Partial<Record<StageId, string>> = { child: '꼬마 운동회', student: '두뇌 대회', young: '청춘 무대', middle: '여행 사진 대회' }
+// 대회 이름: 테마 게임이 뽑히면 단계 이름 대신 테마 대회 (두뇌 대회에서 낙엽 잡기를 하면 어색해서)
+const THEME_CONTEST: Partial<Record<MiniId, string>> = { leaves: '가을 낙엽 대회', snowball: '겨울 눈싸움 대회' }
+export const contestName = (s: GameState, game: string) => THEME_CONTEST[game as MiniId] ?? CONTEST_NAMES[stageOf(s).id] ?? '대회'
 // 청년·중년은 돈 (2등은 절반), 어린이·학생은 그 게임 능력치 +1
 const CONTEST_PRIZE: Partial<Record<StageId, number>> = { young: 300, middle: 500 }
 
@@ -2079,7 +2082,7 @@ function startContest(s: GameState): boolean {
   const game = theme && rng.chance(THEME_MINI_CHANCE) ? THEME_GAME[theme] : rng.pick(games) // 테마 맵이면 테마 게임도 가끔
   const results: Record<number, number> = {}
   for (const q of s.players) if (!q.human) results[q.id] = aiGrade(rng, miniLevel(q, game))
-  log(s, null, `${st.name} 단계 끝! ${CONTEST_NAMES[st.id]}: ${MINI_NAMES[game]}`, 'info')
+  log(s, null, `${st.name} 단계 끝! ${contestName(s, game)}: ${MINI_NAMES[game]}`, 'info')
   // 사람은 모두 동시에 (각자 기기, 한 기기에 여럿이면 차례로). queue = 아직 안 끝낸 사람
   const queue = s.players.filter((q) => q.human).map((q) => q.id)
   if (!queue.length) { resolveContest(s, game, results); return false }
