@@ -331,7 +331,7 @@ function beginTurn(s: GameState) {
     // 1등 1% · 2등 7% · 3등 22% (전체 30%). 운세로 전체 확률이 바뀜: 대흉 -10%p, 흉 -5%p, 길 +5%p, 대길 +10%p (비율은 그대로)
     const luck = (0.3 + [-0.1, -0.05, 0, 0.05, 0.1][p.fortune]) / 0.3
     const rank = r < 0.01 * luck ? 1 : r < 0.08 * luck ? 2 : r < 0.3 * luck ? 3 : 0
-    const prize = [0, 3000, 300, 30][rank]
+    const prize = [0, 1500, 300, 30][rank] // 1등 3,000만 → 1,500만 (2026-10-29: 산 돈의 약 5배를 돌려받아서)
     if (prize > 0) {
       p.money += prize
       p.record.lotteryWon += prize

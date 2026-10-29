@@ -63,10 +63,11 @@ export const CARS = [
   { name: '고급차', price: 3000, upkeep: 30, charges: [3, 4, 5], crash: 0.01 },
 ]
 
+// 보험료 (2026-10-29 밸런스: AI 1000판에서 건강보험은 낸 돈의 3배를 돌려받고 자동차보험은 거의 손해여서 건강 8→14, 차 8→3)
 export const INSURANCE = {
-  health: { name: '건강보험', premium: 8 },
+  health: { name: '건강보험', premium: 14 },
   property: { name: '재산보험', premium: 10 },
-  car: { name: '자동차보험', premium: 8 },
+  car: { name: '자동차보험', premium: 3 },
 } as const
 
 export const CHANCE_NAMES = { reroll: '다시 굴리기', block: '방해 막기', charm: '행운 부적', coupon: '할인 쿠폰 (집·차 30%, 최대 집 1,000만·차 500만)' } as const
