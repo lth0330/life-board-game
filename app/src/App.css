@@ -1173,3 +1173,9 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 
 /* 땅 그림 파일이 있으면 (src/assets/art/ground*.webp, 2026-10-29) */
 .world.has-ground .plane::before { background: var(--ground-img) 0 0 / 512px 512px repeat, var(--grass); }
+
+/* 구글 로그인 버튼 (2026-10-29) */
+.or-line { margin: 10px 0 4px; }
+.google-btn { display: flex; align-items: center; justify-content: center; gap: 10px; background: #fff; color: var(--ink); }
+.google-btn .g-logo { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; background: conic-gradient(#EA4335 0 25%, #FBBC05 0 50%, #34A853 0 75%, #4285F4 0); }
+p.small { font-size: 13px; }

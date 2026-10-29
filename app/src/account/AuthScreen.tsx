@@ -2,7 +2,7 @@
 // 2026-10-21: 가입 때 이메일 필수, 아이디·비밀번호 찾기 (메일로 아이디 + 코드 → 코드와 새 비밀번호)
 import { useState } from 'react'
 import { Frame } from '../ui/Screens'
-import { cleanId, cleanPw, currentMe, EMAIL_OK, ID_OK, join, login, PW_OK, resetWithCode, sendFindMail, type Me } from '../online/client'
+import { cleanId, cleanPw, currentMe, EMAIL_OK, googleLogin, googleReady, ID_OK, join, login, PW_OK, resetWithCode, sendFindMail, type Me } from '../online/client'
 
 type Mode = 'login' | 'join' | 'find'
 
@@ -59,6 +59,15 @@ export default function AuthScreen({ initial = 'login', onDone, onBack }: { init
         <p className="muted center">{mode === 'join' ? '이메일은 꼭 맞게 적어 주세요. 잊었을 때 이 메일로 아이디와 코드를 보내 드려요' : '옷차림과 하던 게임이 계정에 저장돼서 다른 기기에서도 이어 할 수 있어요'}</p>
         <button className="wide ghost" type="button" onClick={onBack}>뒤로</button>
       </form>
+      {googleReady && (
+        <>
+          <p className="or-line muted center">또는</p>
+          <button className="wide google-btn" disabled={busy} onClick={() => { setBusy(true); setErr(''); void googleLogin().then((e) => { if (e) { setBusy(false); setErr(e) } }) }}>
+            <span className="g-logo" aria-hidden="true">G</span> 구글로 {mode === 'join' ? '가입하기' : '로그인'}
+          </button>
+          <p className="muted center small">구글 계정으로 처음 들어오면 게임 안 이름만 정하면 돼요</p>
+        </>
+      )}
     </Frame>
   )
 }

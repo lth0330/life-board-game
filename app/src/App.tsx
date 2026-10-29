@@ -23,7 +23,7 @@ import { Confetti, DICE_THROW_MS, DiceThrow, StageCard } from './ui/Effects'
 import { Manual } from './ui/Manual'
 import type { MiniView } from './ui/miniView'
 import type { Watcher } from './ui/MiniWatch'
-import { BackButton, Frame, MenuScreen, SetupScreen, TitleScreen, type Speed } from './ui/Screens'
+import { BackButton, Frame, MenuScreen, NickScreen, SetupScreen, TitleScreen, type Speed } from './ui/Screens'
 import { CardsSheet, FinanceSheet, GameOver, JobsSheet, MyInfoSheet, PeopleSheet, StageSummary, TeamBadge } from './ui/Sheets'
 import { playerLine, won } from './ui/format'
 
@@ -70,17 +70,20 @@ function LoanLine({ p }: { p: GameState['players'][number] }) {
 }
 const CELEBRATE = ['결혼!', '복권 1등!', '복권 2등!', '아기 탄생', '수능 상위권!', '게임 끝!', '회사 성장!', '감독 도전 성공!', '자녀 대성공!', '금메달!', '은메달!', '동메달!', '육순 잔치', '칠순 잔치']
 
-type Screen = 'title' | 'auth' | 'menu' | 'setup' | 'play' | 'online' | 'admin'
+type Screen = 'title' | 'auth' | 'menu' | 'setup' | 'play' | 'online' | 'admin' | 'nick'
+// 구글 로그인에서 돌아온 주소 (?code=…&state=… 또는 ?error=…)
+const fromGoogle = () => /[?&](code|error)=/.test(location.search) && /[?&]state=/.test(location.search)
 const CLOUD_SAVE_MS = 8000 // 계정 저장은 많아야 8초에 한 번 (이 기기에는 매번)
 
 export default function App() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [slot, setSlot] = useState<SaveSlot | null>(null) // 이어 하기
   const [screen, setScreen] = useState<Screen>(() => (lastAccount() ? 'menu' : 'title'))
-  const [booting, setBooting] = useState(() => !!lastAccount())
+  const [booting, setBooting] = useState(() => !!lastAccount() || fromGoogle())
   const [authMode, setAuthMode] = useState<'login' | 'join'>('login')
   const [afterAuth, setAfterAuth] = useState<Screen>('menu')
   const [notice, setNotice] = useState('')
+  const [nickFor, setNickFor] = useState<Me | null>(null) // 닉네임을 정할 사람 (구글로 처음)
   const [game, setGame] = useState<GameState | null>(null)
   const [speed, setSpeed] = useState<Speed>(savedSpeed) // 새로고침해도 그대로
   const [dress, setDress] = useState(false)
@@ -95,6 +98,15 @@ export default function App() {
   // 예전에 로그인했으면 계정을 다시 불러옴
   useEffect(() => {
     dropOldProfiles()
+    if (fromGoogle()) { // 구글 로그인에서 돌아옴: 로그인을 마무리하고 주소의 ?code=… 를 지움
+      const failed = /[?&]error=/.test(location.search)
+      account().then((a) => a.finishGoogle()).then((me) => {
+        history.replaceState(null, '', location.pathname)
+        if (!me) { setScreen('title'); setNotice(failed ? '구글 로그인을 취소했어요' : '구글 로그인에 실패했어요. 잠시 뒤 다시 해 주세요'); return }
+        void onAuthed(me)
+      }).catch(() => { setScreen('title'); setNotice('구글 로그인에 실패했어요') }).finally(() => setBooting(false))
+      return
+    }
     if (!lastAccount()) return
     account().then((a) => a.restoreAccount()).then((r) => {
       if (!r) { rememberAccount(null); setScreen('title'); return }
@@ -106,7 +118,7 @@ export default function App() {
       else if (w?.screen === 'online') { setResumeRoom(w.roomId); setScreen('online') }
     }).catch(() => { setScreen('title'); setNotice('계정을 불러오지 못했어요. 인터넷 연결을 확인해 주세요') })
       .finally(() => setBooting(false))
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- 처음 한 번만 (onAuthed는 그때 값으로 충분)
 
   // 지금 화면 기억 (온라인 방은 Online이 기억함)
   useEffect(() => {
@@ -156,6 +168,7 @@ export default function App() {
   }
 
   const onAuthed = async (me: Me) => {
+    if (!me.nick) { setNickFor(me); setScreen('nick'); return } // 구글로 처음 들어온 사람: 게임 안 이름부터
     try {
       const r = await (await account()).openAccount(me)
       rememberAccount(me.loginId)
@@ -182,6 +195,9 @@ export default function App() {
   if (booting) return <Frame><p className="center muted">계정 불러오는 중…</p></Frame>
   if (screen === 'title') {
     return <TitleScreen notice={notice} gameNotice={gameNotice} onAuth={(m) => askLogin(m, 'menu')} onGuest={() => { setProfile(null); setScreen('menu') }} onAdmin={() => setScreen('admin')} />
+  }
+  if (screen === 'nick' && nickFor) {
+    return <NickScreen onDone={async (nick) => { await (await account()).setNick(nick); void onAuthed({ ...nickFor, nick }) }} onBack={() => { account().then((a) => a.logoutOnline()).catch(() => {}); setScreen('title') }} />
   }
   if (screen === 'admin') {
     return <Suspense fallback={<Frame><p className="center muted">불러오는 중…</p></Frame>}><AdminScreen onBack={() => setScreen('title')} /></Suspense>

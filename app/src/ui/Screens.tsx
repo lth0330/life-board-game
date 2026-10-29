@@ -55,6 +55,29 @@ export function Frame({ children, onBack }: { children: ReactNode; onBack?: () =
 }
 
 // 처음 화면: 로그인 / 회원가입 (온라인 계정) / 로그인 없이 / 설명서
+// 구글로 처음 들어온 사람: 게임 안 이름(닉네임) 정하기 (2026-10-29)
+export function NickScreen({ onDone, onBack }: { onDone: (nick: string) => Promise<void>; onBack: () => void }) {
+  const [nick, setNick] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const submit = async () => {
+    if (!nick.trim()) { setErr('닉네임을 적어 주세요'); return }
+    setBusy(true)
+    try { await onDone(nick.trim()) } catch { setBusy(false); setErr('잠시 뒤 다시 해 주세요') }
+  }
+  return (
+    <Frame onBack={onBack}>
+      <h2 className="jua center">반가워요!</h2>
+      <p className="center">게임 안에서 쓸 이름을 정해 주세요</p>
+      <form className="login-form" onSubmit={(e) => { e.preventDefault(); void submit() }}>
+        <label className="field"><span>닉네임 (8자까지)</span><input value={nick} maxLength={8} autoFocus onChange={(e) => setNick(e.target.value)} /></label>
+        {err && <p className="bad">{err}</p>}
+        <button className="wide big" disabled={busy}>{busy ? '저장 중…' : '시작하기'}</button>
+      </form>
+    </Frame>
+  )
+}
+
 export function TitleScreen({ notice, gameNotice, onAuth, onGuest, onAdmin }: { notice?: string; gameNotice?: string; onAuth: (mode: 'login' | 'join') => void; onGuest: () => void; onAdmin: () => void }) {
   const [manual, setManual] = useState(false)
   return (

@@ -1,9 +1,9 @@
 // 계정 저장 (AWS): 옷차림 + 혼자 하던 게임. AWS 코드가 커서 로그인할 때만 내려받음 (App.tsx에서 import())
 import { DEFAULT_OUTFIT, cleanOutfit, type Outfit } from '../engine/outfit'
-import { client, currentMe, getNotice, logoutOnline, parse, type Me } from '../online/client'
+import { client, currentMe, finishGoogle, getNotice, googleLogin, googleReady, logoutOnline, parse, setNick, type Me } from '../online/client'
 import { loadLocalGame, newerSave, type Profile, type SaveSlot } from '../storage'
 
-export { getNotice, logoutOnline }
+export { finishGoogle, getNotice, googleLogin, googleReady, logoutOnline, setNick }
 
 // 로그인한 사람의 계정 저장 칸을 불러옴 (없으면 만듦). 하던 게임은 이 기기 저장과 비교해 더 나중 것
 export async function openAccount(me: Me): Promise<{ profile: Profile; slot: SaveSlot | null }> {

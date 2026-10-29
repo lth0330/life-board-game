@@ -1,6 +1,8 @@
 // 온라인: AWS 연결 (로그인·방·행동). 화면은 Online.tsx
 import { Amplify } from 'aws-amplify'
-import { confirmResetPassword, fetchAuthSession, fetchUserAttributes, getCurrentUser, signIn, signOut, signUp, updatePassword, updateUserAttributes } from 'aws-amplify/auth'
+import { confirmResetPassword, fetchAuthSession, fetchUserAttributes, getCurrentUser, signIn, signInWithRedirect, signOut, signUp, updatePassword, updateUserAttributes } from 'aws-amplify/auth'
+import 'aws-amplify/auth/enable-oauth-listener' // 구글 로그인에서 돌아왔을 때 로그인을 마무리
+import { Hub } from 'aws-amplify/utils'
 import { generateClient } from 'aws-amplify/data'
 import type { Schema } from '../../amplify/data/resource'
 import type { GameState, MapTheme } from '../engine/types'
@@ -80,6 +82,31 @@ export async function setNick(nick: string) {
 }
 
 export const logoutOnline = () => signOut()
+
+// ───────── 구글 로그인 (2026-10-29) ─────────
+// 서버에 구글 로그인 설정이 있을 때만 버튼을 보여 줌
+export const googleReady = !!(outputs.auth as { oauth?: { identity_providers?: string[] } }).oauth?.identity_providers?.includes('GOOGLE')
+// 구글 로그인 창으로 감 (돌아오면 주소에 ?code=… 가 붙어서 이 사이트가 다시 열림)
+export async function googleLogin(): Promise<string | null> {
+  try {
+    await signOut().catch(() => {})
+    await signInWithRedirect({ provider: 'Google' })
+    return null
+  } catch (e) { return errText(e) }
+}
+// 구글에서 돌아온 직후: 로그인이 끝날 때까지 기다림 (실패·취소면 null)
+export function finishGoogle(): Promise<Me | null> {
+  return new Promise((resolve) => {
+    let done = false
+    const end = (v: Me | null) => { if (done) return; done = true; stop(); clearTimeout(t); resolve(v) }
+    const stop = Hub.listen('auth', ({ payload }) => {
+      if (payload.event === 'signInWithRedirect') void currentMe().then(end)
+      if (payload.event === 'signInWithRedirect_failure') end(null)
+    })
+    const t = setTimeout(() => void currentMe().then(end), 15000) // 신호를 놓쳐도 15초 뒤에 확인
+    void currentMe().then((m) => { if (m) end(m) }) // 이미 끝났으면 바로
+  })
+}
 
 // ───────── 아이디·비밀번호 찾기, 내 계정 (2026-10-21) ─────────
 // 그 이메일로 가입한 계정마다 메일(아이디 + 6자리 코드). 있든 없든 같은 대답
