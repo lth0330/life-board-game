@@ -513,6 +513,9 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
 
   // ── 같은 칸 가위바위보: 고르는 동안 머리 위 손이 돌다가, 다 고르면 2.8초 공개 ──
   const rps = game.rpsShow
+  // 동시에 하는 가위바위보: 아직 안 고른 사람 중 이 기기 사람 (2026-10-29)
+  const rpsData = game.pending?.type === 'rps' ? (game.pending.data as { sim?: boolean; queue?: number[] } | undefined) : undefined
+  const rpsMine = rpsData?.sim ? rpsData.queue?.find((i) => isMine(i)) : undefined
   const [rpsReveal, setRpsReveal] = useState<Record<number, number> | null>(null)
   useEffect(() => {
     if (!rps?.picks) return
@@ -722,9 +725,12 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
             <h2 className="jua">{pending.title}</h2>
             <p>{pending.text}</p>
             {/* 창이 떠 있어도 표정 보내기 (오른쪽 표정 버튼은 창에 가려서). 내가 고를 때도 (2026-10-24) */}
-            {(!isMine(pending.playerId) || emoteId !== undefined) && (
+            {rpsData?.sim && rpsMine !== undefined && <p className="note jua">{game.players[rpsMine].name} 차례: 무엇을 낼까요?</p>}
+            {(rpsData?.sim ? rpsMine === undefined || emoteId !== undefined : !isMine(pending.playerId) || emoteId !== undefined) && (
               <div className="note-row">
-                {isMine(pending.playerId) ? <span className="note-spacer" /> : <p className="note">{game.players[pending.playerId].name}{game.players[pending.playerId].human ? '님이' : '(AI)가'} 고르는 중…</p>}
+                {rpsData?.sim
+                  ? (rpsMine !== undefined ? <span className="note-spacer" /> : <p className="note">{(rpsData.queue ?? []).map((i) => game.players[i].name).join(', ')}님이 고르는 중…</p>)
+                  : isMine(pending.playerId) ? <span className="note-spacer" /> : <p className="note">{game.players[pending.playerId].name}{game.players[pending.playerId].human ? '님이' : '(AI)가'} 고르는 중…</p>}
                 {emoteId !== undefined && (
                   <button className="emote-btn-inline" aria-label="표정" disabled={cooling} onClick={() => setPicker(true)}>
                     <Character outfit={game.players[emoteId].outfit} age={ageOf(game, game.players[emoteId])} expr="happy" size={40} crop="head" />
@@ -742,7 +748,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
             {pending.type === 'shop' && shopCat && <button className="ghost-btn" onClick={() => setShopCat(null)}>← 다른 물건 보기</button>}
             <div className="options">
               {pending.options.filter((o) => pending.type !== 'shop' || o.id === 'pass' || (shopCat && SHOP_CATS.find((c) => c.id === shopCat)!.match(o.id))).map((o) => (
-                <button key={o.id} disabled={o.disabled || !isMine(pending.playerId)} onClick={() => { sfx('click'); run(['choose', o.id]) }}>
+                <button key={o.id} disabled={o.disabled || (rpsData?.sim ? rpsMine === undefined : !isMine(pending.playerId))} onClick={() => { sfx('click'); if (rpsData?.sim && rpsMine !== undefined) run(['rpsPick', rpsMine, +o.id]); else run(['choose', o.id]) }}>
                   <b>{o.label}</b>{o.desc && <span>{o.desc}</span>}
                 </button>
               ))}

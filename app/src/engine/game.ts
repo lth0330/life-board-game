@@ -2268,16 +2268,22 @@ function meet(s: GameState) {
   }
 }
 
-// 가위바위보: queue의 첫 사람에게 묻고, 고른 것은 picks에 모음
-// humans: 직접 고르는 사람 전부 (비기면 처음부터 다시 물음). again: 비겨서 다시 (방금 낸 손은 계속 보여 줌)
+// 가위바위보: 직접 하는 사람은 모두 동시에 고름 (2026-10-29 사용자: 타이밍 대결처럼). 다 고르면 한꺼번에 공개
+// queue: 아직 안 고른 사람 전부, picks: 고른 손, humans: 직접 고르는 사람 전부 (비기면 처음부터 다시). again: 비겨서 다시
 function rpsPending(s: GameState, ids: number[], picks: Record<number, number>, queue: number[], humans = queue, again = false) {
-  const who = s.players[queue[0]]
-  const others = ids.filter((i) => i !== who.id).map((i) => s.players[i].name)
   if (!again && (!s.rpsShow || s.rpsShow.picks)) s.rpsShow = { id: (s.rpsShow?.id ?? 0) + 1, ids, picks: null }
   s.pending = {
-    type: 'rps', playerId: who.id, title: again ? '비겼어요! 한 번 더' : '가위바위보!', text: `${others.join(', ')}와 한 판. 진 사람은 능력치 -1`,
-    options: [{ id: '0', label: '가위' }, { id: '1', label: '바위' }, { id: '2', label: '보' }], data: { ids, picks, queue: queue.slice(1), humans },
+    type: 'rps', playerId: queue[0], title: again ? '비겼어요! 한 번 더' : '가위바위보!', text: `${ids.map((i) => s.players[i].name).join(', ')} 한 판. 진 사람은 능력치 -1`,
+    options: [{ id: '0', label: '가위' }, { id: '1', label: '바위' }, { id: '2', label: '보' }], data: { ids, picks, queue, humans, sim: true },
   }
+}
+// 동시에 하는 가위바위보에서 한 사람이 고름 (온라인은 각자 기기에서). 이미 골랐거나 고를 사람이 아니면 무시
+export function rpsPick(s: GameState, who: number, pick: number) {
+  const pd = s.pending
+  const d = pd?.data as { sim?: boolean; queue?: number[] } | undefined
+  if (!pd || pd.type !== 'rps' || !d?.sim || !d.queue?.includes(who) || ![0, 1, 2].includes(pick)) return
+  pd.playerId = who
+  choose(s, String(pick))
 }
 
 const timingScore = (rng: Rng, q: Player) => Math.max(0, Math.min(100, Math.round(35 + q.stats.str * 5 + (rng.next() - 0.5) * 50)))
@@ -3161,9 +3167,15 @@ export function choose(s: GameState, optionId: string) {
       log(s, p.id, `${optionId} 분야를 골랐다`, 'info')
       break
     case 'rps': {
-      const d = pd.data as { ids: number[]; picks?: Record<number, number>; queue?: number[]; humans?: number[] }
+      const d = pd.data as { ids: number[]; picks?: Record<number, number>; queue?: number[]; humans?: number[]; sim?: boolean }
       const picks = { ...d.picks, [p.id]: +optionId }
-      if (d.queue?.length) rpsPending(s, d.ids, picks, d.queue, d.humans ?? [p.id, ...d.queue]) // 다음 사람 차례 (온라인)
+      if (d.sim) { // 동시에: 남은 사람이 있으면 계속 기다림
+        const queue = (d.queue ?? []).filter((i) => i !== p.id)
+        if (queue.length) { s.pending = { ...pd, playerId: queue[0], data: { ...d, picks, queue } }; break }
+        resolveRps(s, d.ids, picks, d.humans ?? [p.id])
+        break
+      }
+      if (d.queue?.length) rpsPending(s, d.ids, picks, d.queue, d.humans ?? [p.id, ...d.queue]) // 예전 저장: 다음 사람 차례
       else resolveRps(s, d.ids, picks, d.humans ?? [p.id])
       break
     }

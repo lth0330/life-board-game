@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { aiStep } from './ai'
 import { distancesFrom } from './board'
-import { canSeekJob, choose, contestReady, createGame, cur, finishMini, requestFriendLoan, roll, seekJob, stageOf } from './game'
+import { canSeekJob, choose, contestReady, rpsPick, createGame, cur, finishMini, requestFriendLoan, roll, seekJob, stageOf } from './game'
 import type { GameState } from './types'
 import { opActor } from './ops'
 
@@ -192,5 +192,19 @@ describe('온라인 같은 칸 대결', () => {
     expect(s.pending?.playerId).toBe(1)
     choose(s, '0')
     expect(s.log.some((l) => l.text.includes('가 바위') && l.text.includes('나 가위'))).toBe(true)
+  })
+  it('가위바위보는 모두 동시에: 누가 먼저 골라도 되고, 고른 사람은 다시 못 고르고, 다 고르면 공개 (2026-10-29)', () => {
+    const s = createGame({ humanName: '가', humanNames: ['나'], humans: 2, aiCount: 0, settings: { startAdult: true, difficulty: 'normal', online: true }, seed: 4 })
+    s.pending = { type: 'rps', playerId: 0, title: '', text: '', options: [{ id: '0', label: '' }, { id: '1', label: '' }, { id: '2', label: '' }], data: { ids: [0, 1], picks: {}, queue: [0, 1], humans: [0, 1], sim: true } }
+    expect(opActor(s, ['rpsPick', 1, 0])).toBe(1)
+    rpsPick(s, 1, 0) // 나: 가위 (먼저)
+    expect(s.pending?.type).toBe('rps')
+    expect((s.pending?.data as { queue: number[] }).queue).toEqual([0])
+    expect(opActor(s, ['rpsPick', 1, 2])).toBe(null) // 이미 고름
+    rpsPick(s, 1, 2)
+    expect((s.pending?.data as { picks: Record<number, number> }).picks[1]).toBe(0)
+    rpsPick(s, 0, 1) // 가: 바위
+    expect(s.log.some((l) => l.text.includes('가 바위') && l.text.includes('나 가위'))).toBe(true)
+    expect(s.pending).toBe(null)
   })
 })
