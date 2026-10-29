@@ -258,7 +258,7 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
           <div key={s.stageIdx} className={`track${dragging ? ' dragging' : ''}`} style={{ transform: `translate(${-st.tiles[focusPos].lane * LANE + pan.x}px, ${fd * 150 + pan.y}px)` }}>{ground}{items}</div>
         </div>
       </div>
-      {theme && <Weather kind={theme === 'winter' ? 'snow' : 'leaves'} />}
+      {theme && theme !== 'summer' && <Weather kind={theme === 'winter' ? 'snow' : theme === 'spring' ? 'petals' : 'leaves'} />}
       {panned && <button className="pan-home" onClick={(e) => { e.stopPropagation(); setPan({ x: 0, y: 0 }) }} onPointerDown={(e) => e.stopPropagation()}>내 위치로</button>}
     </div>
   )

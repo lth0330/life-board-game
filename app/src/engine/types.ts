@@ -14,7 +14,7 @@ export type MiniId =
   | 'firstImpression' | 'rhythm' | 'confess' | 'dance'
   | 'oddEven' | 'highLow' | 'slot'
   | 'snap' | 'pack' | 'photo'
-  | 'leaves' | 'snowball' // 테마 맵 전용: 가을 낙엽 잡기·겨울 눈싸움 (2026-10-29)
+  | 'leaves' | 'snowball' | 'butterfly' | 'watergun' // 테마 맵 전용: 가을 낙엽 잡기·겨울 눈싸움·봄 나비 잡기·여름 물총 싸움 (2026-10-29)
 export type DuelId = 'dice' | 'rps' | 'timing'
 export type DiceItem = 'twin' | 'even' | 'odd'
 
@@ -234,7 +234,7 @@ export interface Settings {
   teams?: boolean // 2 대 2 팀전 (2026-10-21): 팀 점수 합계로 승패. Player.team
   theme?: MapTheme // 테마 맵 (2026-10-29): 판 겉모습만. 없으면 기본
 }
-export type MapTheme = 'autumn' | 'winter'
+export type MapTheme = 'spring' | 'summer' | 'autumn' | 'winter'
 
 export interface GameState {
   seed: number

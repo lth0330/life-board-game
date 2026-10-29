@@ -40,7 +40,9 @@ function ghost(game: string, grade: number, t: number, seed: number, level: numb
   const r = (k: number) => rnd(seed, k)
   const L = Math.max(0, Math.min(2, level))
   switch (game) {
-    case 'leaves': {
+    case 'leaves':
+    case 'butterfly': {
+      const fly = game === 'butterfly'
       const goal = [8, 10, 12][L]
       const fall = [2.6, 2.1, 1.7][L]
       const final = grade === 2 ? goal + 3 + Math.floor(r(1) * 2) : grade === 1 ? goal + Math.floor(r(1) * 3) : Math.floor(goal * (0.4 + r(1) * 0.45))
@@ -53,12 +55,13 @@ function ghost(game: string, grade: number, t: number, seed: number, level: numb
         const at = i * 0.42
         const k = (t - at) / fall
         if (k < 0 || k >= 1 || (caught.has(i) && k > 0.3 + r(50 + i) * 0.4)) continue
-        xs.push(Math.round(6 + r(80 + i) * 82)); ys.push(Math.round(k * 100))
+        if (fly) { xs.push(Math.round(k * 100)); ys.push(Math.round(8 + r(80 + i) * 62)) } else { xs.push(Math.round(6 + r(80 + i) * 82)); ys.push(Math.round(k * 100)) }
       }
       const n = [...caught].filter((i) => (t - i * 0.42) / fall > 0.3 + r(50 + i) * 0.4).length
       return play({ n: Math.min(n, final), m: goal, left: Math.max(0, Math.ceil(8 - t)), xs, ys }, t >= 8)
     }
-    case 'snowball': {
+    case 'snowball':
+    case 'watergun': {
       const up = [1.0, 0.8, 0.62][L]
       const gap = 0.35
       const hitsTotal = grade === 2 ? 9 + Math.floor(r(1) * 2) : grade === 1 ? [6, 7, 8][L] + Math.floor(r(1) * 2) : Math.floor(r(1) * [6, 7, 8][L])

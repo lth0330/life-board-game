@@ -216,6 +216,71 @@ export const DILEMMAS: Partial<Record<StageId, SpecialEvent[]>> = {
 // 테마 맵 사건 (2026-10-29 사용자): 좋은 일·랜덤이벤트 칸에서 가끔. 크기는 지금 사건과 같게
 // 단계와 상관없이 나옴. 능력치가 바뀌는 사건은 노년에 안 나옴 (노년은 능력치가 안 바뀜)
 export const THEME_EVENTS: Record<MapTheme, SpecialEvent[]> = {
+  spring: [
+    {
+      id: 'th-blossom', title: '벚꽃 축제', text: '동네 길가에 벚꽃이 활짝 폈어요.',
+      options: [
+        { id: 'picnic', label: '🍱 친구들과 도시락 소풍', cost: 1, happy: 4 },
+        { id: 'photo', label: '📷 사진 찍어 올리기', check: { stat: 'cha', need: 7, win: { stats: { cha: 1 }, happy: 2 }, lose: { happy: -1 } } },
+        { id: 'rest', label: '🏠 창문 열고 쉬기', happy: 1 },
+      ],
+    },
+    {
+      id: 'th-tree', title: '식목일', text: '동네에서 나무 심기 봉사를 해요. 오늘은 쉬는 날이기도 해요.',
+      options: [
+        { id: 'plant', label: '🌳 나무 심으러 가기', happy: 1, luck: 1 },
+        { id: 'rest', label: '🛋️ 푹 쉬기', happy: 3 },
+      ],
+    },
+    {
+      id: 'th-fresh', title: '새로운 시작', text: '봄이 왔어요. 새로 무언가를 시작해 볼까요?',
+      options: [
+        { id: 'plan', label: '📒 계획 세우고 공부', stats: { int: 1 } },
+        { id: 'run', label: '🏃 아침 운동', stats: { str: 1 } },
+        { id: 'friend', label: '💬 새 친구 사귀기', stats: { cha: 1 } },
+      ],
+    },
+    {
+      id: 'th-dust', title: '미세먼지', text: '하늘이 뿌옇게 미세먼지가 가득해요.',
+      options: [
+        { id: 'mask', label: '😷 마스크 사서 쓰기', cost: 1 },
+        { id: 'share', label: '🤝 이웃에게도 나눠 주기', cost: 1, othersHappy: 1, luck: 1 },
+        { id: 'skip', label: '🙈 그냥 나가기', risk: { chance: 0.4, happy: -3 } },
+      ],
+    },
+  ],
+  summer: [
+    {
+      id: 'th-beach', title: '여름 휴가', text: '여름 휴가철이에요. 어디로 갈까요?',
+      options: [
+        { id: 'sea', label: '🏖️ 멀리 바다로', cost: 3, happy: 6 },
+        { id: 'pool', label: '🏊 동네 수영장', cost: 1, happy: 3 },
+        { id: 'work', label: '💼 휴가 없이 일하기', gain: 1, happy: -1 },
+      ],
+    },
+    {
+      id: 'th-melon', title: '무더위', text: '푹푹 찌는 날이에요. 시원한 수박이 한 통 생겼어요.',
+      options: [
+        { id: 'share', label: '🍉 이웃과 나눠 먹기', happy: 2, luck: 1 },
+        { id: 'mine', label: '😋 혼자 다 먹기', happy: 3, luck: -1 },
+      ],
+    },
+    {
+      id: 'th-rescue', title: '물놀이 사고', text: '계곡에서 아이가 물에 떠내려가요!',
+      options: [
+        { id: 'swim', label: '🏊 직접 뛰어들기', check: { stat: 'str', need: 7, win: { stats: { str: 1 }, happy: 4 }, lose: { happy: -2 } } },
+        { id: 'call', label: '📣 안전요원 부르기', happy: 1, luck: 1 },
+      ],
+    },
+    {
+      id: 'th-rain', title: '장마', text: '며칠째 비가 와요. 우산 없는 친구가 보여요.',
+      options: [
+        { id: 'lend', label: '☂️ 우산 같이 쓰기', luck: 1 },
+        { id: 'run', label: '🏃 혼자 뛰어가기', risk: { chance: 0.5, happy: -2 } },
+        { id: 'home', label: '🏠 집에서 빈둥빈둥', happy: 2 },
+      ],
+    },
+  ],
   autumn: [
     {
       id: 'th-maple', title: '단풍 구경', text: '산이 울긋불긋 물들었어요. 단풍 구경을 갈까요?',
@@ -283,7 +348,7 @@ export const THEME_EVENTS: Record<MapTheme, SpecialEvent[]> = {
     },
   ],
 }
-const ALL_THEME_EVENTS = [...THEME_EVENTS.autumn, ...THEME_EVENTS.winter]
+const ALL_THEME_EVENTS = Object.values(THEME_EVENTS).flat()
 
 // 특별 이벤트·양심 선택·테마 사건에서 찾기
 export const findEvent = (stage: StageId, id: string) => [...(SPECIALS[stage] ?? []), ...(DILEMMAS[stage] ?? []), ...ALL_THEME_EVENTS].find((e) => e.id === id)

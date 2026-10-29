@@ -1139,3 +1139,34 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .w-snow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
 .w-snow span { height: 16px; border-radius: 6px 6px 3px 3px; background: #fff; border: 1.5px solid var(--ink); }
 .w-snow span.up { background: #FFD45C; }
+
+/* 봄·여름 테마 (2026-10-29) */
+.weather.petals i { width: 12px; height: 10px; border-radius: 60% 0 60% 0; background: #FFC3D4; border: 1.5px solid rgba(180, 80, 110, 0.45); }
+.weather.petals i:nth-child(2n) { background: #FFE0EA; }
+.world.theme-spring {
+  --grass: #A8D982; --tree-a: #F7B6C8; --tree-b: #F49AB4; --tree-c: #FFD1DC; --pine: #3F8A4F; --bush: #8FCB6E; --tuft: #7DBE5C; --pond: #9FD3F2; --lawn: #B5E08F;
+  --mtn-far: #B9D7EE; --mtn-near: #9DCF8A;
+}
+.world.theme-spring.stage-child, .world.theme-spring.stage-student, .world.theme-spring.stage-young { background: linear-gradient(#A9DDF6, #E8F6FB 22%); }
+.theme-spring .ground-bit.gb-3 { background: #7DBE5C; box-shadow: 12px -6px 0 -3px #8FCB6E; }
+.world.theme-summer {
+  --grass: #6CC25A; --tree-a: #2E8B47; --tree-b: #3FA35A; --tree-c: #248040; --pine: #1F6E3A; --bush: #3E9A4E; --tuft: #4FAF57; --pond: #5FB8EE; --lawn: #7ACB66;
+  --sun: #FFC93A; --sun-glow: #FFE38A; --mtn-far: #8EC3EA; --mtn-near: #58A867;
+}
+.world.theme-summer.stage-child, .world.theme-summer.stage-student, .world.theme-summer.stage-young { background: linear-gradient(#4FB0EC, #BEE5F8 22%); }
+.theme-summer .ground-bit.gb-0 { background: radial-gradient(circle, #5A3A21 0 22%, #FFD45C 26% 62%, transparent 64%); } /* 해바라기 */
+.sheet.mini.theme-bloom { background: linear-gradient(#ffe0ea, #fdf6e8 70%); }
+.sheet.mini.theme-sun { background: linear-gradient(#cdeefc, #fdf6e8 70%); }
+.leaf-field.fly { background: linear-gradient(#bfe6f8, #f0f9fd); }
+.leaf-field.fly .leaf-ground { background: #A8D982; }
+.leaf-zone.v { top: 0; bottom: 14%; border-top: 0; border-left: 2px dashed rgba(42, 33, 24, 0.35); }
+.leaf-btn.bfly i { width: 30px; height: 22px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: radial-gradient(circle at 30% 40%, #fff 0 18%, transparent 20%), radial-gradient(circle at 70% 40%, #fff 0 18%, transparent 20%), #F49AB4; animation: bfly-flap 0.25s ease-in-out infinite alternate; }
+.leaf-btn.bfly.c1 i { background-color: #FFD45C; } .leaf-btn.bfly.c2 i { background-color: #8FC8F0; }
+@keyframes bfly-flap { to { transform: scaleX(0.45); } }
+.snow-grid.water { background: #bfe6f8; }
+.snow-grid.water .snow-wall { border-radius: 40px; height: 40px; background: repeating-linear-gradient(90deg, #E2553B 0 18px, #fff 18px 36px); box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.12); }
+.snow-grid.water .snow-cell.hit::after { background: radial-gradient(circle, #8FD3F8 0 45%, rgba(143, 211, 248, 0) 70%); }
+.w-leaves.fly { background: linear-gradient(#cdebf9, #f2fafd); }
+.w-leaves.fly .w-leaf { width: 9px; height: 7px; border-radius: 50%; background: #F49AB4; }
+.w-snow.water span { border-radius: 10px; background: repeating-linear-gradient(90deg, #E2553B 0 5px, #fff 5px 10px); }
+.w-snow.water span.up { background: #FFD45C; }

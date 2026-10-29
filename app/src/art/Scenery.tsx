@@ -66,12 +66,29 @@ export function TitleScenery() {
 }
 
 // 게임 안 하늘 (지평선 위): 해·흘러가는 구름·산·새. 색은 단계마다 CSS 변수로
-// 테마 게임 창 위 그림 (2026-10-29): 가을 단풍나무, 겨울 눈사람
-export function ThemeArt({ kind }: { kind: 'fall' | 'snow' }) {
+// 테마 게임 창 위 그림 (2026-10-29): 봄 벚나무, 여름 파라솔, 가을 단풍나무, 겨울 눈사람
+export type ThemeArtKind = 'bloom' | 'sun' | 'fall' | 'snow'
+export function ThemeArt({ kind }: { kind: ThemeArtKind }) {
   return (
     <svg viewBox="0 0 260 200" width="100%" height="100%" aria-hidden="true">
       <g stroke={K} strokeWidth="3" strokeLinejoin="round">
-        {kind === 'fall' ? (
+        {kind === 'bloom' ? (
+          <>
+            <ellipse cx="130" cy="186" rx="110" ry="14" fill="#9ED37A" />
+            <rect x="120" y="110" width="20" height="76" rx="5" fill="#8A5A3B" />
+            <circle cx="96" cy="92" r="38" fill="#F7B6C8" /><circle cx="164" cy="90" r="40" fill="#F49AB4" /><circle cx="130" cy="58" r="44" fill="#FFD1DC" />
+            {[[70, 40], [196, 60], [150, 20], [210, 130]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="5" fill="#FFD1DC" strokeWidth="2" />)}
+          </>
+        ) : kind === 'sun' ? (
+          <>
+            <ellipse cx="130" cy="186" rx="110" ry="14" fill="#F3DFA4" />
+            <path d="M20 186q30-10 60 0t60 0 60 0 50 0" fill="none" stroke="#4C8FD6" strokeWidth="5" />
+            <path d="M130 186V70" strokeWidth="5" />
+            <path d="M60 80q70-60 140 0z" fill="#E2553B" /><path d="M95 80q35-50 70 0" fill="#fff" />
+            <path d="M176 176a26 18 0 0 1 52 0z" fill="#3E9A4E" /><path d="M182 176a20 12 0 0 1 40 0z" fill="#E2553B" strokeWidth="2" />
+            <circle cx="224" cy="40" r="20" fill="#FFD45C" />
+          </>
+        ) : kind === 'fall' ? (
           <>
             <ellipse cx="130" cy="186" rx="110" ry="14" fill="#D8C377" />
             <rect x="120" y="110" width="20" height="76" rx="5" fill="#8A5A3B" />
@@ -94,7 +111,7 @@ export function ThemeArt({ kind }: { kind: 'fall' | 'snow' }) {
 }
 
 // 테마 맵 날씨: 가을은 떨어지는 낙엽, 겨울은 눈 (2026-10-29). 위치·속도는 고정 값이라 매번 같은 모양
-export function Weather({ kind }: { kind: 'leaves' | 'snow' }) {
+export function Weather({ kind }: { kind: 'leaves' | 'snow' | 'petals' }) {
   return (
     <div className={`weather ${kind}`} aria-hidden="true">
       {Array.from({ length: kind === 'snow' ? 28 : 14 }, (_, i) => (
