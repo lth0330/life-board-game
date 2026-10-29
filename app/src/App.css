@@ -1120,6 +1120,8 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .sheet.mini.theme-fall { background: linear-gradient(#fbe6c4, #fdf6e8 70%); }
 .sheet.mini.theme-snow { background: linear-gradient(#dfeaf4, #fdf6e8 70%); }
 .leaf-field { position: relative; height: 240px; border-radius: 14px; border: var(--line); background: linear-gradient(#9fd0ef, #e4f2f9); overflow: hidden; touch-action: none; }
+.leaf-zone { position: absolute; left: 0; right: 0; border-top: 2px dashed rgba(42, 33, 24, 0.35); pointer-events: none; }
+.snow-wall b { position: absolute; right: 8px; bottom: 4px; font-size: 13px; color: var(--ink-soft); }
 .leaf-ground { position: absolute; left: 0; right: 0; bottom: 0; height: 14%; background: #C9B565; border-top: 2.5px solid var(--ink); }
 .leaf-btn { position: absolute; width: 48px; height: 48px; margin-left: -24px; padding: 0; border: 0; background: none; box-shadow: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .leaf-btn i { display: block; width: 30px; height: 20px; border-radius: 0 80% 0 80%; border: 2px solid var(--ink); background: #E07A2E; }

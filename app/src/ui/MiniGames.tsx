@@ -610,6 +610,7 @@ function Mash({ level, outfit, age, onDone, report }: { level: number; outfit: O
 // ───── 테마 맵 게임 (2026-10-29) ─────
 // 가을 낙엽 잡기: 떨어지는 낙엽을 땅에 닿기 전에 누름. 체력이 높을수록 천천히 떨어지고 목표가 적음
 const LEAVES_T = 8
+const LEAF_KEY_ZONE = 50 // 키보드로 잡을 수 있는 높이(%)부터
 function Leaves({ level, onDone, report }: { level: number; onDone: (v: number) => void; report?: Report }) {
   const goal = [8, 10, 12][level]
   const fall = [2.6, 2.1, 1.7][level] // 위에서 땅까지 초
@@ -633,6 +634,10 @@ function Leaves({ level, onDone, report }: { level: number; onDone: (v: number) 
   const yOf = (l: { at: number }) => ((t - l.at) / fall) * 100
   const catchLeaf = (id: number) => { if (caughtRef.current.includes(id)) return; caughtRef.current = [...caughtRef.current, id]; setCaught(caughtRef.current); sfx('pop') }
   const left = Math.max(0, Math.ceil(LEAVES_T - t))
+  // 키보드 (2026-10-29): 스페이스바로 아래쪽 반(점선 아래)에 들어온 낙엽 중 가장 낮은 것을 잡음
+  const lowest = falling.filter((l) => yOf(l) >= LEAF_KEY_ZONE).sort((a, b) => yOf(b) - yOf(a))[0]
+  useKeys({ Space: () => { if (lowest) catchLeaf(lowest.id) } })
+  const keyHint = finePointer()
   const xs = falling.map((l) => Math.round(l.x)).join(',')
   const ys = falling.map((l) => Math.round(yOf(l) / 5) * 5).join(',') // 장면은 5% 단위로만 (너무 자주 안 바뀌게)
   useEffect(() => { report?.({ n: caught.length, m: goal, left, xs: xs ? xs.split(',').map(Number) : [], ys: ys ? ys.split(',').map(Number) : [] }) }, [report, caught.length, goal, left, xs, ys])
@@ -643,9 +648,11 @@ function Leaves({ level, onDone, report }: { level: number; onDone: (v: number) 
         {falling.map((l) => (
           <button key={l.id} className={`leaf-btn c${l.c}`} style={{ left: `${l.x}%`, top: `${yOf(l) * 0.86}%`, rotate: `${Math.sin(t * 3 + l.id) * 40}deg` }} onPointerDown={(e) => { e.preventDefault(); catchLeaf(l.id) }} aria-label="낙엽"><i /></button>
         ))}
+        {keyHint && <div className="leaf-zone" style={{ top: `${LEAF_KEY_ZONE * 0.86}%` }} />}
         <div className="leaf-ground" />
       </div>
       <div className="mini-big jua">{caught.length}개 · {left}초</div>
+      <KeyHint>스페이스바로 점선 아래에 들어온 낙엽을 잡아요</KeyHint>
     </div>
   )
 }
@@ -679,6 +686,9 @@ function Snowball({ level, onDone, report }: { level: number; onDone: (v: number
   const hitSlot = hits[hits.length - 1] === i ? slots[i] : -1 // 방금 맞힌 자리 (눈 튀김)
   const throwAt = (k: number) => { if (k !== slot || hitsRef.current.includes(i)) return; hitsRef.current = [...hitsRef.current, i]; setHits(hitsRef.current); sfx('pop') }
   useEffect(() => { report?.({ pos: slot, right: hits.length, n: Math.min(i, SNOW_TOTAL), m: SNOW_TOTAL }) }, [report, slot, hits.length, i])
+  // 키보드 (2026-10-29): 숫자 1~6이 눈벽 자리 (위 줄 1·2·3, 아래 줄 4·5·6)
+  useKeys(Object.fromEntries([1, 2, 3, 4, 5, 6].flatMap((n) => [[`Digit${n}`, () => throwAt(n - 1)], [`Numpad${n}`, () => throwAt(n - 1)]])))
+  const keyHint = finePointer()
   return (
     <div className="mini-body">
       <p>친구가 나오면 눌러서 맞히세요! 목표 {goal}번</p>
@@ -686,11 +696,12 @@ function Snowball({ level, onDone, report }: { level: number; onDone: (v: number
         {Array.from({ length: 6 }, (_, k) => (
           <button key={k} className={`snow-cell${k === slot ? ' up' : ''}${k === hitSlot ? ' hit' : ''}`} onPointerDown={(e) => { e.preventDefault(); throwAt(k) }} aria-label={`눈벽 ${k + 1}`}>
             <span className="snow-friend"><Character outfit={DEFAULT_OUTFIT} pose="idle" expr={k === hitSlot ? 'sad' : 'happy'} size={44} crop="head" /></span>
-            <span className="snow-wall" />
+            <span className="snow-wall">{keyHint && <b>{k + 1}</b>}</span>
           </button>
         ))}
       </div>
       <div className="mini-big jua">맞힘 {hits.length} · {Math.min(i + 1, SNOW_TOTAL)}/{SNOW_TOTAL}</div>
+      <KeyHint>숫자 1~6 (눈벽에 쓰인 번호)</KeyHint>
     </div>
   )
 }
