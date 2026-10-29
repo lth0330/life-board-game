@@ -40,6 +40,37 @@ function ghost(game: string, grade: number, t: number, seed: number, level: numb
   const r = (k: number) => rnd(seed, k)
   const L = Math.max(0, Math.min(2, level))
   switch (game) {
+    case 'leaves': {
+      const goal = [8, 10, 12][L]
+      const fall = [2.6, 2.1, 1.7][L]
+      const final = grade === 2 ? goal + 3 + Math.floor(r(1) * 2) : grade === 1 ? goal + Math.floor(r(1) * 3) : Math.floor(goal * (0.4 + r(1) * 0.45))
+      const count = Math.floor((8 - 0.6) / 0.42)
+      // 잡은 낙엽은 떨어지는 중간에 사라짐
+      const caught = new Set(shuffled(Array.from({ length: count }, (_, i) => i), r, 30).slice(0, final))
+      const xs: number[] = []
+      const ys: number[] = []
+      for (let i = 0; i < count; i++) {
+        const at = i * 0.42
+        const k = (t - at) / fall
+        if (k < 0 || k >= 1 || (caught.has(i) && k > 0.3 + r(50 + i) * 0.4)) continue
+        xs.push(Math.round(6 + r(80 + i) * 82)); ys.push(Math.round(k * 100))
+      }
+      const n = [...caught].filter((i) => (t - i * 0.42) / fall > 0.3 + r(50 + i) * 0.4).length
+      return play({ n: Math.min(n, final), m: goal, left: Math.max(0, Math.ceil(8 - t)), xs, ys }, t >= 8)
+    }
+    case 'snowball': {
+      const up = [1.0, 0.8, 0.62][L]
+      const gap = 0.35
+      const hitsTotal = grade === 2 ? 9 + Math.floor(r(1) * 2) : grade === 1 ? [6, 7, 8][L] + Math.floor(r(1) * 2) : Math.floor(r(1) * [6, 7, 8][L])
+      const hitAt = shuffled(Array.from({ length: 10 }, (_, i) => i < hitsTotal), r, 40)
+      const i = Math.floor(t / (up + gap))
+      const into = t - i * (up + gap)
+      const slot = Math.floor(r(60 + i) * 6)
+      const hitNow = i < 10 && hitAt[i] && into >= gap + up * 0.5 // 맞히면 반쯤에서 숨음
+      const pos = i < 10 && into >= gap && !hitNow ? slot : -1
+      const right = hitAt.slice(0, Math.min(i, 10)).filter(Boolean).length + (hitNow ? 1 : 0)
+      return play({ pos, right, n: Math.min(i, 10), m: 10 }, t >= 10 * (up + gap) + 0.3)
+    }
     case 'timing': {
       // grade는 점수(0~100). 바늘이 몇 번 오가다가 그 점수 자리에서 멈춤
       const zone = [25, 17, 10][L]

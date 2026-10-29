@@ -1115,3 +1115,25 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .theme-winter .ground-bit.gb-0, .theme-winter .ground-bit.gb-1, .theme-winter .ground-bit.gb-4 { width: 34px; height: 18px; border-radius: 50% 50% 40% 40%; background: #fff; box-shadow: inset 0 -4px 0 rgba(140, 170, 200, 0.4); }
 .theme-winter .ground-bit.gb-3 { background: #fff; box-shadow: 12px -6px 0 -3px #E4EEF4; }
 .theme-winter .decor-flowers { display: none !important; }
+
+/* 테마 게임 (2026-10-29): 가을 낙엽 잡기·겨울 눈싸움 */
+.sheet.mini.theme-fall { background: linear-gradient(#fbe6c4, #fdf6e8 70%); }
+.sheet.mini.theme-snow { background: linear-gradient(#dfeaf4, #fdf6e8 70%); }
+.leaf-field { position: relative; height: 240px; border-radius: 14px; border: var(--line); background: linear-gradient(#9fd0ef, #e4f2f9); overflow: hidden; touch-action: none; }
+.leaf-ground { position: absolute; left: 0; right: 0; bottom: 0; height: 14%; background: #C9B565; border-top: 2.5px solid var(--ink); }
+.leaf-btn { position: absolute; width: 48px; height: 48px; margin-left: -24px; padding: 0; border: 0; background: none; box-shadow: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.leaf-btn i { display: block; width: 30px; height: 20px; border-radius: 0 80% 0 80%; border: 2px solid var(--ink); background: #E07A2E; }
+.leaf-btn.c1 i { background: #C9452B; } .leaf-btn.c2 i { background: #F0B53A; }
+.snow-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 10px; border-radius: 14px; border: var(--line); background: #eef4f8; touch-action: none; }
+.snow-cell { position: relative; height: 86px; padding: 0; border: 0; background: none; box-shadow: none; overflow: hidden; cursor: pointer; }
+.snow-wall { position: absolute; left: 0; right: 0; bottom: 0; height: 46px; border-radius: 20px 20px 8px 8px; background: #fff; border: 2.5px solid var(--ink); box-shadow: inset 0 -6px 0 #d4e3ee; }
+.snow-friend { position: absolute; left: 50%; bottom: 6px; translate: -50% 100%; transition: translate 0.12s ease-out; }
+.snow-cell.up .snow-friend { translate: -50% -40px; }
+.snow-cell.hit .snow-friend { translate: -50% 0; transition-duration: 0.25s; }
+.snow-cell.hit::after { content: ''; position: absolute; left: 50%; top: 18px; width: 36px; height: 36px; margin-left: -18px; border-radius: 50%; background: radial-gradient(circle, #fff 0 45%, rgba(255, 255, 255, 0) 70%); }
+.w-leaves { position: relative; height: 46px; border-radius: 6px; background: linear-gradient(#bfe0f3, #eaf4f9); border: 2px solid var(--ink); overflow: hidden; }
+.w-leaf { position: absolute; width: 10px; height: 7px; margin-left: -5px; border-radius: 0 80% 0 80%; background: #E07A2E; border: 1px solid var(--ink); transition: top 0.25s linear; }
+.w-leaf.c1 { background: #C9452B; } .w-leaf.c2 { background: #F0B53A; }
+.w-snow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
+.w-snow span { height: 16px; border-radius: 6px 6px 3px 3px; background: #fff; border: 1.5px solid var(--ink); }
+.w-snow span.up { background: #FFD45C; }

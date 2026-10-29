@@ -7,6 +7,7 @@ import { Character, type Pose } from '../art/Character'
 import { DEFAULT_OUTFIT, type Outfit } from '../engine/outfit'
 import { Cup, DieFace, MiniIcon, PlayingCard } from '../art/MiniArt'
 import type { MiniView } from './miniView'
+import { ThemeArt } from '../art/Scenery'
 
 // 미니게임 화면. 결과: 0 실패, 1 성공, 2 대성공 (대결 timing은 0~100점)
 // level 0 쉬움 ~ 2 어려움 (능력치가 높을수록 쉬움)
@@ -47,6 +48,8 @@ const HOW: Record<string, string> = {
   slot: '시작을 누르면 릴 3개가 돌아요. 버튼으로 하나씩 멈춰서 같은 그림을 맞추세요.',
   snap: '랜드마크가 왔다 갔다 해요. 사진 틀 안에 들어왔을 때 "찰칵!"을 누르세요. 3장 중 잘 찍은 사진이 많을수록 좋아요.',
   pack: '물건이 하나씩 나와요. 여행에 필요한 것은 챙기고, 필요 없는 것은 두고 가세요. 시간 안에 골라야 해요.',
+  leaves: '낙엽이 위에서 떨어져요. 땅에 닿기 전에 낙엽을 눌러서 잡으세요. 8초 동안 목표만큼 잡으면 성공이에요.',
+  snowball: '눈벽 뒤에서 친구가 고개를 내밀어요. 숨기 전에 눌러서 눈덩이를 맞히세요. 10번 나와요.',
   timing: '바늘이 왔다 갔다 해요. 가운데 초록 구역에 왔을 때 "멈춰!"를 누르세요. 가운데에 가까울수록 점수가 높아요.',
 }
 
@@ -64,6 +67,7 @@ const MINI_THEME: Record<string, string> = {
   firstImpression: 'fest', rhythm: 'fest', confess: 'fest', dance: 'fest',
   oddEven: 'casino', highLow: 'casino', slot: 'casino',
   snap: 'travel', pack: 'travel', photo: 'travel',
+  leaves: 'fall', snowball: 'snow',
 }
 const THEME_LANDMARK: Record<string, string> = { sport: '운동회', brain: '두뇌 올림피아드', fest: '축제 거리', casino: '카지노', travel: '세계일주' }
 
@@ -139,6 +143,8 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
     switch (mini.game) {
       case 'timing': return <Timing level={mini.level} rounds={1} duel={isDuel} onDone={done} report={report} />
       case 'tug': return <Tug level={mini.level} onDone={done} report={report} />
+      case 'leaves': return <Leaves level={mini.level} onDone={done} report={report} />
+      case 'snowball': return <Snowball level={mini.level} onDone={done} report={report} />
       case 'throw': return <Throw level={mini.level} outfit={outfit} age={age} onDone={done} report={report} />
       case 'confess': return <Confess level={mini.level} onDone={done} />
       case 'rhythm': return <Rhythm level={mini.level} onDone={done} report={report} />
@@ -162,7 +168,7 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
       <div className={`mini-wrap${watch ? ' has-watch' : ''}`}>
       {watch}
       <div className={`sheet mini theme-${MINI_THEME[mini.game] ?? 'duel'}`}>
-        <div className="mini-art">{isDuel ? <EventArt type="afterRoll" /> : <Landmark name={THEME_LANDMARK[MINI_THEME[mini.game]] ?? ''} />}</div>
+        <div className="mini-art">{isDuel ? <EventArt type="afterRoll" /> : MINI_THEME[mini.game] === 'fall' || MINI_THEME[mini.game] === 'snow' ? <ThemeArt kind={MINI_THEME[mini.game] as 'fall' | 'snow'} /> : <Landmark name={THEME_LANDMARK[MINI_THEME[mini.game]] ?? ''} />}</div>
         <div className="mini-head">
           <h2 className="jua">{MINI_NAMES[mini.game]}</h2>
           <span className="mini-level">난이도 {LEVEL_NAME[mini.level]}</span>
@@ -597,6 +603,94 @@ function Mash({ level, outfit, age, onDone, report }: { level: number; outfit: O
         {started ? '달려!' : '누르면 시작'}
       </button>
       {keyHint && <p className="muted center">⌨️ 키보드로: 스페이스바를 연타해요</p>}
+    </div>
+  )
+}
+
+// ───── 테마 맵 게임 (2026-10-29) ─────
+// 가을 낙엽 잡기: 떨어지는 낙엽을 땅에 닿기 전에 누름. 체력이 높을수록 천천히 떨어지고 목표가 적음
+const LEAVES_T = 8
+function Leaves({ level, onDone, report }: { level: number; onDone: (v: number) => void; report?: Report }) {
+  const goal = [8, 10, 12][level]
+  const fall = [2.6, 2.1, 1.7][level] // 위에서 땅까지 초
+  const leaves = useMemo(() => Array.from({ length: Math.floor((LEAVES_T - 0.6) / 0.42) }, (_, i) => ({ id: i, at: i * 0.42, x: 6 + Math.random() * 82, c: i % 3 })), [])
+  const [t, setT] = useState(0)
+  const [caught, setCaught] = useState<number[]>([])
+  const caughtRef = useRef<number[]>([])
+  useEffect(() => {
+    const t0 = performance.now()
+    let raf = 0
+    const tick = (now: number) => {
+      const s = (now - t0) / 1000
+      setT(s)
+      if (s >= LEAVES_T) { const c = caughtRef.current.length; onDone(c >= goal + 3 ? 2 : c >= goal ? 1 : 0); return }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [goal, onDone])
+  const falling = leaves.filter((l) => t >= l.at && t < l.at + fall && !caught.includes(l.id))
+  const yOf = (l: { at: number }) => ((t - l.at) / fall) * 100
+  const catchLeaf = (id: number) => { if (caughtRef.current.includes(id)) return; caughtRef.current = [...caughtRef.current, id]; setCaught(caughtRef.current); sfx('pop') }
+  const left = Math.max(0, Math.ceil(LEAVES_T - t))
+  const xs = falling.map((l) => Math.round(l.x)).join(',')
+  const ys = falling.map((l) => Math.round(yOf(l) / 5) * 5).join(',') // 장면은 5% 단위로만 (너무 자주 안 바뀌게)
+  useEffect(() => { report?.({ n: caught.length, m: goal, left, xs: xs ? xs.split(',').map(Number) : [], ys: ys ? ys.split(',').map(Number) : [] }) }, [report, caught.length, goal, left, xs, ys])
+  return (
+    <div className="mini-body">
+      <p>낙엽을 눌러서 잡으세요! 목표 {goal}개</p>
+      <div className="leaf-field">
+        {falling.map((l) => (
+          <button key={l.id} className={`leaf-btn c${l.c}`} style={{ left: `${l.x}%`, top: `${yOf(l) * 0.86}%`, rotate: `${Math.sin(t * 3 + l.id) * 40}deg` }} onPointerDown={(e) => { e.preventDefault(); catchLeaf(l.id) }} aria-label="낙엽"><i /></button>
+        ))}
+        <div className="leaf-ground" />
+      </div>
+      <div className="mini-big jua">{caught.length}개 · {left}초</div>
+    </div>
+  )
+}
+
+// 겨울 눈싸움: 눈벽 6개 중 하나에서 친구가 고개를 내밀면 숨기 전에 눌러 맞힘. 10번
+const SNOW_TOTAL = 10
+function Snowball({ level, onDone, report }: { level: number; onDone: (v: number) => void; report?: Report }) {
+  const up = [1.0, 0.8, 0.62][level] // 고개를 내밀고 있는 초
+  const gap = 0.35
+  const goal = [6, 7, 8][level]
+  const slots = useMemo(() => { const r: number[] = []; for (let i = 0; i < SNOW_TOTAL; i++) { let k = rand(6); if (k === r[i - 1]) k = (k + 1 + rand(5)) % 6; r.push(k) } return r }, [])
+  const [t, setT] = useState(0)
+  const [hits, setHits] = useState<number[]>([])
+  const hitsRef = useRef<number[]>([])
+  const end = SNOW_TOTAL * (up + gap) + 0.3
+  useEffect(() => {
+    const t0 = performance.now()
+    let raf = 0
+    const tick = (now: number) => {
+      const s = (now - t0) / 1000
+      setT(s)
+      if (s >= end) { const h = hitsRef.current.length; onDone(h >= Math.min(SNOW_TOTAL, goal + 2) ? 2 : h >= goal ? 1 : 0); return }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [end, goal, onDone])
+  const i = Math.floor(t / (up + gap))
+  const upNow = i < SNOW_TOTAL && t - i * (up + gap) >= gap && !hits.includes(i)
+  const slot = upNow ? slots[i] : -1
+  const hitSlot = hits[hits.length - 1] === i ? slots[i] : -1 // 방금 맞힌 자리 (눈 튀김)
+  const throwAt = (k: number) => { if (k !== slot || hitsRef.current.includes(i)) return; hitsRef.current = [...hitsRef.current, i]; setHits(hitsRef.current); sfx('pop') }
+  useEffect(() => { report?.({ pos: slot, right: hits.length, n: Math.min(i, SNOW_TOTAL), m: SNOW_TOTAL }) }, [report, slot, hits.length, i])
+  return (
+    <div className="mini-body">
+      <p>친구가 나오면 눌러서 맞히세요! 목표 {goal}번</p>
+      <div className="snow-grid">
+        {Array.from({ length: 6 }, (_, k) => (
+          <button key={k} className={`snow-cell${k === slot ? ' up' : ''}${k === hitSlot ? ' hit' : ''}`} onPointerDown={(e) => { e.preventDefault(); throwAt(k) }} aria-label={`눈벽 ${k + 1}`}>
+            <span className="snow-friend"><Character outfit={DEFAULT_OUTFIT} pose="idle" expr={k === hitSlot ? 'sad' : 'happy'} size={44} crop="head" /></span>
+            <span className="snow-wall" />
+          </button>
+        ))}
+      </div>
+      <div className="mini-big jua">맞힘 {hits.length} · {Math.min(i + 1, SNOW_TOTAL)}/{SNOW_TOTAL}</div>
     </div>
   )
 }

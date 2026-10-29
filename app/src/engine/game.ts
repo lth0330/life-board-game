@@ -8,10 +8,10 @@ import {
 } from './data'
 import { DEFAULT_OUTFIT, randomOutfit, type Outfit } from './outfit'
 import { makeRng, type Rng } from './rng'
-import { DILEMMAS, findEvent, SPECIALS, specialDesc, type SpecialEvent, type SpecialOption } from './special'
+import { DILEMMAS, findEvent, SPECIALS, specialDesc, THEME_EVENTS, type SpecialEvent, type SpecialOption } from './special'
 import { speechLine, type SpeechKey } from './speech'
 import type {
-  ChanceCard, ChoiceOption, DiceItem, DuelId, GameState, InsuranceKind, JobDef, MiniId, Pending, Personality, Player,
+  ChanceCard, ChoiceOption, DiceItem, DuelId, GameState, InsuranceKind, JobDef, MapTheme, MiniId, Pending, Personality, Player,
   Biz, Kid, SabotageCard, Sector, Settings, Stage, StageId, StatKey, Suitor, Tile,
 } from './types'
 
@@ -1485,6 +1485,17 @@ function uniTile(s: GameState, p: Player, ev: string) {
   void rng
 }
 
+// ───────── 테마 맵 (2026-10-29 사용자): 테마마다 미니게임 1개 + 사건 4개, 가끔 섞여 나옴 ─────────
+const THEME_EVENT_CHANCE = 0.25 // 좋은 일·랜덤이벤트 칸 중
+const THEME_MINI_CHANCE = 1 / 3 // 미니게임 칸·단계 끝 대회 중
+const THEME_GAME: Record<MapTheme, MiniId> = { autumn: 'leaves', winter: 'snowball' }
+const THEME_LABEL: Record<MapTheme, string> = { autumn: '🍂 가을 이벤트', winter: '❄️ 겨울 이벤트' }
+const themePool = (theme: MapTheme): Partial<Record<StageId, SpecialEvent[]>> => {
+  const all = THEME_EVENTS[theme]
+  const noStats = all.filter((e) => e.options.every((o) => !o.stats && !o.check?.win.stats))
+  return { child: all, student: all, young: all, middle: all, old: noStats }
+}
+
 const POP_ART: Record<string, string> = { special: 'card', dilemma: 'card', money: 'money', risk: 'warn', card: 'card', happy: 'rest', date: 'heart', mini: 'medal' }
 const POP_TITLE: Record<string, string> = { special: '특별 이벤트', dilemma: '양심 선택', money: '돈 칸', risk: '위기 칸', card: '랜덤이벤트', happy: '행복 칸', date: '연애 칸', mini: '미니게임' }
 
@@ -1514,7 +1525,9 @@ function land(s: GameState) {
   const sc = scaleOf(s)
   const road = t.road
   const logStart = s.logCount
-  const kind = t.kind === 'good' ? pickGood(s) : t.kind
+  const theme = s.settings.theme
+  // 테마 맵: 좋은 일·랜덤이벤트 칸의 약 1/4은 테마 사건 (2026-10-29 사용자)
+  const kind = theme && (t.kind === 'good' || t.kind === 'card') && rng.chance(THEME_EVENT_CHANCE) ? 'theme' : t.kind === 'good' ? pickGood(s) : t.kind
   let popArt = POP_ART[kind]
   let popTitle = POP_TITLE[kind]
   switch (kind) {
@@ -1573,7 +1586,15 @@ function land(s: GameState) {
     case 'risk': riskTile(s, p, road === 'startup' ? 2 : 1); break
     case 'card': drawCard(s, p); break
     case 'date': dateTile(s, p); break
-    case 'mini': startMini(s, p, t.mini!); break
+    case 'theme': specialTile(s, p, themePool(theme!), THEME_LABEL[theme!]); break
+    case 'mini': {
+      // 테마 맵: 미니게임 칸의 약 1/3은 테마 게임 (보상은 원래 칸 게임대로). 카지노·축제 거리(연애)는 그대로
+      const g = t.mini!
+      const keep = CASINO.includes(g) || (FEST_GAMES.includes(g) && stageOf(s).id === 'young')
+      if (theme && !keep && rng.chance(THEME_MINI_CHANCE)) startMini(s, p, THEME_GAME[theme], undefined, g)
+      else startMini(s, p, g)
+      break
+    }
     case 'stop':
       if (t.stop === 'job' && p.campusTurns > 0) {
         p.campusTurns = 0
@@ -1883,6 +1904,7 @@ const MINI_STAT: Record<MiniId, StatKey | 'fortune' | null> = {
   firstImpression: 'cha', rhythm: 'cha', confess: 'cha', dance: 'cha',
   oddEven: 'fortune', highLow: 'fortune', slot: 'fortune',
   snap: 'str', pack: 'int', photo: 'int',
+  leaves: 'str', snowball: 'str',
 }
 export const MINI_NAMES: Record<MiniId | DuelId, string> = {
   race: '달리기', tug: '줄다리기', throw: '공 던지기',
@@ -1890,6 +1912,7 @@ export const MINI_NAMES: Record<MiniId | DuelId, string> = {
   firstImpression: '첫인상', rhythm: '무대 공연', confess: '고백 타이밍', dance: '댄스 따라 하기',
   oddEven: '홀짝', highLow: '카드 높낮이', slot: '슬롯머신',
   snap: '사진 찍기', pack: '짐 싸기', photo: '여행 코스 기억',
+  leaves: '낙엽 잡기', snowball: '눈싸움',
   dice: '주사위 대결', rps: '가위바위보', timing: '타이밍 멈추기',
 }
 const CASINO: MiniId[] = ['oddEven', 'highLow', 'slot']
@@ -1910,7 +1933,7 @@ const FEST_GAMES: MiniId[] = ['firstImpression', 'rhythm', 'confess', 'dance']
 // 축제 거리(청년): 칸마다 누구와 할지 고름. 예전에 만난 사람 또는 새 사람(랜덤). 만난 사람이 없으면 새 사람 (2026-10-21 사용자)
 const festPartners = (p: Player) => [...p.suitors].filter((x) => x.affinity < 100).sort((a, b) => b.affinity - a.affinity).slice(0, 4)
 
-function startMini(s: GameState, p: Player, game: MiniId, target?: string) {
+function startMini(s: GameState, p: Player, game: MiniId, target?: string, as?: MiniId) {
   const level = miniLevel(p, game)
   const casino = CASINO.includes(game)
   const fest = FEST_GAMES.includes(game) && stageOf(s).id === 'young' && !p.spouse
@@ -1951,13 +1974,13 @@ function startMini(s: GameState, p: Player, game: MiniId, target?: string) {
     p.lottery.chance = Math.min(50, p.lottery.chance + 5)
   }
   if (p.human) {
-    s.mini = { game, playerId: p.id, level, stake, target }
+    s.mini = { game, playerId: p.id, level, stake, target, ...(as ? { as } : {}) }
     return
   }
   // AI: 능력치에 비례한 확률로 결과
   const grade = aiGrade(rngOf(s), level)
   log(s, p.id, `[${MINI_NAMES[game]}] ${['실패', '성공', '대성공'][grade]}`, grade ? 'good' : 'bad')
-  miniReward(s, p, game, grade, stake, target)
+  miniReward(s, p, as ?? game, grade, stake, target, game)
 }
 
 // 사람이 미니게임을 마치면 화면에서 부름. grade: 0 실패, 1 성공, 2 대성공 / 대결 timing이면 점수(0~100)
@@ -2001,7 +2024,7 @@ export function finishMini(s: GameState, value: number, who?: number) {
   }
   const miniStart = s.logCount
   if (m.duel) resolveDuel(s, m.game as DuelId, m.duel.ids, { ...m.duel.results, [p.id]: value })
-  else miniReward(s, p, m.game as MiniId, Math.max(0, Math.min(2, Math.round(value))), m.stake, m.target)
+  else miniReward(s, p, m.as ?? (m.game as MiniId), Math.max(0, Math.min(2, Math.round(value))), m.stake, m.target, m.game as MiniId)
   showPop(s, p, miniStart, 'medal', m.duel ? '대결 결과' : '미니게임 결과')
   resume(s)
 }
@@ -2052,7 +2075,8 @@ function startContest(s: GameState): boolean {
   const games = CONTEST_GAMES[st.id]
   if (!games) return false
   const rng = rngOf(s)
-  const game = rng.pick(games)
+  const theme = s.settings.theme
+  const game = theme && rng.chance(THEME_MINI_CHANCE) ? THEME_GAME[theme] : rng.pick(games) // 테마 맵이면 테마 게임도 가끔
   const results: Record<number, number> = {}
   for (const q of s.players) if (!q.human) results[q.id] = aiGrade(rng, miniLevel(q, game))
   log(s, null, `${st.name} 단계 끝! ${CONTEST_NAMES[st.id]}: ${MINI_NAMES[game]}`, 'info')
@@ -2129,7 +2153,9 @@ export function miniGuide(s: GameState, game: MiniId | DuelId, duel: boolean, co
     return { stat, reward }
   }
   if (duel) return { stat: '같은 칸에 선 사람끼리 점수로 겨뤄요', reward: `1등이 꼴찌에게서 ${won(DUEL_STAKE[stageOf(s).id] ?? scaleOf(s))}을 받아요` }
-  const k = MINI_STAT[game as MiniId]
+  const shown = game
+  if (s.mini?.game === game && s.mini.as) game = s.mini.as // 테마 게임: 보상은 원래 칸 게임대로
+  const k = MINI_STAT[shown as MiniId]
   const stat = k === 'fortune' ? '운세가 좋을수록 유리해요' : k ? `${STAT_NAMES[k]}이 높을수록 쉬워요` : '운에 맡겨요'
   const chance = ' · 대성공이면 가끔 찬스 카드'
   let reward: string
@@ -2142,8 +2168,9 @@ export function miniGuide(s: GameState, game: MiniId | DuelId, duel: boolean, co
   return { stat, reward: reward + chance }
 }
 
-function miniReward(s: GameState, p: Player, game: MiniId, grade: number, stake?: number, target?: string) {
-  const name = MINI_NAMES[game]
+// game: 보상 종류(칸의 게임), played: 실제로 한 게임 (테마 게임이면 다름)
+function miniReward(s: GameState, p: Player, game: MiniId, grade: number, stake?: number, target?: string, played: MiniId = game) {
+  const name = MINI_NAMES[played]
   if (grade === 2 && !p.chance && rngOf(s).chance(0.25)) giveChance(s, p, randomChance(rngOf(s)))
   const statUp = (k: StatKey, n: number) => { p.stats[k] = clampStat(p.stats[k] + n) }
   if (['race', 'tug', 'throw'].includes(game)) {

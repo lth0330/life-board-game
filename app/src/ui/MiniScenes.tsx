@@ -7,6 +7,20 @@ import type { MiniView } from './miniView'
 export function MiniScene({ game, view, outfit, age }: { game: string; view: MiniView; outfit: Outfit; age?: number }) {
   const v = view
   switch (game) {
+    case 'leaves':
+      return (
+        <>
+          <div className="w-leaves">{(v.xs ?? []).map((x, i) => <span key={i} className={`w-leaf c${i % 3}`} style={{ left: `${x}%`, top: `${(v.ys?.[i] ?? 0) * 0.85}%` }} />)}</div>
+          <div className="w-text">{v.n ?? 0}/{v.m}개 · {v.left ?? 8}초</div>
+        </>
+      )
+    case 'snowball':
+      return (
+        <>
+          <div className="w-snow">{Array.from({ length: 6 }, (_, k) => <span key={k} className={k === v.pos ? 'up' : ''} />)}</div>
+          <div className="w-text">맞힘 {v.right ?? 0} · {Math.min((v.n ?? 0) + 1, v.m ?? 10)}/{v.m ?? 10}</div>
+        </>
+      )
     case 'timing':
       return (
         <>

@@ -14,6 +14,7 @@ export type MiniId =
   | 'firstImpression' | 'rhythm' | 'confess' | 'dance'
   | 'oddEven' | 'highLow' | 'slot'
   | 'snap' | 'pack' | 'photo'
+  | 'leaves' | 'snowball' // 테마 맵 전용: 가을 낙엽 잡기·겨울 눈싸움 (2026-10-29)
 export type DuelId = 'dice' | 'rps' | 'timing'
 export type DiceItem = 'twin' | 'even' | 'odd'
 
@@ -118,6 +119,7 @@ export interface MiniState {
   level: number // 0 쉬움 ~ 2 어려움 (능력치가 높을수록 쉬움)
   stake?: number // 카지노 판돈
   target?: string // 축제 거리에서 고른 상대 ('old:이름:등급' 또는 'new')
+  as?: MiniId // 테마 게임이 원래 칸 게임 대신 나왔을 때: 보상은 원래 게임대로
   // 같은 칸 대결(타이밍). 2026-10-29부터 contest와 같이 모두 동시에 (results는 contest 쪽, 점수 0~100). queue는 예전 저장용
   duel?: { ids: number[]; results: Record<number, number>; queue?: number[] }
   // 단계 끝 대회: 모두 같은 미니게임을 동시에. results는 등급(0~2), queue는 아직 안 끝낸 사람, seed는 AI 장면용

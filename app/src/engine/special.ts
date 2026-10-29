@@ -1,7 +1,7 @@
 // 특별 이벤트 (2026-10-17 사용자): '좋은 일' 칸의 성장 몫 절반을 고르는 사건으로.
 // 능력치는 공짜로 오르지 않고 돈·행복·운(판정)과 바꿈. 돈 100만 = 행복 1 = 점수 1 (SCORE_PER_POINT)
 import { SCORE_PER_POINT } from './data'
-import type { StageId, StatKey } from './types'
+import type { MapTheme, StageId, StatKey } from './types'
 
 export interface SpecialOption {
   id: string
@@ -213,8 +213,80 @@ export const DILEMMAS: Partial<Record<StageId, SpecialEvent[]>> = {
     },
   ],
 }
-// 특별 이벤트·양심 선택에서 찾기
-export const findEvent = (stage: StageId, id: string) => [...(SPECIALS[stage] ?? []), ...(DILEMMAS[stage] ?? [])].find((e) => e.id === id)
+// 테마 맵 사건 (2026-10-29 사용자): 좋은 일·랜덤이벤트 칸에서 가끔. 크기는 지금 사건과 같게
+// 단계와 상관없이 나옴. 능력치가 바뀌는 사건은 노년에 안 나옴 (노년은 능력치가 안 바뀜)
+export const THEME_EVENTS: Record<MapTheme, SpecialEvent[]> = {
+  autumn: [
+    {
+      id: 'th-maple', title: '단풍 구경', text: '산이 울긋불긋 물들었어요. 단풍 구경을 갈까요?',
+      options: [
+        { id: 'far', label: '🚗 멀리 단풍 명소로', cost: 2, happy: 6 },
+        { id: 'near', label: '🍁 동네 공원 산책', happy: 3 },
+        { id: 'work', label: '💼 그 시간에 할 일 하기', gain: 1, happy: -1 },
+      ],
+    },
+    {
+      id: 'th-chestnut', title: '밤 줍기', text: '뒷산에서 알밤을 한 바구니 주웠어요. 이웃 할머니가 부러운 눈으로 봐요.',
+      options: [
+        { id: 'share', label: '🤝 할머니와 나누기', happy: 2, luck: 1 },
+        { id: 'sell', label: '🌰 다 팔기', gain: 2, happy: 1, luck: -1 },
+      ],
+    },
+    {
+      id: 'th-harvest', title: '추수 축제', text: '마을 추수 축제가 열렸어요. 씨름 대회도 있대요!',
+      options: [
+        { id: 'wrestle', label: '💪 씨름 나가기', check: { stat: 'str', need: 7, win: { stats: { str: 1 }, happy: 3 }, lose: { happy: -1 } } },
+        { id: 'eat', label: '🍠 군고구마 사 먹기', cost: 1, happy: 4 },
+        { id: 'help', label: '🧺 일손 돕기', othersHappy: 1, happy: 1 },
+      ],
+    },
+    {
+      id: 'th-read', title: '독서의 계절', text: '선선한 가을, 무엇을 해 볼까요?',
+      options: [
+        { id: 'book', label: '📚 책 읽기', stats: { int: 1 } },
+        { id: 'run', label: '🏃 마라톤 연습', stats: { str: 1 } },
+        { id: 'nap', label: '😴 낮잠', happy: 3 },
+      ],
+    },
+  ],
+  winter: [
+    {
+      id: 'th-snowman', title: '눈사람 만들기', text: '밤새 함박눈이 왔어요! 눈사람을 만들어요.',
+      options: [
+        { id: 'big', label: '⛄ 아주 크게', check: { stat: 'str', need: 6, win: { happy: 5 }, lose: { happy: 1 } } },
+        { id: 'together', label: '🧤 친구들과 같이', othersHappy: 1, happy: 2 },
+        { id: 'inside', label: '🛋️ 창밖으로 구경만', happy: 1 },
+      ],
+    },
+    {
+      id: 'th-ice', title: '빙판길', text: '집 앞 길이 꽁꽁 얼었어요. 사람들이 미끄러질 것 같아요.',
+      options: [
+        { id: 'sand', label: '🧂 모래 뿌리기', cost: 1, luck: 1 },
+        { id: 'pass', label: '🙈 그냥 지나가기', risk: { chance: 0.4, happy: -3 } },
+      ],
+    },
+    {
+      id: 'th-xmas', title: '크리스마스', text: '거리가 반짝반짝해요. 선물을 어떻게 할까요?',
+      options: [
+        { id: 'all', label: '🎁 모두에게 선물', cost: 2, othersHappy: 1, happy: 2, luck: 1 },
+        { id: 'family', label: '🎄 우리 집만 조촐하게', cost: 1, happy: 3 },
+        { id: 'none', label: '🙅 선물 없이 아끼기', gain: 1, happy: -1 },
+      ],
+    },
+    {
+      id: 'th-blizzard', title: '폭설', text: '눈이 너무 많이 와서 길이 막혔어요.',
+      options: [
+        { id: 'shovel', label: '❄️ 동네 눈 치우기', stats: { str: 1 }, luck: 1 },
+        { id: 'home', label: '🍲 집에서 따뜻하게', happy: 3 },
+        { id: 'go', label: '💼 그래도 나가서 일하기', gain: 2, risk: { chance: 0.3, happy: -2 } },
+      ],
+    },
+  ],
+}
+const ALL_THEME_EVENTS = [...THEME_EVENTS.autumn, ...THEME_EVENTS.winter]
+
+// 특별 이벤트·양심 선택·테마 사건에서 찾기
+export const findEvent = (stage: StageId, id: string) => [...(SPECIALS[stage] ?? []), ...(DILEMMAS[stage] ?? []), ...ALL_THEME_EVENTS].find((e) => e.id === id)
 
 const STAT_LABEL: Record<StatKey, string> = { int: '지력', str: '체력', cha: '매력' }
 const statText = (st?: Partial<Record<StatKey, number>>) =>

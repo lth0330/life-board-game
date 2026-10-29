@@ -66,6 +66,33 @@ export function TitleScenery() {
 }
 
 // 게임 안 하늘 (지평선 위): 해·흘러가는 구름·산·새. 색은 단계마다 CSS 변수로
+// 테마 게임 창 위 그림 (2026-10-29): 가을 단풍나무, 겨울 눈사람
+export function ThemeArt({ kind }: { kind: 'fall' | 'snow' }) {
+  return (
+    <svg viewBox="0 0 260 200" width="100%" height="100%" aria-hidden="true">
+      <g stroke={K} strokeWidth="3" strokeLinejoin="round">
+        {kind === 'fall' ? (
+          <>
+            <ellipse cx="130" cy="186" rx="110" ry="14" fill="#D8C377" />
+            <rect x="120" y="110" width="20" height="76" rx="5" fill="#8A5A3B" />
+            <circle cx="96" cy="92" r="38" fill="#E07A2E" /><circle cx="164" cy="90" r="40" fill="#C9452B" /><circle cx="130" cy="58" r="44" fill="#F0B53A" />
+            {[[60, 176, '#E07A2E'], [196, 180, '#C9452B'], [150, 182, '#F0B53A'], [88, 184, '#C9452B']].map(([x, y, c], i) => <path key={i} d={`M${x} ${y}q8-10 16 0q-8 8-16 0z`} fill={c as string} strokeWidth="2" />)}
+          </>
+        ) : (
+          <>
+            <ellipse cx="130" cy="186" rx="110" ry="14" fill="#F4F8FB" />
+            <circle cx="130" cy="148" r="40" fill="#fff" /><circle cx="130" cy="84" r="28" fill="#fff" />
+            <path d="M104 62h52l-6-26h-40z" fill="#C2452D" /><path d="M98 64h64" strokeWidth="6" />
+            <circle cx="120" cy="80" r="3" fill={K} /><circle cx="140" cy="80" r="3" fill={K} /><path d="M130 88l14 4-14 3z" fill="#F08A3A" strokeWidth="2" />
+            <path d="M104 104q26 12 52 0" fill="none" stroke="#4C8FD6" strokeWidth="8" strokeLinecap="round" />
+            <path d="M92 138l-34-20M168 138l34-20" fill="none" stroke="#8A5A3B" strokeWidth="5" strokeLinecap="round" />
+          </>
+        )}
+      </g>
+    </svg>
+  )
+}
+
 // 테마 맵 날씨: 가을은 떨어지는 낙엽, 겨울은 눈 (2026-10-29). 위치·속도는 고정 값이라 매번 같은 모양
 export function Weather({ kind }: { kind: 'leaves' | 'snow' }) {
   return (
