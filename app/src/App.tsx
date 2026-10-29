@@ -21,9 +21,8 @@ import { EMOTE_COOLDOWN_MS, EMOTE_MS, EmoteBubble, EmotePicker } from './ui/Emot
 import { autoEmote } from './ui/emoteData'
 import { Confetti, DICE_THROW_MS, DiceThrow, StageCard } from './ui/Effects'
 import { Manual } from './ui/Manual'
-import { MiniGame } from './ui/MiniGames'
 import type { MiniView } from './ui/miniView'
-import { MiniWatch, type Watcher } from './ui/MiniWatch'
+import type { Watcher } from './ui/MiniWatch'
 import { BackButton, Frame, MenuScreen, SetupScreen, TitleScreen, type Speed } from './ui/Screens'
 import { CardsSheet, FinanceSheet, GameOver, JobsSheet, MyInfoSheet, PeopleSheet, StageSummary, TeamBadge } from './ui/Sheets'
 import { playerLine, won } from './ui/format'
@@ -34,6 +33,10 @@ const Online = lazy(() => import('./online/Online').then((m) => ({ default: m.On
 const AuthScreen = lazy(() => import('./account/AuthScreen'))
 const AccountSheet = lazy(() => import('./account/AccountSheet'))
 const AdminScreen = lazy(() => import('./account/AdminScreen'))
+// 미니게임 화면은 처음 화면에 필요 없어서 따로 받음 (2026-10-29: 첫 화면 빨리). 게임 화면이 열리면 미리 받아 둠
+const loadMini = () => Promise.all([import('./ui/MiniGames'), import('./ui/MiniWatch')])
+const MiniGame = lazy(() => import('./ui/MiniGames').then((m) => ({ default: m.MiniGame })))
+const MiniWatch = lazy(() => import('./ui/MiniWatch').then((m) => ({ default: m.MiniWatch })))
 const account = () => import('./account/api')
 
 const SPEED_MS: Record<Speed, number> = { fast: 450, normal: 1000, slow: 1700 }
@@ -406,6 +409,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
   const myTurn = isMine(p.id) && canAct(game) && !busy
   const st = stageOf(game)
   useEffect(() => { setBgmStage(st.id) }, [st.id])
+  useEffect(() => { void loadMini().catch(() => {}) }, [])
 
   // ── 단계 끝 대회 (같은 칸 대결 타이밍도 같은 방식) ──
   const contest = game.mini?.contest
@@ -757,6 +761,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
           : <EventPopup art={popShow.art} title={popShow.title} text={popShow.text} tone={popShow.tone} who={game.players[popShow.playerId].name} hint={popMine} onClose={() => setPopShow(null)} />
       )}
 
+      <Suspense fallback={null}>
       {!busy && game.mini && !contest && isMine(game.mini.playerId) && (
         <MiniGame key={`${game.turn}-${game.mini.game}-${game.mini.playerId}`} mini={game.mini} guide={miniGuide(game, game.mini.game, !!game.mini.duel)} practiceLimit={online ? MINI_PRACTICE_LIMIT.online : MINI_PRACTICE_LIMIT.local} outfit={game.players[game.mini.playerId].outfit} age={ageOf(game, game.players[game.mini.playerId])} onFinish={(v) => run(['finishMini', v])} />
       )}
@@ -784,6 +789,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
           </div>
         </div>
       )}
+      </Suspense>
 
       {sheet === 'finance' && (
         <FinanceSheet
