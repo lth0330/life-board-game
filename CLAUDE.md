@@ -26,6 +26,7 @@
 - `aws login`은 2026-10-29에 다시 됨 (만료되면 사용자가 `! aws login`). 배포 확인: `aws amplify list-jobs --app-id d16edqa9h9pqgu --branch-name main`, 또는 사이트 JS를 curl로 받아 새 문구 찾기
 
 ## 작업 주의
+- 게임 규칙 코드: `app/src/engine/game.ts`(차례·이동·칸·결정 처리) + 주제별 `mini.ts`(미니게임·대회·같은 칸 대결) `romance.ts`(연애·결혼) `kids.ts`(자녀) `biz.ts`(창업·동업·사업 기회) `money.ts`(적금·돈 빌려주기). 다른 파일은 지금처럼 `./game`에서 가져오면 됨(`game.ts`가 다시 내보냄). 서로 가져오는 구조라 파일 맨 위(함수 밖)에서 다른 파일의 값을 바로 쓰면 안 됨
 - `package-lock.json`이 어긋나면 Amplify의 `npm ci`가 실패함 → 패키지를 더하면 빈 폴더에서 `npm ci`로 확인
 - 화면 확인: Edge(`C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe`)를 `--remote-debugging-port`로 띄워 CDP 스크립트로 조종·캡처. 서버 없이: `npx vite build --base ./ --outDir <scratchpad>` 뒤 `--allow-file-access-from-files`로 file:// 열기. 한 부분만 볼 땐 임시 `preview.html`+`src/preview.tsx`(커밋 안 함)
 - agent-browser는 그리기를 멈출 때가 있음 → `--disable-renderer-backgrounding,--disable-backgrounding-occluded-windows`. 배포본 시험 뒤 시험 계정·방·행동·프로필은 지우기
@@ -33,7 +34,6 @@
 - 밸런스 결정(바꾸지 않기): AI 성격끼리 점수 차이는 안 맞춤(대신 어려움이면 첫 AI는 가족형), 의사 1위 그대로, 주가 오름세 안 넣음
 
 ## 다음에 할 것
-- 정리: `game.ts`(약 3,300줄)를 주제별 파일로 나누기 (게임 동작은 그대로)
 - 고르기 남은 것: 아이디 계정과 구글 계정 합치기, 봄·여름 미니게임에 새 규칙(지금은 가을·겨울과 같은 규칙), 캐릭터를 그림 파일로 바꿀 계획서, 폰에 앱처럼 설치, '지난 차례 뒤 일어난 일' 창 저절로 닫기, 협력 후보(`06-players.md` 맨 아래)
 - 나중에: 그림·배경을 이미지 파일로 더 좋은 퀄리티로, 판 밖(전체 지도·대기실·미니게임 창) 테마, 겨울 지붕 눈, 진짜 3D(맨 마지막)
 - 사용자에게 물어볼 것: 주사위 굴릴 때 '댓글도 이상해진다'가 어떤 화면인지

@@ -1,20 +1,33 @@
-import { BIZ_OPP, BIZ_RISK, bizEventsFor, findBizEvent, type BizEvent } from './bizEvents'
+import { BIZ_OPP, findBizEvent } from './bizEvents'
 import { buildStages, isEnd, maxDepth, walkAhead } from './board'
 import {
-  AI_NAMES, BIZ, BUSINESSES, CAFE, CARS, CHANCE_NAMES, DICE_ITEMS, FORTUNES, HOUSES, CAR_CRASH_LOSS, CAR_RESALE, HOUSE_RULES, INSURANCE, JOBS, KIDS, LOTTERY_PRICE,
-  MAX_DICE_ITEMS, MEDALS, PENSION, SEVERANCE_RATE, ADULT_BONUS_MULT, PERF_BONUS, SAVINGS_RATE, SCORE_PER_POINT, PERSONALITIES, PLAYER_COLORS,
-  PRESTIGE_JOBS, SABOTAGE_NAMES, SECTORS, SPOUSE_NAMES, STAGE_SCALE, STAT_NAMES, TAX_RATE, TRAITS, JOB_PROS_CONS, JOB_HEALTH,
+  AI_NAMES, BIZ, BUSINESSES, CAFE, CARS, CHANCE_NAMES, DICE_ITEMS, FORTUNES, HOUSES, CAR_RESALE, HOUSE_RULES, INSURANCE, JOBS, KIDS, LOTTERY_PRICE, MEDALS, PENSION,
+  ADULT_BONUS_MULT, PERF_BONUS, SAVINGS_RATE, SCORE_PER_POINT, PERSONALITIES, PLAYER_COLORS, PRESTIGE_JOBS, SABOTAGE_NAMES, SECTORS, STAGE_SCALE,
+  STAT_NAMES, TAX_RATE, JOB_PROS_CONS,
 } from './data'
 import { DEFAULT_OUTFIT, randomOutfit, type Outfit } from './outfit'
 import { makeRng, type Rng } from './rng'
 import { DILEMMAS, findEvent, SPECIALS, specialDesc, THEME_EVENTS, type SpecialEvent, type SpecialOption } from './special'
 import { speechLine, type SpeechKey } from './speech'
 import type {
-  ChanceCard, ChoiceOption, DiceItem, GameState, InsuranceKind, JobDef, MapTheme, MiniId, Pending, Personality, Player, Biz, Kid, SabotageCard, Sector,
-  Settings, Stage, StageId, StatKey, Suitor, Tile,
+  ChanceCard, ChoiceOption, DiceItem, GameState, InsuranceKind, JobDef, MapTheme, MiniId, Personality, Player, SabotageCard, Sector, Settings, Stage,
+  StageId, StatKey, Suitor, Tile,
 } from './types'
 import { affinityGain, CASINO, casinoStake, FEST_GAMES, meet, resolveRps, rpsPending, startContest, startMini } from './mini'
+import {
+  agencyTurn, type Attr, bigPrice, canDate, dateTile, findSuitor, makeSuitor, openShop, shopBuy, type ShopVisit, suitorDesc, triggerPoint,
+} from './romance'
+import { addKid, eduPending, familyTick, isMinor, kidUpkeep } from './kids'
+import {
+  bizBase, bizCost, bizOpportunity, bizOppResult, bizOppRule, bizRankOf, bizReview, bizSale, bizShareGain, bizStatMult, bizTick, carCrashTick,
+  coachChance, forceLiquidate, healthTick, invest, medalPension, offerInvest, paySeverance, sellCompany, severanceNote, startCompany,
+} from './biz'
+import { friendLoanTick, lawsuit, makeFriendLoan } from './money'
+export * from './biz'
+export * from './kids'
 export * from './mini'
+export * from './money'
+export * from './romance'
 
 // ───────── 기본 도우미 ─────────
 
@@ -29,7 +42,7 @@ export const fortuneName = (f: number) => FORTUNES[f]
 export const clampStat = (v: number) => Math.max(0, Math.min(10, v))
 // 직업 특성을 쓰는 직업: 노년엔 은퇴해서 없음 (연금 때문에 직업 기록만 남아 있음)
 export const workJob = (s: GameState, p: Player): JobDef | null => (stageOf(s).id === 'old' ? null : jobOf(p))
-const jobTag = (j: JobDef) => `[${j.name}] `
+export const jobTag = (j: JobDef) => `[${j.name}] `
 
 // ───────── 기분 (2026-10-17 사용자): 최근 5턴 동안 행복이 얼마나 오르내렸나. 쌓인 행복은 마지막 점수, 기분은 지금 삶의 상태 ─────────
 export const MOOD_TURNS = 5
@@ -48,9 +61,9 @@ export const MOOD_AFFINITY = [1, 1, 1.15]
 export const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}만`
 export const STATS: StatKey[] = ['int', 'str', 'cha']
 const SCHOOL_GIFT = 10 // 학생 단계 시작 때 모두에게 (만 원)
-const HOUSE_HAPPY = [0, 1, 1, 2] // 집이 있으면 매 턴 행복 (원룸·아파트 +1, 단독주택 +2)
+export const HOUSE_HAPPY = [0, 1, 1, 2] // 집이 있으면 매 턴 행복 (원룸·아파트 +1, 단독주택 +2)
 export const HOUSE_AFFINITY = 1.1 // 집이 있으면 연애 호감도 +10%
-const STUDENT_ALLOWANCE = 2 // 학생 동안 차례마다 용돈 (만 원, 2026-10-21 사용자: 학생 때 마이너스가 잦아서)
+export const STUDENT_ALLOWANCE = 2 // 학생 동안 차례마다 용돈 (만 원, 2026-10-21 사용자: 학생 때 마이너스가 잦아서)
 
 export function log(s: GameState, playerId: number | null, text: string, tone: 'good' | 'bad' | 'info' = 'info') {
   s.log.push({ turn: s.turn, playerId, text, tone })
@@ -156,7 +169,7 @@ export function scoreOf(s: GameState, p: Player) {
   return { assets, assetScore, happy: p.happy, awardScore, total: assetScore + p.happy + awardScore }
 }
 // 상점·결혼식 같은 소비 (큰손 상 기록)
-function spend(p: Player, amount: number) {
+export function spend(p: Player, amount: number) {
   p.money -= amount
   p.record.spent += amount
 }
@@ -173,7 +186,7 @@ export const loanCap = (s: GameState, p: Player) => Math.max(stageOf(s).id === '
 // 지금 더 빌릴 수 있는 돈
 export const loanLimit = (s: GameState, p: Player) => Math.max(0, loanCap(s, p) - bankDebt(p))
 export const canBankLoan = (s: GameState, p: Player) => isAdultStage(s) && p.creditBad <= 0 && !p.loans.some((l) => (l.kind ?? '일반') === '일반')
-function bankLoan(s: GameState, p: Player, amount: number) {
+export function bankLoan(s: GameState, p: Player, amount: number) {
   p.loans.push({ amount, dueTurn: p.turnsPlayed + LOAN_TURNS, kind: '일반' })
   p.money += amount
   log(s, p.id, `은행에서 ${won(amount)} 빌렸다 (${LOAN_TURNS}턴 안에 갚기)`, 'info')
@@ -509,7 +522,7 @@ function economyTick(s: GameState, p: Player) {
 
 // 주택담보대출: 매 턴 정해진 돈이 자동으로 빠짐. 못 내면 연체, 3번이면 집을 경매로 팖
 // 적금에서 모자란 만큼 꺼냄 (갚을 돈이 모자랄 때)
-function fromSavings(s: GameState, p: Player, need: number) {
+export function fromSavings(s: GameState, p: Player, need: number) {
   const amt = Math.min(p.savings ?? 0, Math.max(0, need - p.money))
   if (amt <= 0) return
   p.savings = (p.savings ?? 0) - amt
@@ -551,523 +564,11 @@ export function mortgagePlan(s: GameState, p: Player, tier: number, coupon = p.c
   const borrow = cost - down
   return { cost, down, borrow, installment: Math.ceil((borrow * (1 + HOUSE_RULES.mortgageRate * HOUSE_RULES.mortgageTurns / 2)) / HOUSE_RULES.mortgageTurns) }
 }
-const hasMortgage = (p: Player) => p.loans.some((l) => l.kind === '주담대')
-
-// ───────── 창업·퇴직금·메달 ─────────
-
-// 사업 능력치: 업종 능력치 하나, 동네 가게는 세 능력치 평균
-const bizStat = (p: Player) => (p.biz?.avg ? Math.round((p.stats.int + p.stats.str + p.stats.cha) / 3) : p.stats[p.biz?.stat ?? 'int'])
-const bizStatMult = (p: Player) => 0.5 + bizStat(p) / 10
-export const medalPension = (p: Player) => p.medals.reduce((a, m) => a + MEDALS[m].pension, 0)
-export const bizCost = (p: Player) => (p.jobId === 'chef' ? BIZ.chefCost : BIZ.cost)
-const bizRankOf = (p: Player, r = p.jobRank) => p.biz?.ranks?.[r] ?? JOBS.find((j) => j.id === 'ceo')!.ranks[r]
-export const bizBase = (p: Player) => (p.biz?.base ?? BIZ.base)[p.jobRank]
-const bizSale = (p: Player) => (p.biz?.sale ?? BIZ.sale)[p.jobRank]
-
-// 매 턴 사업 수익 = 회사 크기 기본 × 능력치 배율 × 운세 배율. 그다음 회사가 크거나 작아질 수 있음
-function bizTick(s: GameState, p: Player, mult: number) {
-  const rng = rngOf(s)
-  const biz = p.biz!
-  const raw = bizBase(p) * bizStatMult(p) * BIZ.fortune[p.fortune] * mult
-  const income = Math.round(raw > 0 ? raw * (1 - TAX_RATE(raw)) : raw)
-  p.money += income
-  shareBiz(s, p, income, '수익')
-  if (income < 0) log(s, p.id, `[운세 ${fortuneName(p.fortune)}] ${biz.name} 적자 ${won(income)}`, 'bad')
-  if (mult < 1) p.happy -= 1 // 노년까지 일하느라 지침
-  const stat = bizStat(p)
-  if (p.fortune >= 2 && p.jobRank < (biz.maxRank ?? 2) && rng.chance(stat * BIZ.growPerStat)) {
-    p.jobRank++
-    log(s, p.id, `${biz.name}가 커졌다! ${bizRankOf(p)} (${biz.avg ? '능력치 평균' : STAT_NAMES[biz.stat]} ${stat} 덕분)`, 'good')
-    s.banner = { title: '회사 성장!', text: `${p.name}: ${biz.name}`, tone: 'good' }
-    say(s, p, 'promoted')
-    if (biz.sector) { s.stockPrice[biz.sector] = Math.round(s.stockPrice[biz.sector] * 1.1); log(s, null, `${p.name}의 회사가 커졌다! ${biz.sector}주 +10%`, 'good') }
-  } else if (p.fortune <= 1 && p.jobRank > 0 && rng.chance(Math.max(0.05, BIZ.fallBase - stat * BIZ.fallPerStat))) {
-    p.jobRank--
-    log(s, p.id, `${biz.name}가 휘청… ${bizRankOf(p)}로 줄었다`, 'bad')
-    if (biz.sector) { s.stockPrice[biz.sector] = Math.max(10, Math.round(s.stockPrice[biz.sector] * 0.85)); log(s, null, `${p.name}의 회사가 휘청! ${biz.sector}주 -15%`, 'bad') }
-  }
-}
-
-// 승진 심사 칸에 사업가가 서면 사업 평가: 이번 턴 사업 수익을 한 번 더 (2026-10-21 사용자)
-function bizReview(s: GameState, p: Player) {
-  const raw = bizBase(p) * bizStatMult(p) * BIZ.fortune[p.fortune]
-  if (raw <= 0) { log(s, p.id, `사업 평가: ${p.biz!.name}가 적자라 보너스가 없다`, 'info'); return }
-  const income = Math.round(raw * (1 - TAX_RATE(raw)))
-  p.money += income
-  log(s, p.id, `사업 평가 좋음! ${p.biz!.name} 수익 한 번 더 +${won(income)}`, 'good')
-  shareBiz(s, p, income, '평가 보너스')
-  s.banner = { title: '사업 평가', text: `${p.name}: +${won(income)}`, tone: 'good' }
-}
-
-// 퇴직금: 꾸준형 직업만. 그만둘 때 월급 × 일한 턴 × 0.3
-export function severanceOf(p: Player) {
-  const job = jobOf(p)
-  return !job || job.boom || p.jobTenure <= 0 ? 0 : Math.round(salaryOf(p) * p.jobTenure * SEVERANCE_RATE)
-}
-// 그만두는 선택지에 붙이는 안내 (2026-10-23 사용자: 퇴직금이 얼마인지 같이)
-export function severanceNote(p: Player) {
-  const job = jobOf(p)
-  if (!job) return ''
-  if (job.boom) return `${job.name}은 퇴직금이 없어요`
-  const amt = severanceOf(p)
-  return amt ? `${job.name} 퇴직금 +${won(amt)} (${p.jobTenure}턴 근무)` : `${job.name} 퇴직금은 아직 없어요 (일한 턴이 없음)`
-}
-function paySeverance(s: GameState, p: Player) {
-  const job = jobOf(p)
-  const amt = severanceOf(p)
-  if (!job || !amt) return
-  p.money += amt
-  log(s, p.id, `${job.name} 퇴직금 +${won(amt)} (${p.jobTenure}턴 근무)`, 'good')
-  p.jobTenure = 0
-}
-
-function startCompany(s: GameState, p: Player, biz: Biz) {
-  const cost = bizCost(p)
-  if (p.money < cost) { p.loans.push({ amount: cost - p.money, dueTurn: p.turnsPlayed + 12, kind: '창업' }); p.money = cost; log(s, p.id, '빚을 내서 창업 자금을 마련했다', 'info') }
-  p.money -= cost
-  setJob(s, p, 'ceo') // 다니던 직장 퇴직금은 여기서 받음
-  p.jobRank = 0 // 모두 소기업부터
-  p.biz = { ...biz }
-  p.sector = biz.sector
-  p.bizKeep = null
-  log(s, p.id, `${biz.name} 창업! (${biz.avg ? '지력·체력·매력 평균' : STAT_NAMES[biz.stat]}이 높을수록 잘 벌고 잘 큼)`, 'good')
-  say(s, p, 'startup')
-  p.biz.investors = []
-  askFounder(s, p)
-}
-
-// ───────── 동업 (2026-10-24 사용자) ─────────
-// 누가 창업하면 다른 사람에게 차례로 투자를 물음. 1,000만 = 회사 몫 10%, 투자금은 창업한 사람에게.
-// 수익·평가 보너스·매각 값의 10%씩 받고, 적자는 나누지 않음
-const canInvest = (q: Player) => !q.finished && q.money >= BIZ.invest
-export function aiInvestDecision(s: GameState, q: Player, founder: Player) {
-  if (q.money < BIZ.invest * 1.5) return false
-  const base = { investor: 0.6, gambler: 0.55, elite: 0.35, family: 0.25, safe: 0.15 }[q.personality]
-  return rngOf(s).chance(Math.max(0.05, Math.min(0.9, base + (bizStat(founder) - 5) * 0.05)))
-}
-// 창업한 사람에게 먼저 투자를 받을지 물음 (2026-10-24 사용자: 원하지 않는데 받으면 안 됨). 투자할 수 있는 사람이 없으면 안 물음
-const AI_TAKE_INVEST = { safe: 0.9, family: 0.8, elite: 0.6, investor: 0.5, gambler: 0.4 }
-function askFounder(s: GameState, founder: Player) {
-  const queue = s.players.filter((q) => q.id !== founder.id && canInvest(q)).map((q) => q.id)
-  if (!queue.length || !founder.biz) return
-  if (founder.human) {
-    s.pending = {
-      type: 'bizTakeInvest', playerId: founder.id, title: '투자를 받을까요?',
-      text: `다른 사람에게 ${founder.biz.name} 투자를 물어봐요. 한 사람이 ${won(BIZ.invest)}을 넣으면 회사 몫 10%를 가져가요. 수익이 나면 매 턴, 회사를 팔면 판 돈의 10%를 그 사람에게 줘요. 적자는 나누지 않아요.`,
-      options: [{ id: 'yes', label: '투자를 받는다', desc: `받으면 한 사람당 +${won(BIZ.invest)}` }, { id: 'no', label: '혼자 한다', desc: '수익을 나누지 않아요' }],
-      data: { queue },
-    }
-    s.phase = 'decision'
-    return
-  }
-  if (rngOf(s).chance(AI_TAKE_INVEST[founder.personality])) offerInvest(s, founder, queue)
-}
-function offerInvest(s: GameState, founder: Player, queue: number[]) {
-  const biz = founder.biz
-  if (!biz) return
-  for (let i = 0; i < queue.length; i++) {
-    const q = s.players[queue[i]]
-    if (!canInvest(q)) continue
-    if (q.human) {
-      const stat = biz.avg ? `능력치 평균 ${bizStat(founder)}` : `${STAT_NAMES[biz.stat]} ${bizStat(founder)}`
-      s.pending = {
-        type: 'bizInvest', playerId: q.id, title: `${founder.name}의 ${biz.name}에 투자할까요?`,
-        text: `${won(BIZ.invest)}을 넣으면 회사 몫 10%를 가져요. 수익이 나면 매 턴 10%, 회사를 팔면 판 돈의 10%를 받아요. 적자는 나누지 않아요. (${founder.name}: ${stat} · 운세 ${fortuneName(founder.fortune)})`,
-        options: [{ id: 'yes', label: `투자한다 (${won(BIZ.invest)})` }, { id: 'no', label: '안 한다' }],
-        data: { founderId: founder.id, queue: queue.slice(i + 1) },
-      }
-      s.phase = 'decision'
-      return
-    }
-    if (aiInvestDecision(s, q, founder)) invest(s, q, founder)
-  }
-}
-function invest(s: GameState, q: Player, founder: Player) {
-  if (!founder.biz || !canInvest(q)) return
-  q.money -= BIZ.invest
-  founder.money += BIZ.invest
-  founder.biz.investors = [...(founder.biz.investors ?? []), q.id]
-  q.record.bizShare = (q.record.bizShare ?? 0) - BIZ.invest
-  log(s, q.id, `${founder.name}의 ${founder.biz.name}에 ${won(BIZ.invest)} 투자! 회사 몫 10%`, 'info')
-}
-function shareBiz(s: GameState, founder: Player, amount: number, what: string) {
-  const ids = founder.biz?.investors ?? []
-  if (amount <= 0 || !ids.length) return
-  const each = Math.round(amount * BIZ.investShare)
-  for (const id of ids) {
-    const q = s.players[id]
-    founder.money -= each
-    q.money += each
-    q.record.bizShare = (q.record.bizShare ?? 0) + each
-  }
-  log(s, founder.id, `동업 나눔(${what}): ${ids.map((id) => s.players[id].name).join('·')}에게 ${won(each)}씩`, 'info')
-}
-// ───────── 사업 기회 (2026-10-24 사용자, engine/bizEvents.ts) ─────────
-export const bizOppCost = (p: Player, ev: BizEvent) => Math.round(BIZ_OPP.cost[p.jobRank] * BIZ_RISK[ev.risk].cost / 10) * 10
-// 점수에 더해지는 것: 사업 능력치의 절반 + 운세
-const bizOppBonus = (p: Player) => Math.round(bizStat(p) / 2) + luckBonus(p)
-function bizOppRule(p: Player, ev: BizEvent) {
-  const r = BIZ_RISK[ev.risk]
-  const b = bizOppBonus(p)
-  return `주사위 + ${b}(사업 능력치 ${bizStat(p)}의 절반${luckBonus(p) ? `, 운세 ${luckBonus(p) > 0 ? '+' : ''}${luckBonus(p)}` : ''}) → ${r.great} 이상 대성공(${ev.grow ? '회사 성장' : `${r.reward}배`}) · ${r.ok} 이상 효과 없음(반만 돌려받음) · 그 밑 실패`
-}
-function bizOpportunity(s: GameState, p: Player) {
-  const rng = rngOf(s)
-  const ev = rng.pick(bizEventsFor(p.biz!.name))
-  const cost = bizOppCost(p, ev)
-  s.pending = {
-    type: 'bizOpp', playerId: p.id, title: `사업 기회: ${ev.title}`,
-    text: `${ev.desc}. 비용 ${won(cost)} · ${BIZ_RISK[ev.risk].name}
-${bizOppRule(p, ev)}`,
-    options: [
-      { id: 'yes', label: `도전한다 (-${won(cost)})`, disabled: p.money < cost },
-      { id: 'no', label: '안 한다' },
-    ],
-    data: { ev: ev.id, cost },
-  }
-}
-function bizOppResult(s: GameState, p: Player, evId: string, cost: number, v: number) {
-  const ev = p.biz && findBizEvent(p.biz.name, evId)
-  if (!ev) return
-  const r = BIZ_RISK[ev.risk]
-  const score = v + bizOppBonus(p)
-  if (score >= r.great) {
-    if (ev.grow && p.jobRank < (p.biz!.maxRank ?? 2)) {
-      p.jobRank++
-      log(s, p.id, `[사업 기회] ${ev.great} ${bizRankOf(p)}! (점수 ${score})`, 'good')
-    } else {
-      const gain = Math.round(cost * r.reward)
-      p.money += gain
-      log(s, p.id, `[사업 기회] ${ev.great} +${won(gain)} (점수 ${score})`, 'good')
-      shareBiz(s, p, gain, ev.title)
-    }
-    p.happy += 2
-    if (ev.sector) { s.stockPrice[ev.sector] = Math.round(s.stockPrice[ev.sector] * 1.15); log(s, null, `${p.name}의 ${ev.title} 성공! ${ev.sector}주 +15%`, 'good') }
-    s.banner = { title: `${ev.title} 대성공!`, text: `${p.name}: 점수 ${score}`, tone: 'good' }
-    say(s, p, 'promoted')
-  } else if (score >= r.ok) {
-    const back = Math.round(cost * BIZ_OPP.okBack)
-    p.money += back
-    log(s, p.id, `[사업 기회] ${ev.ok} 쓴 돈의 절반 +${won(back)} 돌아옴 (점수 ${score})`, 'info')
-    s.banner = { title: `${ev.title}: 효과 없음`, text: `${p.name}: 점수 ${score}`, tone: 'info' }
-  } else {
-    p.happy -= BIZ_OPP.failHappy
-    log(s, p.id, `[사업 기회] ${ev.fail} -${won(cost)}, 행복 -${BIZ_OPP.failHappy} (점수 ${score})`, 'bad')
-    if (ev.sector) { s.stockPrice[ev.sector] = Math.max(10, Math.round(s.stockPrice[ev.sector] * 0.9)); log(s, null, `${p.name}의 ${ev.title} 실패… ${ev.sector}주 -10%`, 'bad') }
-    s.banner = { title: `${ev.title} 실패`, text: `${p.name}: 점수 ${score}`, tone: 'bad' }
-  }
-}
-export function aiBizOpp(s: GameState, p: Player, pd: Pending) {
-  const d = pd.data as { ev: string; cost: number }
-  const ev = p.biz && findBizEvent(p.biz.name, d.ev)
-  if (!ev || p.money < d.cost * 1.5) return false
-  const want = { gambler: 0.9, investor: 0.7, elite: 0.6, family: 0.4, safe: 0.3 }[p.personality] + (bizOppBonus(p) - 3) * 0.1 - (ev.risk === 'normal' ? 0 : 0.15)
-  return rngOf(s).chance(Math.max(0.05, Math.min(0.95, want)))
-}
-
-// 동업으로 번 돈 (받은 돈 - 투자금)
-export const bizShareGain = (_s: GameState, p: Player) => p.record.bizShare ?? 0
-// 내가 투자한 회사들
-export const myStakes = (s: GameState, p: Player) => s.players.filter((f) => f.biz?.investors?.includes(p.id))
-
-function sellCompany(s: GameState, p: Player) {
-  const amt = bizSale(p)
-  p.money += amt
-  log(s, p.id, `${p.biz?.name ?? '회사'}(${bizRankOf(p)})를 팔고 은퇴 +${won(amt)}`, 'good')
-  shareBiz(s, p, amt, '매각')
-  s.banner = { title: '회사 매각', text: `${p.name}: +${won(amt)}`, tone: 'good' }
-  p.bizKeep = false
-  p.jobId = null
-}
-
-const coachChance = (p: Player, rank: number) => Math.min(0.95, 0.2 + p.stats.str * 0.04 + rank * 0.15 + p.medals.length * 0.1)
-
-// 체력이 낮을수록 건강 문제 (성인부터, 노년엔 1.5배)
-function healthTick(s: GameState, p: Player) {
-  const rng = rngOf(s)
-  const str = p.stats.str
-  const job = workJob(s, p)
-  const jobMult = (job && JOB_HEALTH[job.id]) ?? 1 // 직업 특성: 공무원 절반, 개발자 2배, 사업가 1.5배
-  const ch = (str <= 2 ? 0.08 : str <= 4 ? 0.04 : str <= 6 ? 0.02 : 0.01) * (stageOf(s).id === 'old' ? 1.5 : 1) * jobMult
-  if (!rng.chance(ch)) return
-  const what = job?.id === 'dev' ? rng.pick(['거북목이 와서 병원에 다녔다', '밤샘 코딩으로 쓰러졌다', '허리 디스크가 왔다'])
-    : job?.id === 'ceo' ? rng.pick(['사업 스트레스로 위염이 왔다', '과로로 쓰러졌다', '허리 디스크가 왔다'])
-    : rng.pick(['허리 디스크가 왔다', '위염으로 병원에 갔다', '독감으로 입원했다', '무릎을 다쳤다'])
-  badEvent(s, p, { text: `${job && jobMult > 1 ? jobTag(job) : ''}${what} (체력 ${str})`, loss: scaleOf(s) * 3, happyLoss: 2, kind: 'health' })
-}
-
-// 차 사고: 스쿠터는 자주(몸을 다침), 일반차는 적당히, 고급차는 드물지만 수리비가 큼
-function carCrashTick(s: GameState, p: Player) {
-  const rng = rngOf(s)
-  if (!p.car || !rng.chance(CARS[p.car].crash * (stageOf(s).id === 'old' ? 1.5 : 1))) return
-  const sc = scaleOf(s)
-  const crash: Bad[] = [
-    { text: '', loss: 0, happyLoss: 0 },
-    { text: '스쿠터를 타다 넘어져 다쳤다', loss: sc * 2, happyLoss: 3, kind: 'health' },
-    { text: '접촉 사고가 났다', loss: sc * 3, happyLoss: 2, kind: 'car' },
-    { text: '고급차를 긁혔다. 수리비가 비싸다', loss: sc * 5, happyLoss: 1, kind: 'car' },
-  ]
-  badEvent(s, p, crash[p.car])
-  p.carValue = Math.round(p.carValue * (1 - CAR_CRASH_LOSS))
-  log(s, p.id, `${CARS[p.car].name} 가치가 떨어졌다 (지금 ${won(p.carValue)})`, 'info')
-}
-
-// 강제 청산: 가진 돈 → 적금 → 주식(모자란 만큼만) → 차 → 집 순서로 갚음 (2026-10-21 사용자)
-function forceLiquidate(s: GameState, p: Player, overdue: { amount: number }[]) {
-  const need = overdue.reduce((a, l) => a + l.amount, 0)
-  p.loans = p.loans.filter((l) => !overdue.includes(l))
-  fromSavings(s, p, need)
-  for (const k of SECTORS) {
-    if (p.money >= need || !p.stocks[k]) continue
-    const n = Math.min(p.stocks[k], Math.ceil((need - p.money) / Math.max(1, s.stockPrice[k])))
-    const avg = p.stockCost[k] / p.stocks[k]
-    p.money += n * s.stockPrice[k]
-    p.record.stockGain += n * (s.stockPrice[k] - avg)
-    p.stockCost[k] = Math.round(avg * (p.stocks[k] - n))
-    p.stocks[k] -= n
-    log(s, p.id, `강제 청산: ${k}주 ${n}주를 팔았다`, 'bad')
-  }
-  if (p.money < need && p.car > 0) {
-    p.money += carResale(p)
-    log(s, p.id, `강제 청산: ${CARS[p.car].name}를 ${won(carResale(p))}에 팔았다`, 'bad')
-    p.car = 0; p.carValue = 0; p.carCharges = 0
-  }
-  if (p.money < need && p.house > 0) {
-    p.money += Math.round(houseValue(s, p) * HOUSE_RULES.forcedRate)
-    log(s, p.id, `강제 청산: ${HOUSES[p.house].name}을 팔았다`, 'bad')
-    p.house = 0
-    // 집을 판 돈으로 주택담보대출부터 갚음 (집이 없는데 할부금만 남지 않게)
-    const m = p.loans.find((l) => l.kind === '주담대')
-    if (m) {
-      p.money -= m.amount
-      p.loans = p.loans.filter((l) => l !== m)
-      log(s, p.id, `집 판 돈으로 주택담보대출 ${won(m.amount)}을 갚았다`, 'info')
-    }
-  }
-  p.money -= need
-  if (p.money < 0) p.creditBad = 8
-  log(s, p.id, '대출 기한을 넘겨 강제 청산을 당했다', 'bad')
-  s.banner = { title: '강제 청산', text: `${p.name}: 대출 기한을 넘겼어요`, tone: 'bad' }
-}
-
-// 위쪽 정보 줄용: 이번 단계에서 매 턴 대략 얼마가 들어오고 나가는지 (운에 따른 사건 제외)
-export function turnIncome(s: GameState, p: Player) {
-  if (!isAdultStage(s)) return stageOf(s).id === 'student' ? STUDENT_ALLOWANCE : 0
-  const st = stageOf(s)
-  const job = jobOf(p)
-  let inc = 0
-  if (st.id !== 'old' && job) { const sal = salaryOf(p); inc += Math.round(sal * (1 - TAX_RATE(sal))) }
-  if (st.id === 'old' && job?.pension) inc += PENSION
-  if (p.spouse) inc += p.spouse.wealth * 12
-  inc += kidAllowance(p) + medalPension(p)
-  let out = 0
-  for (const k of Object.keys(p.insurance) as InsuranceKind[]) if (p.insurance[k]) out += INSURANCE[k].premium
-  out += CARS[p.car].upkeep + kidUpkeep(s, p) + (p.pet?.alive ? 5 : 0)
-  out += p.house ? Math.round(houseValue(s, p) * HOUSE_RULES.upkeepRate) : HOUSE_RULES.rent
-  out += p.loans.filter((l) => l.kind === '주담대').reduce((a, l) => a + Math.min(l.amount, l.installment ?? 0), 0)
-  if (p.agency && !p.spouse && st.id !== 'old') out += p.agency.vip ? 100 : 30
-  return inc - out
-}
-
-// ───────── 자녀 ─────────
-
-const isMinor = (k: Kid) => k.result === null
-export function kidUpkeep(s: GameState, p: Player) {
-  const young = stageOf(s).id === 'young'
-  return p.kids.filter(isMinor).reduce((a, k) => a + (young || k.edu === null ? KIDS.youngCost : KIDS.eduCost[k.edu]), 0)
-}
-export const kidAllowance = (p: Player) =>
-  p.kids.reduce((a, k) => a + (k.result === null ? 0 : (k.adopted ? KIDS.adoptAllowance : KIDS.allowance)[k.result]), 0)
-
-function addKid(s: GameState, p: Player, adopted: boolean) {
-  const age = ageOf(s, p)
-  const kidAge = adopted ? rngOf(s).int(5, 8) : 0
-  p.kids.push({ adopted, bornAge: age - kidAge, edu: null, result: null })
-  if (adopted) p.adopted = 1
-  else p.children++
-  return kidAge
-}
-
-// 성인이 된 자녀 판정 + 용돈
-function kidsTick(s: GameState, p: Player) {
-  const rng = rngOf(s)
-  const age = ageOf(s, p)
-  const avg = Math.round((p.stats.int + p.stats.str + p.stats.cha) / 3)
-  for (const k of p.kids) {
-    if (k.result !== null || age < k.bornAge + 20) continue
-    const dice = rng.int(1, 6)
-    const edu = KIDS.eduBonus[k.edu ?? 0]
-    const teach = p.jobId === 'teacher' ? 1 : 0 // 교사 특성: 내 아이 교육 (은퇴 뒤에도)
-    const score = avg + edu + dice + teach - (k.adopted ? KIDS.adoptPenalty : 0)
-    k.result = score >= KIDS.bigAt ? 2 : score >= KIDS.okAt ? 1 : 0
-    p.happy += KIDS.resultHappy[k.result]
-    const who = k.adopted ? '입양한 아이' : '아이'
-    const how = [`${who}가 어른이 됐지만 잘 안 풀렸다…`, `${who}가 어엿한 어른이 됐다`, `${who}가 크게 성공했다!`][k.result]
-    log(s, p.id, `${how} (능력치 ${avg} + 교육 ${edu} + 주사위 ${dice}${teach ? ' + 교사 1' : ''}${k.adopted ? ` - ${KIDS.adoptPenalty}` : ''}) 매 턴 용돈 ${won((k.adopted ? KIDS.adoptAllowance : KIDS.allowance)[k.result])}`, k.result ? 'good' : 'bad')
-    if (k.result === 2) s.banner = { title: '자녀 대성공!', text: p.name, tone: 'good' }
-  }
-  // 교육을 적게 하면 말썽이 잦고, 많이 하면 가끔 공부 스트레스
-  for (const k of p.kids) {
-    if (k.result !== null || k.edu === null || !rng.chance(KIDS.eduTrouble[k.edu])) continue
-    const sc = scaleOf(s)
-    const b = k.edu === 2
-      ? { text: '아이가 공부 스트레스로 힘들어한다', loss: 0, happyLoss: 2 }
-      : rng.pick([{ text: '아이가 학교에서 사고를 쳤다', loss: sc * 2, happyLoss: 3 }, { text: '아이가 방황한다', loss: 0, happyLoss: 2 }])
-    badEvent(s, p, b)
-  }
-  // 좋은 사건: 교육을 많이 할수록 잦음 (7살부터)
-  for (const k of p.kids) {
-    if (k.result !== null || age - k.bornAge < 7 || !rng.chance(KIDS.eduGood[k.edu ?? 0])) continue
-    if (rng.chance(0.5)) { p.happy += 3; log(s, p.id, '아이가 공부를 잘해서 상을 받아 왔다 (행복 +3)', 'good') }
-    else { const g = scaleOf(s) * 2; p.money += g; p.happy += 1; log(s, p.id, `아이가 대회에서 상금·장학금을 받아 왔다 +${won(g)}`, 'good') }
-  }
-  // 어른이 된 자녀의 결혼·손주: 다른 플레이어가 축의금을 냄 (돈이 모자라면 마음만)
-  for (const k of p.kids) {
-    if (k.result === null || k.grandkid) continue
-    const wed = !k.married
-    if (!rng.chance(wed ? KIDS.wedChance : KIDS.grandChance)) continue
-    if (wed) k.married = true
-    else k.grandkid = true
-    const gift = wed ? KIDS.wedGift : KIDS.grandGift
-    const who = k.adopted ? '입양한 아이' : '아이'
-    let got = 0
-    for (const q of s.players) {
-      if (q.id === p.id) continue
-      if (q.money < gift) { log(s, q.id, `${p.name}의 ${wed ? '자녀 결혼' : '손주 탄생'}: 형편이 어려워 마음만 보냈다`, 'info'); continue }
-      q.money -= gift
-      got += gift
-      log(s, q.id, `${p.name}의 ${wed ? '자녀 결혼식 축의금' : '손주 탄생 축하금'} -${won(gift)}`, 'info')
-    }
-    p.money += got
-    p.happy += wed ? 3 : 4
-    log(s, p.id, `${wed ? `${who}가 결혼했다!` : '손주가 태어났다!'} 행복 +${wed ? 3 : 4}${got ? `, 축의금 +${won(got)}` : ''}`, 'good')
-    s.banner = { title: wed ? '자녀 결혼!' : '손주 탄생!', text: p.name, tone: 'good' }
-  }
-  // 육순·칠순: 어른이 된 자녀가 용돈을 드림
-  for (const m of [60, 70]) {
-    if (age < m || p.celebrated.includes(m)) continue
-    p.celebrated.push(m)
-    const grown = p.kids.filter((k) => k.result !== null)
-    if (!grown.length) continue
-    const gift = grown.reduce((a, k) => a + KIDS.birthdayGift[k.result!], 0)
-    p.money += gift
-    p.happy += 3
-    log(s, p.id, `${m === 60 ? '육순' : '칠순'} 잔치! 자녀들이 용돈 ${won(gift)}을 드렸다 (행복 +3)`, 'good')
-    s.banner = { title: `${m === 60 ? '육순' : '칠순'} 잔치`, text: p.name, tone: 'good' }
-  }
-  const allowance = kidAllowance(p)
-  if (allowance) p.money += allowance
-  if (p.kids.some((k) => k.result === 0) && rng.chance(0.04)) {
-    badEvent(s, p, { text: '다 큰 자녀가 사고를 쳐서 뒷수습했다', loss: scaleOf(s) * 2, happyLoss: 2 })
-  }
-}
-
-function eduPending(s: GameState, p: Player) {
-  const n = p.kids.filter((k) => isMinor(k) && k.edu === null).length
-  s.pending = {
-    type: 'kidEdu', playerId: p.id, title: '아이 교육', text: `아이 ${n}명. 어른이 될 때까지 매 턴 1명당 드는 돈이에요. 많이 투자할수록 크게 성공하기 쉬워요.`,
-    options: KIDS.eduNames.map((name, i) => ({ id: String(i), label: name, desc: `${KIDS.eduCost[i] ? `매 턴 ${won(KIDS.eduCost[i] * n)}` : '돈 안 듦 · 말썽이 잦아요'}${KIDS.eduBonus[i] ? ` · 성공 판정 +${KIDS.eduBonus[i]}` : ''}` })),
-  }
-}
-
-function familyTick(s: GameState, p: Player) {
-  const rng = rngOf(s)
-  const sc = scaleOf(s)
-  const sp = p.spouse
-  if (sp) {
-    if (isAdultStage(s)) p.money += sp.wealth * 12
-    if (sp.kindness >= 7) p.happy += 1
-    if (workJob(s, p)?.id === 'chef') p.happy += 1 // 요리사 특성: 집밥
-    if (sp.kindness <= 3) {
-      p.happy -= 1
-      if (rng.chance(0.1)) { p.happy -= 3; log(s, p.id, `${sp.name}와 부부 싸움을 했다`, 'bad') }
-    }
-    if (sp.fame >= 7 && rng.chance(0.08)) {
-      p.money += sc * 3
-      p.happy += 2
-      log(s, p.id, `${sp.name}가 방송·광고에 나왔다! 수입 ${won(sc * 3)}`, 'good')
-    }
-    if (sp.fame >= 7 && rng.chance(0.05)) {
-      s.stockPrice[sp.sector] = Math.max(10, Math.round(s.stockPrice[sp.sector] * 0.85))
-      badEvent(s, p, { text: `${sp.name} 스캔들! (${sp.sector}주 하락)`, loss: 0, happyLoss: 4 })
-    }
-    if (sp.fame >= 7 && rng.chance(0.04)) {
-      s.stockPrice[sp.sector] = Math.round(s.stockPrice[sp.sector] * 1.15)
-      log(s, null, `${p.name}의 배우자 ${sp.name} 큰 성과! ${sp.sector}주 +15%`, 'good')
-    }
-    if (sp.wealth >= 7 && rng.chance(0.06)) {
-      p.money += sc * 2
-      log(s, p.id, `${sp.name} 집안에서 도와줬다 +${won(sc * 2)}`, 'good')
-    }
-    if (rng.chance(0.12)) traitEvent(s, p)
-    if (s.stageIdx >= 3 && p.spouse) {
-      // 배우자 잘못 사건 (성격이 낮을수록 잘 일어남)
-      const myFault = p.lottery.addicted || p.money < 0
-      const spouseCh = (sp.kindness <= 3 ? 0.03 : sp.kindness <= 5 ? 0.012 : 0.004) + (sp.trait === '바람기' ? 0.03 : 0)
-      if (rng.chance(spouseCh)) divorce(s, p, 'spouse', rng.pick(['외도', '몰래 진 빚', '큰 스캔들']))
-      else if (myFault && rng.chance(0.03)) divorce(s, p, 'me', p.lottery.addicted ? '도박중독' : '오래 간 빚')
-      else if (workJob(s, p)?.id === 'doctor' && rng.chance(0.04)) divorce(s, p, 'me', '[의사] 일에 바빠 가족에게 소홀했던 것') // 의사 특성
-    }
-  }
-  p.happy += p.kids.filter((k) => k.result === null).length // 어릴 때만 행복, 어른이 되면 행복 대신 용돈
-  kidsTick(s, p)
-  if (p.pet?.alive) {
-    p.happy += 1
-    // 운세가 좋으면 더 오래, 나쁘면 조금 빨리
-    p.pet.turnsLeft -= p.fortune >= 4 && rng.chance(0.4) ? 0 : p.fortune === 0 && rng.chance(0.4) ? 2 : 1
-    if (rng.chance(0.06)) badEvent(s, p, { text: '반려동물이 가구를 망가뜨렸다', loss: sc, happyLoss: 0 })
-    if (rng.chance(0.05)) badEvent(s, p, { text: '반려동물 병원비', loss: sc, happyLoss: 1 })
-    if (rng.chance(0.06)) { p.stats.str = clampStat(p.stats.str + 1); log(s, p.id, '반려동물과 꾸준히 산책해서 체력 +1', 'good') }
-    if (p.pet.turnsLeft <= 0) {
-      p.pet.alive = false
-      p.happy -= 6
-      log(s, p.id, '반려동물이 무지개다리를 건넜다…', 'bad')
-    }
-  }
-}
-
-function traitEvent(s: GameState, p: Player) {
-  const sp = p.spouse!
-  const sc = scaleOf(s)
-  switch (sp.trait) {
-    case '짠돌이': p.money += Math.round(sc * 0.5); p.happy -= 1; log(s, p.id, `${sp.name}가 아껴서 돈을 모아 왔다 (대신 행복 -1)`, 'info'); break
-    case '요리왕': p.happy += 2; log(s, p.id, `${sp.name}의 요리로 행복 +2`, 'good'); break
-    case '재테크 고수': p.money += sc; log(s, p.id, `${sp.name}가 주식으로 ${won(sc)} 벌었다`, 'good'); break
-    case '육아 천재': if (p.children + p.adopted) { p.happy += 3; log(s, p.id, '아이들이 무럭무럭 자란다 (행복 +3)', 'good') } break
-    case '운동 마니아': p.stats.str = clampStat(p.stats.str + 1); log(s, p.id, `${sp.name}와 같이 운동해서 체력 +1`, 'good'); break
-    case '인맥왕': p.money += sc; log(s, p.id, `${sp.name}가 좋은 거래를 소개해 줬다 +${won(sc)}`, 'good'); break
-    case '도박증': p.money -= sc; log(s, p.id, `${sp.name}가 도박으로 ${won(sc)} 날렸다`, 'bad'); break
-    case '명품 중독': p.money -= Math.round(sc * 1.5); log(s, p.id, `${sp.name}의 명품 쇼핑 -${won(sc * 1.5)}`, 'bad'); break
-    case '까칠함': p.happy -= 3; log(s, p.id, `${sp.name}와 다퉜다 (행복 -3)`, 'bad'); break
-    case '게으름': p.happy -= 2; log(s, p.id, '집안일이 쌓였다 (행복 -2)', 'bad'); break
-    case '술고래': badEvent(s, p, { text: `${sp.name}가 술 마시다 다쳤다`, loss: sc, happyLoss: 1, kind: 'health' }); break
-    default: break
-  }
-}
-
-function divorce(s: GameState, p: Player, fault: 'me' | 'spouse', reason: string) {
-  const sp = p.spouse!
-  if (p.fortune >= 4) {
-    log(s, p.id, `[운세 ${fortuneName(p.fortune)}] ${reason} 때문에 이혼 위기… 겨우 넘기고 화해했다`, 'good')
-    return
-  }
-  const sc = scaleOf(s)
-  p.happy -= 15
-  if (sp.wealth >= 7) p.money += Math.round(Math.max(0, p.money) * 0.1 + sp.wealth * 50)
-  else p.money -= Math.round(Math.max(0, p.money) * 0.2)
-  const alimony = sc * 4 // 이혼으로 잃는 것(행복·맞벌이)보다 항상 적게
-  p.money += fault === 'spouse' ? alimony : -alimony
-  p.spouse = null
-  p.divorced = true
-  p.suitors = [{ ...sp, affinity: fault === 'me' ? 10 : 35 }] // 재결합 후보
-  log(s, p.id, `${sp.name}와 이혼했다 (${reason} · ${fault === 'spouse' ? '배우자 잘못, 위자료 받음' : '내 잘못, 위자료 냄'})`, 'bad')
-  s.banner = { title: '이혼', text: `${p.name}와 ${sp.name}`, tone: 'bad' }
-  say(s, p, 'divorce')
-}
+export const hasMortgage = (p: Player) => p.loans.some((l) => l.kind === '주담대')
 
 // ───────── 나쁜 일과 운세 ─────────
 
-interface Bad { text: string; loss: number; happyLoss: number; kind?: InsuranceKind }
+export interface Bad { text: string; loss: number; happyLoss: number; kind?: InsuranceKind }
 
 // 운세 덕분에 나쁜 일을 완전히 피했을 때 대사 (사건 글에 들어 있는 낱말로 고름)
 const DODGE: [RegExp, string][] = [
@@ -1366,7 +867,7 @@ function applyForkChoice(s: GameState, p: Player, to: number) {
 }
 
 // 판정 주사위: 사람은 직접 굴림 (2026-10-21 사용자). 굴리면 choose('diceCheck')에서 결과
-const luckBonus = (p: Player) => (p.fortune >= 4 ? 1 : p.fortune <= 1 ? -1 : 0)
+export const luckBonus = (p: Player) => (p.fortune >= 4 ? 1 : p.fortune <= 1 ? -1 : 0)
 const luckBonusText = (p: Player) => (luckBonus(p) ? ` ${luckBonus(p) > 0 ? '+' : ''}${luckBonus(p)}(운세 ${fortuneName(p.fortune)})` : '')
 function diceCheck(s: GameState, p: Player, title: string, text: string, data: Record<string, unknown>) {
   s.pending = { type: 'diceCheck', playerId: p.id, title: `🎲 ${title}`, text, options: [{ id: 'roll', label: '🎲 주사위 굴리기' }], data }
@@ -1897,229 +1398,6 @@ function everyoneStorm(s: GameState) {
   for (const q of s.players) if (q.house) badEvent(s, q, { text: '태풍 피해', loss: sc * 4, happyLoss: 1, kind: 'property' })
 }
 
-// ───────── 연애와 결혼 ─────────
-
-type Attr = 'looks' | 'wealth' | 'fame' | 'kindness'
-
-export function makeSuitor(s: GameState, p: Player, opts: { attr?: Attr | null; vip?: boolean } = {}): Suitor {
-  const rng = rngOf(s)
-  const boost = (PRESTIGE_JOBS.includes(p.jobId ?? '') ? 1 : 0) + (p.car === 3 ? 1 : 0)
-  const base = opts.vip ? [4, 10, 34, 32, 20] : [30, 30, 20, 13, 7]
-  const w = base.map((x, i) => [i + 1, Math.max(1, i < 2 ? x - boost * 6 : x + boost * 4)] as const)
-  const grade = rng.weighted(w)
-  const b = 2 + grade
-  const roll = () => Math.max(1, Math.min(10, b + rng.int(-3, 3)))
-  const attrs = { looks: roll(), wealth: roll(), fame: roll(), kindness: roll() }
-  const keys = Object.keys(attrs) as Attr[]
-  const strong = opts.attr ?? rng.pick(keys)
-  attrs[strong] = Math.min(10, attrs[strong] + (opts.attr ? 3 : 2))
-  const weights = TRAITS.map((t) => {
-    let x = 1
-    const n = t.name
-    if (attrs.kindness >= 7 && (n === '요리왕' || n === '육아 천재')) x *= 3
-    if (attrs.kindness >= 7 && (n === '까칠함' || n === '게으름')) x *= 0.3
-    if (attrs.kindness <= 3 && (n === '까칠함' || n === '게으름')) x *= 3
-    if (attrs.looks >= 7 && (n === '운동 마니아' || n === '명품 중독' || n === '바람기')) x *= 2.5
-    if (attrs.fame >= 7 && (n === '인맥왕' || n === '도박증' || n === '술고래' || n === '바람기')) x *= 2.5
-    if (attrs.wealth >= 7 && n === '재테크 고수') x *= 3
-    if (attrs.wealth <= 3 && n === '짠돌이') x *= 3
-    return [t, x] as const
-  })
-  const trait = rng.weighted(weights)
-  const sector: Sector = attrs.fame >= 7 && rng.chance(0.6) ? '엔터' : attrs.wealth >= 7 && rng.chance(0.5) ? '의료' : rng.pick(SECTORS)
-  return {
-    name: rng.pick(SPOUSE_NAMES), grade, ...attrs, sector,
-    trait: trait.name, traitGood: trait.good, revealed: false, affinity: 0,
-  }
-}
-
-export const stars = (n: number) => '★'.repeat(n)
-export const suitorDesc = (x: Suitor) => `${stars(x.grade)} · 외모 ${x.looks} 재력 ${x.wealth} 명성 ${x.fame} 성격 ${x.kindness} · ${x.sector}`
-
-function canDate(s: GameState, p: Player) {
-  const id = stageOf(s).id
-  if (p.spouse || (id !== 'young' && id !== 'middle')) return false
-  if (id === 'middle') {
-    // 중년 결혼 지점을 지나면 더는 결혼 기회가 없음
-    const st = stageOf(s)
-    const point = st.tiles.find((t) => t.point === 'marriage')
-    if (point && tileOf(s, p).d > point.d) return false
-  }
-  return true
-}
-
-function dateTile(s: GameState, p: Player) {
-  if (p.spouse) {
-    if (stageOf(s).id === 'young' && p.children < 3) {
-      s.pending = {
-        type: 'baby', playerId: p.id, title: '아기를 낳을까요?', text: `지금 자녀 ${p.children}명 (최대 3명). 자녀는 매 턴 행복을 주고 양육비가 들어요. 어른이 되면 용돈을 줘요.`,
-        options: [{ id: 'yes', label: '낳는다' }, { id: 'no', label: '나중에' }],
-      }
-    } else { p.happy += 2; log(s, p.id, `${p.spouse.name}와 데이트. 행복 +2`, 'good') }
-    return
-  }
-  if (!canDate(s, p)) { p.happy += 2; log(s, p.id, '좋은 사람들을 만났다. 행복 +2', 'good'); return }
-  const fresh = [makeSuitor(s, p), makeSuitor(s, p)]
-  const known = [...p.suitors].sort((a, b) => b.affinity - a.affinity).slice(0, 2)
-  const options: ChoiceOption[] = [
-    ...fresh.map((x, i) => ({ id: `new${i}`, label: `새로운 사람: ${x.name}`, desc: suitorDesc(x) })),
-    ...known.map((x) => ({ id: `old:${x.name}:${x.grade}`, label: `다시 데이트: ${x.name} (호감 ${x.affinity}%)`, desc: suitorDesc(x) })),
-  ]
-  s.pending = { type: 'date', playerId: p.id, title: '데이트', text: '누구와 데이트할까요?', options, data: { fresh } }
-}
-
-// 소개팅 회사: 가입 중이면 매 턴 시작마다 만남
-function agencyTurn(s: GameState, p: Player) {
-  if (!canDate(s, p)) return
-  const known = [...p.suitors].sort((a, b) => b.affinity - a.affinity).slice(0, 2)
-  s.pending = {
-    type: 'agency', playerId: p.id, title: `소개팅 회사 (${p.agency!.vip ? 'VIP' : '일반'})`, text: '이번 차례 만남을 골라요.',
-    options: [
-      { id: 'new', label: '새 사람 소개받기', desc: p.agency!.attr ? `${ATTR_NAMES[p.agency!.attr]} 높은 사람으로` : '' },
-      ...known.map((x) => ({ id: `old:${x.name}:${x.grade}`, label: `데이트: ${x.name} (호감 ${x.affinity}%)`, desc: suitorDesc(x) })),
-      { id: 'skip', label: '이번엔 쉬기' },
-      { id: 'quit', label: '해지하기' },
-    ],
-  }
-}
-
-const ATTR_NAMES: Record<Attr, string> = { looks: '외모', wealth: '재력', fame: '명성', kindness: '성격' }
-
-// 집·차 값 (쿠폰을 쓰는지에 따라). 대출 끼고 사기는 계약금
-function bigPrice(s: GameState, p: Player, id: string, coupon: boolean) {
-  if (id.startsWith('mortgage')) return mortgagePlan(s, p, +id.slice(8), coupon).down
-  if (id.startsWith('house')) return houseCost(s, p, +id.slice(5), coupon)
-  return carCost(p, +id.slice(3), coupon)
-}
-
-// after: 다 사고 다시 열 상점 (소개팅 회사처럼 창이 하나 더 뜨면 그 뒤에 엶)
-function shopBuy(s: GameState, p: Player, optionId: string, useCoupon: boolean, after?: ShopVisit) {
-  const rng = rngOf(s)
-  p.record.shopBuys++
-  const big = /^(house|mortgage|car)\d/.test(optionId)
-  if (big && useCoupon) { p.chance = null; log(s, p.id, '할인 쿠폰을 썼다', 'info') }
-  if (optionId.startsWith('mortgage')) {
-    const i = +optionId.slice(8) as 0 | 1 | 2 | 3
-    const m = mortgagePlan(s, p, i, useCoupon)
-    const old = p.house ? `${HOUSES[p.house].name}을 팔고 ` : ''
-    spend(p, m.down)
-    p.loans.push({ amount: m.borrow, dueTurn: p.turnsPlayed + HOUSE_RULES.mortgageTurns, kind: '주담대', installment: m.installment, missed: 0 })
-    p.house = i; p.happy += HOUSES[i].happy
-    log(s, p.id, `${old}${HOUSES[i].name}을 대출 끼고 샀다! 계약금 ${won(m.down)}, 매 턴 ${won(m.installment)}씩 갚기. 행복 +${HOUSES[i].happy}`, 'good')
-    say(s, p, 'house')
-    s.banner = { title: '내 집 마련!', text: `${p.name}: ${HOUSES[i].name}`, tone: 'good' }
-  } else if (optionId.startsWith('house')) {
-    const i = +optionId.slice(5) as 0 | 1 | 2 | 3
-    const cost = houseCost(s, p, i, useCoupon)
-    const old = p.house ? `${HOUSES[p.house].name}을 ${won(houseValue(s, p))}에 팔고 ` : ''
-    spend(p, cost); p.house = i; p.happy += HOUSES[i].happy
-    log(s, p.id, `${old}${HOUSES[i].name}을 샀다! 행복 +${HOUSES[i].happy}`, 'good')
-    say(s, p, 'house')
-  } else if (optionId.startsWith('car')) {
-    const i = +optionId.slice(3) as 0 | 1 | 2 | 3
-    const cost = carCost(p, i, useCoupon)
-    const old = p.car ? `${CARS[p.car].name}를 ${won(carResale(p))}에 팔고 ` : ''
-    spend(p, cost)
-    p.carValue = CARS[i].price
-    // 차를 바꿔도 이번 단계에 이미 쓴 횟수는 이어진다
-    const usedThisStage = p.car ? carChargesAt(p, s.stageIdx) - p.carCharges : 0
-    p.car = i
-    p.carStage = s.stageIdx
-    p.carCharges = Math.max(0, carChargesAt(p, s.stageIdx) - usedThisStage)
-    if (i === 3) p.happy += 4
-    log(s, p.id, `${old}${CARS[i].name}를 샀다!`, 'good')
-  } else if (optionId.startsWith('agency')) {
-    const vip = optionId === 'agency1'
-    s.pending = {
-      type: 'agencyAttr', playerId: p.id, title: `소개팅 회사 ${vip ? 'VIP' : '일반'} 가입`, text: '어떤 사람을 소개받고 싶나요?',
-      options: [...(Object.keys(ATTR_NAMES) as Attr[]).map((a) => ({ id: a, label: `${ATTR_NAMES[a]} 높은 사람` })), { id: 'none', label: '상관없음' }],
-      data: { vip, visit: after },
-    }
-  } else if (optionId === 'chance') {
-    spend(p, 100)
-    giveChance(s, p, randomChance(rng))
-  } else if (optionId === 'pet') {
-    spend(p, 50)
-    adoptPet(s, p, '상점에서 반려동물을 데려왔다')
-  } else if (optionId.startsWith('dice_')) {
-    const k = optionId.slice(5) as DiceItem
-    if (p.diceItems.length < MAX_DICE_ITEMS) {
-      spend(p, DICE_ITEMS[k].price)
-      p.diceItems.push(k)
-      log(s, p.id, `${DICE_ITEMS[k].name}를 샀다 (가진 주사위 아이템 ${p.diceItems.length}개)`, 'info')
-    }
-  }
-}
-
-// 상점: 한 번 들르면 여러 번 살 수 있음. 집·차는 둘 중 하나만, 다른 물건은 원하는 만큼 (2026-10-21 사용자)
-// 노년 상점 물건(여행·선물·기부)은 없앰 (2026-10-21 사용자)
-type ShopVisit = { big: boolean; n: number }
-function openShop(s: GameState, p: Player, visit: ShopVisit = { big: false, n: 0 }) {
-  const coupon = p.chance === 'coupon' ? 0.7 : 1
-  const opts: ChoiceOption[] = []
-  if (!visit.big) HOUSES.forEach((h, i) => {
-    if (i <= p.house) return
-    const cost = houseCost(s, p, i)
-    const sell = p.house ? ` · 지금 집 팔고 ${won(cost)}만 더` : ''
-    opts.push({ id: `house${i}`, label: `${h.name} 사기`, desc: `시세 ${won(housePriceOf(s, i))}${coupon < 1 ? ` (쿠폰 쓰면 -${won(couponOff(housePriceOf(s, i), 1000))})` : ''}${sell} · 매 턴 관리비 ${won(housePriceOf(s, i) * HOUSE_RULES.upkeepRate)}`, disabled: p.money < cost })
-    if (p.money < cost && !hasMortgage(p) && stageOf(s).id !== 'old') {
-      const m = mortgagePlan(s, p, i)
-      opts.push({ id: `mortgage${i}`, label: `${h.name} 대출 끼고 사기`, desc: `계약금 ${won(m.down)} (30%) · 나머지 ${won(m.borrow)}은 주택담보대출 · 매 턴 ${won(m.installment)}씩 ${HOUSE_RULES.mortgageTurns}턴 자동으로 갚아요 · 3번 못 내면 경매로 넘어가요`, disabled: p.money < m.down || p.creditBad > 0 })
-    }
-  })
-  if (!visit.big && stageOf(s).id !== 'old') CARS.forEach((c, i) => {
-    if (i <= p.car) return
-    const cost = carCost(p, i)
-    const trade = p.car ? ` · 지금 차 ${won(carResale(p))}에 팔고 ${won(cost)}만 더` : ''
-    opts.push({ id: `car${i}`, label: `${c.name} 사기`, desc: `${won(c.price)}${coupon < 1 ? ` (쿠폰 쓰면 -${won(couponOff(c.price, 500))})` : ''}${trade} · 주사위 ±1 이번 단계 ${c.charges[0]}번, 다음 단계부터 1번씩 늘어나요 · 노년엔 못 사요`, disabled: p.money < cost })
-  })
-  if (!p.agency && canDate(s, p)) {
-    opts.push({ id: 'agency0', label: '소개팅 회사 일반 회원', desc: '매 턴 30만, 연애 시작 100만, 원하는 속성을 고를 수 있어요' })
-    opts.push({ id: 'agency1', label: '소개팅 회사 VIP 회원', desc: '매 턴 100만, 연애 시작 300만, 원하는 속성을 고르고 ★3 이상이 잘 나와요' })
-  }
-  if (!p.pet?.alive) opts.push({ id: 'pet', label: '반려동물 데려오기', desc: `${won(50)} · 매 턴 행복 +1, 사료값이 들어요`, disabled: p.money < 50 })
-  opts.push({ id: 'chance', label: '찬스 카드 사기', desc: `${won(100)}${p.chance ? ' · 이미 1장 있어요' : ''}`, disabled: p.money < 100 || !!p.chance })
-  const full = p.diceItems.length >= MAX_DICE_ITEMS
-  for (const k of Object.keys(DICE_ITEMS) as DiceItem[]) {
-    const d = DICE_ITEMS[k]
-    opts.push({ id: `dice_${k}`, label: `${d.name} 사기`, desc: `${won(d.price)} · ${d.desc} · 1번 쓰면 끝${full ? ` (이미 ${MAX_DICE_ITEMS}개)` : ''}`, disabled: full || p.money < d.price })
-  }
-  // 돈이 모자라면 여기서 바로 은행 대출 (2026-10-21 사용자). 일반 대출은 한 번에 하나만
-  if (canBankLoan(s, p)) for (const a of [500, 1000, 3000]) {
-    if (a <= loanLimit(s, p)) opts.push({ id: `loan${a}`, label: `💳 은행에서 ${won(a)} 빌리기`, desc: `${LOAN_TURNS}턴 안에 한꺼번에 갚아요 · 매 턴 이자 ${LOAN_RATE * 100}% · 빌린 뒤 다시 골라요` })
-  }
-  opts.push({ id: 'pass', label: visit.n ? '다 샀어요 (나가기)' : '그냥 지나가기' })
-  const houseNote = visit.n ? '' : p.house
-    ? `\n🏠 내 집 덕분에: 월세 없음 · 매 턴 행복 +${HOUSE_HAPPY[p.house]} · 연애 호감도 +10% · 점수에 집값`
-    : `\n🏠 집이 있으면: 월세 없음 · 매 턴 행복 +1(단독주택 +2) · 연애 호감도 +10% · 점수에 집값(시세는 대체로 오름)\n집이 없으면: 매 턴 월세 ${won(HOUSE_RULES.rent)}`
-  const rule = visit.big ? '집·차는 이번에 샀어요. 다른 물건은 더 살 수 있어요.' : '집·차는 하나만, 다른 물건은 원하는 만큼 살 수 있어요.'
-  s.pending = { type: 'shop', playerId: p.id, title: '상점', text: `가진 돈 ${won(p.money)}. ${rule}${houseNote}`, options: opts, data: visit }
-}
-
-function triggerPoint(s: GameState, p: Player, kind: 'shop' | 'marriage') {
-  if (kind === 'shop') {
-    // AI: 적금에 넣어 둔 돈은 상점에서 꺼내 씀
-    if (!p.human && p.savings) { p.money += p.savings; log(s, p.id, `적금에서 ${won(p.savings)} 꺼냈다`, 'info'); p.savings = 0 }
-    openShop(s, p)
-    return
-  }
-  if (p.spouse) return
-  const cands = p.suitors.filter((x) => x.affinity >= 50)
-  if (!cands.length) { log(s, p.id, '결혼 지점: 호감도 50% 넘는 사람이 없어 그냥 지나갔다', 'info'); return }
-  s.pending = {
-    type: 'marriage', playerId: p.id, title: '결혼 지점', text: '고백할까요? 성공 확률은 호감도에 비례해요.',
-    options: [
-      ...cands.map((x) => ({ id: `c:${x.name}:${x.grade}`, label: `${x.name}에게 고백 (호감 ${x.affinity}%)`, desc: suitorDesc(x) })),
-      { id: 'single', label: '비혼으로 지낸다' },
-    ],
-  }
-}
-
-export function findSuitor(p: Player, key: string) {
-  const [, name, grade] = key.split(':')
-  return p.suitors.find((x) => x.name === name && String(x.grade) === grade)
-}
-
 // ───────── 정지 칸 ─────────
 
 // 바로 취업: 주사위 없이 본 길 직업 칸으로 가서 바로 고름
@@ -2308,13 +1586,13 @@ function jobPerkTick(s: GameState, p: Player) {
   }
 }
 
-function adoptPet(s: GameState, p: Player, text: string) {
+export function adoptPet(s: GameState, p: Player, text: string) {
   p.pet = { alive: true, turnsLeft: rngOf(s).int(15, 20) }
   p.happy += 3
   log(s, p.id, `${text}. 행복 +3`, 'good')
 }
 
-function setJob(s: GameState, p: Player, id: string | null) {
+export function setJob(s: GameState, p: Player, id: string | null) {
   if (p.jobId && p.jobId !== id) paySeverance(s, p) // 직장을 옮기면 퇴직금
   p.jobId = id
   p.jobTenure = 0
@@ -2857,162 +2135,6 @@ export function toggleInsurance(s: GameState, kind: InsuranceKind) {
   if (kind === 'property' && !p.house) return
   p.insurance[kind] = true
   log(s, p.id, `${INSURANCE[kind].name} 가입`, 'info')
-}
-
-// ───────── 적금 (2026-10-21) ─────────
-// 넣어 두면 매 턴 이자. 언제든 뺄 수 있고, 돈이 마이너스가 되면 차례 시작에 자동으로 꺼내 메움
-export function deposit(s: GameState, amount: number) {
-  const p = cur(s)
-  if (!canAct(s) || !isAdultStage(s) || amount <= 0 || p.money < amount) return
-  p.money -= amount
-  p.savings = (p.savings ?? 0) + amount
-  log(s, p.id, `적금에 ${won(amount)} 넣었다 (모은 돈 ${won(p.savings)})`, 'info')
-}
-export function withdraw(s: GameState, amount?: number) {
-  const p = cur(s)
-  const amt = Math.min(p.savings ?? 0, amount ?? Infinity)
-  if (!canAct(s) || amt <= 0) return
-  p.savings = (p.savings ?? 0) - amt
-  p.money += amt
-  log(s, p.id, `적금에서 ${won(amt)} 꺼냈다`, 'info')
-}
-
-export function takeLoan(s: GameState, amount: number) {
-  const p = cur(s)
-  if (!canAct(s) || !canBankLoan(s, p) || amount <= 0 || amount > loanLimit(s, p)) return
-  bankLoan(s, p, amount)
-}
-
-// idx: 갚을 대출 하나 (없으면 기한이 빠른 것부터)
-export function repayLoans(s: GameState, amount?: number, idx?: number) {
-  const p = cur(s)
-  if (!canAct(s)) return
-  let budget = Math.min(Math.max(0, p.money), amount ?? Infinity)
-  let paid = 0
-  const target = idx === undefined ? null : p.loans[idx]
-  if (idx !== undefined && !target) return
-  p.loans.sort((a, b) => a.dueTurn - b.dueTurn)
-  for (const l of target ? [target] : p.loans) {
-    const pay = Math.min(budget, l.amount)
-    l.amount -= pay
-    budget -= pay
-    paid += pay
-  }
-  p.loans = p.loans.filter((l) => l.amount > 0)
-  p.money -= paid
-  if (paid) log(s, p.id, `대출 ${won(paid)}을 갚았다${p.loans.length ? ` (남은 빚 ${won(loanTotal(p))})` : ' (다 갚았다!)'}`, 'good')
-}
-
-// ───────── 플레이어끼리 돈 빌려주기 ─────────
-
-export const LOAN_RATES = [0.05, 0.15, 0.3] // 이자 조금 / 보통 / 많이
-
-export function canBorrowFrom(s: GameState, p: Player, lender: Player) {
-  return isAdultStage(s) && lender.id !== p.id && !p.borrowedFrom.includes(lender.id) && p.creditBad <= 0 && lender.money > 0
-}
-
-// AI 쪽이 빌려줄지 판단
-export function aiLendDecision(s: GameState, lender: Player, borrower: Player, amount: number, rate: number): boolean {
-  if (lender.money < amount * 1.3) return false
-  const base = { family: 0.65, safe: 0.45, investor: 0.35 + rate, gambler: 0.5, elite: 0.35 }[lender.personality]
-  const risk = borrower.money < 0 ? 0.2 : 0
-  return rngOf(s).chance(Math.max(0.05, base - risk))
-}
-
-export function requestFriendLoan(s: GameState, lenderId: number, amount: number, rateIdx: number, term: number) {
-  const p = cur(s)
-  const lender = s.players[lenderId]
-  if (!canAct(s) || !lender || !canBorrowFrom(s, p, lender)) return
-  const rate = LOAN_RATES[rateIdx] ?? LOAN_RATES[1]
-  p.borrowedFrom.push(lender.id) // 거절당해도 그 사람에게는 다시 못 부탁함
-  if (lender.human && lender.id !== p.id) {
-    s.pending = {
-      type: 'loanRequest', playerId: lender.id, title: `${p.name}의 돈 부탁`,
-      text: `${won(amount)}을 ${term}턴 뒤에 이자 ${Math.round(rate * 100)}% 붙여 갚겠대요. 안 갚으면 소송으로 가요.`,
-      options: [{ id: 'yes', label: '빌려준다', disabled: lender.money < amount }, { id: 'no', label: '거절한다' }],
-      data: { borrowerId: p.id, amount, rate, term },
-    }
-    s.phase = 'decision'
-    return
-  }
-  if (aiLendDecision(s, lender, p, amount, rate)) makeFriendLoan(s, p, lender, amount, rate, term)
-  else log(s, lender.id, `${p.name}의 돈 부탁을 거절했다`, 'info')
-}
-
-function makeFriendLoan(s: GameState, borrower: Player, lender: Player, amount: number, rate: number, term: number) {
-  lender.money -= amount
-  lender.record.deeds++ // 친구에게 돈을 빌려주면 선행 (착한 사람 상)
-  borrower.money += amount
-  s.friendLoans.push({ lenderId: lender.id, borrowerId: borrower.id, principal: amount, owe: Math.round(amount * (1 + rate)), dueTurn: borrower.turnsPlayed + term })
-  log(s, borrower.id, `${lender.name}에게 ${won(amount)} 빌렸다 (${term}턴 안에 ${won(amount * (1 + rate))} 갚기)`, 'info')
-}
-
-export function repayFriendLoan(s: GameState, idx: number) {
-  const p = cur(s)
-  const l = s.friendLoans[idx]
-  if (!canAct(s) || !l || l.borrowerId !== p.id || p.money < l.owe) return
-  const lender = s.players[l.lenderId]
-  p.money -= l.owe
-  lender.money += l.owe
-  changeFortune(s, lender, 1, '친구를 도와줌') // 돈을 빌려줘서 돌려받으면 선행 → 운세↑
-  s.friendLoans.splice(idx, 1)
-  log(s, p.id, `${lender.name}에게 빌린 돈 ${won(l.owe)}을 갚았다`, 'good')
-}
-
-function friendLoanTick(s: GameState, p: Player) {
-  const overdue = s.friendLoans.filter((l) => l.borrowerId === p.id && p.turnsPlayed > l.dueTurn)
-  for (const l of overdue) {
-    const lender = s.players[l.lenderId]
-    l.nag = l.nag === undefined ? 3 : l.nag - 1
-    if (l.nag > 0) {
-      log(s, p.id, `${lender.name}의 독촉: "${won(l.owe)} 빨리 갚아!" (${l.nag}턴 안에 안 갚으면 소송)`, 'bad')
-      if (p.human) s.banner = { title: '빚 독촉', text: `${lender.name}에게 ${won(l.owe)} · ${l.nag}턴 남음`, tone: 'bad' }
-      continue
-    }
-    s.friendLoans.splice(s.friendLoans.indexOf(l), 1)
-    lawsuit(s, lender, p, 'loan', l.owe)
-  }
-}
-
-// 법적 공방: 주사위 + 운세 + 변호사. 빌린 돈 소송은 빌린 사람이 불리
-function lawsuit(s: GameState, plaintiff: Player, defendant: Player, kind: 'loan' | 'card', owe = 0) {
-  const rng = rngOf(s)
-  const sc = scaleOf(s)
-  // 변호사 직업이면 +2, 아니면 돈이 있을 때 변호사를 사서 +1
-  const lawyer = (q: Player) => {
-    if (q.jobId === 'lawyer') return 2
-    if (q.money >= sc * 4) { q.money -= sc * 2; log(s, q.id, `변호사를 샀다 (-${won(sc * 2)})`, 'info'); return 1 }
-    return 0
-  }
-  const power = (q: Player) => rng.int(1, 6) + (q.fortune - 2) + lawyer(q)
-  const a = power(plaintiff)
-  const b = power(defendant) - (kind === 'loan' ? 1 + Math.min(3, Math.floor(owe / 1000)) : 0) // 큰돈일수록 빌린 사람이 질 확률↑
-  log(s, null, `[법적 공방] ${plaintiff.name}(${a}) vs ${defendant.name}(${b})`, 'info')
-  s.banner = { title: '법적 공방', text: `${plaintiff.name} vs ${defendant.name}`, tone: 'info' }
-  if (kind === 'loan') {
-    if (a >= b) {
-      const pay = Math.round(owe * 1.5)
-      defendant.money -= pay
-      plaintiff.money += pay
-      defendant.creditBad = 8
-      log(s, defendant.id, `소송에서 졌다. ${won(pay)}을 물어줬고 신용불량이 됐다`, 'bad')
-      say(s, plaintiff, 'lawsuitWin'); say(s, defendant, 'lawsuitLose')
-    } else {
-      defendant.creditBad = 8 // 소송에서 이겨도 돈을 안 갚은 사실은 남음
-      log(s, defendant.id, `소송에서 이겨 빚 ${won(owe)}을 안 갚아도 된다 (대신 신용불량)`, 'info')
-      log(s, plaintiff.id, `빌려준 돈을 떼였다…`, 'bad')
-      say(s, defendant, 'lawsuitWin'); say(s, plaintiff, 'lawsuitLose')
-    }
-    return
-  }
-  if (a > b) {
-    defendant.money -= sc * 3
-    plaintiff.money += sc * 3
-    log(s, plaintiff.id, `소송 승리! ${defendant.name}에게서 ${won(sc * 3)}`, 'good')
-  } else {
-    plaintiff.money -= sc
-    log(s, plaintiff.id, `소송 패배… 소송비 ${won(sc)}`, 'bad')
-  }
 }
 
 // ───────── 카드 사용 ─────────
