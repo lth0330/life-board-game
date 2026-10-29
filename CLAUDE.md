@@ -4,7 +4,7 @@
 
 ## 지금 상태 (2026-10-29)
 - 기획 끝, 게임(`app/`) 동작, 온라인 배포 중: https://main.d16edqa9h9pqgu.amplifyapp.com (GitHub main에 올리면 자동 배포)
-- 실행: `cd app && npm run dev`, 테스트 `npm test` (68개, 시간 제한 30초)
+- 실행: `cd app && npm run dev`, 테스트 `npm test` (69개, 시간 제한 30초)
 - 날짜별로 한 일·사용자 결정은 `docs/13-review.md` (맨 끝에 예전 `CLAUDE.md`의 10-17~10-29 기록도 옮겨 둠)
 - 한 주제씩 천천히 정한다. 선택지는 2~4개 + 추천안과 이유를 함께
 - 결정이 나면 바로 해당 문서에 기록하고, `docs/spec.md` 확정 요약 표·체크리스트도 갱신
