@@ -329,8 +329,8 @@ const MEET_EVENTS: Record<'child' | 'student' | 'old', { good: [string, (p: Play
     bad: [['숙제 베끼다 걸렸다 (지력 -1)', (p) => { p.stats.int = clampStat(p.stats.int - 1) }], ['수업 시간에 떠들다 혼났다 (행복 -2)', (p) => { p.happy -= 2 }]],
   },
   old: {
-    good: [['옛날이야기로 웃었다 (행복 +3)', (p) => { p.happy += 3 }], ['같이 산책했다 (체력 +1)', (p) => { p.stats.str = clampStat(p.stats.str + 1) }]],
-    bad: [['옛날 빚 이야기가 나왔다 (돈 -)', (p) => { p.money -= 50 }], ['말다툼을 했다 (행복 -2)', (p) => { p.happy -= 2 }]],
+    good: [['옛날이야기로 웃었다 (행복 +3)', (p) => { p.happy += 3 }], ['같이 산책했다 (행복 +2)', (p) => { p.happy += 2 }]], // 노년은 능력치 그대로 (2026-10-17 사용자)
+    bad: [['옛날 빚 이야기가 나왔다 (돈 -50만)', (p) => { p.money -= 50 }], ['말다툼을 했다 (행복 -2)', (p) => { p.happy -= 2 }]],
   },
 }
 
@@ -356,7 +356,7 @@ export function meet(s: GameState) {
       for (const q of all) res[q.id] = rng.int(1, 6)
       resolveDuel(s, game, ids, res)
     }
-    // 직접 하는 사람: 온라인은 대결에 낀 사람 모두(각자 기기로 차례대로), 혼자 하기는 지금 차례인 사람만
+    // 직접 하는 사람: 온라인은 대결에 낀 사람 모두(각자 기기에서 동시에), 혼자 하기는 지금 차례인 사람만
     const players = (s.settings.online ? all.filter((q) => q.human) : p.human ? [p] : []).map((q) => q.id)
     if (game === 'rps') {
       if (players.length) rpsPending(s, ids, {}, players)

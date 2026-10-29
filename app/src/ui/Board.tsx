@@ -67,7 +67,7 @@ interface Props {
 }
 
 export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = null, canPan = false, emotes = {}, hands = {}, say = null }: Props) {
-  const theme = s.settings.theme // 테마 맵: 규칙은 그대로, 판 겉모습만 (2026-10-29)
+  const theme = s.settings.theme // 테마 맵 판 겉모습 (2026-10-29). 테마 미니게임·사건은 engine
   const groundFile = artFile('ground', theme) // 땅 그림 파일 (반복 무늬)
   const st = s.stages[s.stageIdx]
   const focusPos = posOf(focus)

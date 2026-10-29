@@ -1180,3 +1180,6 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .google-btn .g-logo { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; background: conic-gradient(#EA4335 0 25%, #FBBC05 0 50%, #34A853 0 75%, #4285F4 0); }
 p.small { font-size: 13px; }
 .admin-tag.google { background: #4285F4; }
+/* 버튼이 많은 줄(판 테마 5개)은 한 줄에 (2026-10-29: 폰에서 '겨울'만 아래로 넘어가던 것) */
+.seg.tight { flex-wrap: nowrap; gap: 4px; }
+.seg.tight button { flex: 1 1 0; min-width: 0; padding-left: 2px; padding-right: 2px; font-size: 13px; white-space: nowrap; }

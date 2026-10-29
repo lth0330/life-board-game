@@ -152,7 +152,11 @@ export function familyTick(s: GameState, p: Player) {
     p.pet.turnsLeft -= p.fortune >= 4 && rng.chance(0.4) ? 0 : p.fortune === 0 && rng.chance(0.4) ? 2 : 1
     if (rng.chance(0.06)) badEvent(s, p, { text: '반려동물이 가구를 망가뜨렸다', loss: sc, happyLoss: 0 })
     if (rng.chance(0.05)) badEvent(s, p, { text: '반려동물 병원비', loss: sc, happyLoss: 1 })
-    if (rng.chance(0.06)) { p.stats.str = clampStat(p.stats.str + 1); log(s, p.id, '반려동물과 꾸준히 산책해서 체력 +1', 'good') }
+    // 노년에는 능력치가 그대로라 (2026-10-17 사용자) 행복으로 (2026-10-29)
+    if (rng.chance(0.06)) {
+      if (stageOf(s).id === 'old') { p.happy += 1; log(s, p.id, '반려동물과 꾸준히 산책해서 행복 +1', 'good') }
+      else { p.stats.str = clampStat(p.stats.str + 1); log(s, p.id, '반려동물과 꾸준히 산책해서 체력 +1', 'good') }
+    }
     if (p.pet.turnsLeft <= 0) {
       p.pet.alive = false
       p.happy -= 6
@@ -169,7 +173,10 @@ function traitEvent(s: GameState, p: Player) {
     case '요리왕': p.happy += 2; log(s, p.id, `${sp.name}의 요리로 행복 +2`, 'good'); break
     case '재테크 고수': p.money += sc; log(s, p.id, `${josa(sp.name, '이/가')} 주식으로 ${won(sc)} 벌었다`, 'good'); break
     case '육아 천재': if (p.children + p.adopted) { p.happy += 3; log(s, p.id, '아이들이 무럭무럭 자란다 (행복 +3)', 'good') } break
-    case '운동 마니아': p.stats.str = clampStat(p.stats.str + 1); log(s, p.id, `${josa(sp.name, '와/과')} 같이 운동해서 체력 +1`, 'good'); break
+    case '운동 마니아':
+      if (stageOf(s).id === 'old') { p.happy += 1; log(s, p.id, `${josa(sp.name, '와/과')} 같이 운동해서 행복 +1`, 'good') } // 노년은 능력치 그대로
+      else { p.stats.str = clampStat(p.stats.str + 1); log(s, p.id, `${josa(sp.name, '와/과')} 같이 운동해서 체력 +1`, 'good') }
+      break
     case '인맥왕': p.money += sc; log(s, p.id, `${josa(sp.name, '이/가')} 좋은 거래를 소개해 줬다 +${won(sc)}`, 'good'); break
     case '도박증': p.money -= sc; log(s, p.id, `${josa(sp.name, '이/가')} 도박으로 ${won(sc)} 날렸다`, 'bad'); break
     case '명품 중독': p.money -= Math.round(sc * 1.5); log(s, p.id, `${sp.name}의 명품 쇼핑 -${won(sc * 1.5)}`, 'bad'); break

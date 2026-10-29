@@ -253,7 +253,8 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
             {!teamOk && <p className="bad">두 명씩 나눠 주세요 (방장이 눌러서 바꿔요)</p>}
           </div>
         )}
-        <div className="seg">
+        <p className="muted small">판 테마 · 계절 미니게임·사건이 가끔 나와요{isHost ? '' : ' (방장이 골라요)'}</p>
+        <div className="seg tight">
           {THEMES.map(([v, l]) => <button key={l} className={(lobby.settings.theme ?? '') === v ? 'on' : ''} disabled={!isHost} onClick={() => setSettings({ theme: v || undefined })}>{l}</button>)}
         </div>
         <div className="seg">

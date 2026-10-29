@@ -232,7 +232,7 @@ export interface Settings {
   difficulty: Difficulty
   online?: boolean // 온라인(각자 기기): 같은 칸 대결에서 사람은 모두 자기 기기로 함
   teams?: boolean // 2 대 2 팀전 (2026-10-21): 팀 점수 합계로 승패. Player.team
-  theme?: MapTheme // 테마 맵 (2026-10-29): 판 겉모습만. 없으면 기본
+  theme?: MapTheme // 테마 맵 (2026-10-29): 판 겉모습 + 테마 미니게임·사건이 가끔. 없으면 기본
 }
 export type MapTheme = 'spring' | 'summer' | 'autumn' | 'winter'
 

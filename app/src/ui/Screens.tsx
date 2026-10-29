@@ -139,9 +139,9 @@ export function MenuScreen({ profile, slot, gameNotice, onContinue, onNew, onOnl
   )
 }
 
-function Choice<T extends string | number | boolean>({ value, options, onChange }: { value: T; options: [T, string][]; onChange: (v: T) => void }) {
+function Choice<T extends string | number | boolean>({ value, options, onChange, tight = false }: { value: T; options: [T, string][]; onChange: (v: T) => void; tight?: boolean }) {
   return (
-    <div className="seg">
+    <div className={`seg${tight ? ' tight' : ''}`}>
       {options.map(([v, l]) => (
         <button key={String(v)} className={v === value ? 'on' : ''} aria-pressed={v === value} onClick={() => onChange(v)}>{l}</button>
       ))}
@@ -212,8 +212,8 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
           )}
         </div>
       )}
-      <div className="field"><span>판 테마 (겉모습만 바뀌어요)</span>
-        <Choice value={theme} options={THEMES} onChange={setTheme} />
+      <div className="field"><span>판 테마 (계절 미니게임·사건이 가끔 나와요)</span>
+        <Choice value={theme} options={THEMES} onChange={setTheme} tight />
       </div>
       <div className="field"><span>AI 난이도</span>
         <Choice value={difficulty} options={[['normal', '보통'], ['hard', '어려움']]} onChange={setDifficulty} />
