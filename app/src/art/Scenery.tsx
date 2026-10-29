@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { artFile } from './slots'
 
 // 배경 그림 (2026-10-22 사용자: 게임 시작 전·게임 안 배경 꾸미기). 잉크 테두리 그림체, 구름은 천천히 흘러감
 const K = '#2A2118'
@@ -69,6 +70,8 @@ export function TitleScenery() {
 // 테마 게임 창 위 그림 (2026-10-29): 봄 벚나무, 여름 파라솔, 가을 단풍나무, 겨울 눈사람
 export type ThemeArtKind = 'bloom' | 'sun' | 'fall' | 'snow'
 export function ThemeArt({ kind }: { kind: ThemeArtKind }) {
+  const file = artFile(`theme-art-${kind}`)
+  if (file) return <img src={file} width="100%" height="100%" alt="" draggable={false} style={{ objectFit: 'contain' }} />
   return (
     <svg viewBox="0 0 260 200" width="100%" height="100%" aria-hidden="true">
       <g stroke={K} strokeWidth="3" strokeLinejoin="round">
@@ -121,7 +124,9 @@ export function Weather({ kind }: { kind: 'leaves' | 'snow' | 'petals' }) {
   )
 }
 
-export function SkyScenery() {
+export function SkyScenery({ theme }: { theme?: string | null }) {
+  const file = artFile('sky', theme) // 하늘 그림 (가로로 긴 그림, 아래쪽이 지평선)
+  if (file) return <img className="sky-scenery" src={file} alt="" draggable={false} style={{ objectFit: 'cover', objectPosition: 'bottom' }} />
   return (
     <svg className="sky-scenery" viewBox="0 0 1000 200" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
       <g className="sun-rays"><circle cx="820" cy="70" r="52" className="sky-sun-glow" /></g>
@@ -149,7 +154,9 @@ const DECOR: Record<string, { w: number; h: number; body: ReactElement }> = {
   tuft: { w: 70, h: 40, body: <g stroke={K} strokeWidth="2.4" strokeLinejoin="round" style={{ fill: 'var(--tuft, #5DAA5E)' }}><path d="M8 36l8-26 6 24 8-30 6 30 8-24 6 26z" /></g> },
 }
 export const DECOR_KINDS = Object.keys(DECOR)
-export function GroundDecor({ kind }: { kind: string }) {
+export function GroundDecor({ kind, theme }: { kind: string; theme?: string | null }) {
   const d = DECOR[kind] ?? DECOR.tuft
+  const file = artFile(`decor-${kind}`, theme)
+  if (file) return <img className={`decor-${kind}`} src={file} width={d.w * 1.6} height={d.h * 1.6} alt="" draggable={false} style={{ display: 'block', objectFit: 'contain' }} />
   return <svg className={`decor-${kind}`} viewBox={`0 0 ${d.w + 10} ${d.h + 10}`} width={d.w * 1.6} height={d.h * 1.6} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>{d.body}</svg>
 }

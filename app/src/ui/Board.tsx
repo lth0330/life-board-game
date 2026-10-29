@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactElement } from 'react'
 import { Building, TileIcon, Tree } from '../art/Art'
 import { DECOR_KINDS, GroundDecor, SkyScenery, Weather } from '../art/Scenery'
+import { artFile } from '../art/slots'
 import { Landmark } from '../art/More'
 import { Character, type Expr } from '../art/Character'
 import { heightOf } from '../art/height'
@@ -67,6 +68,7 @@ interface Props {
 
 export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = null, canPan = false, emotes = {}, hands = {}, say = null }: Props) {
   const theme = s.settings.theme // 테마 맵: 규칙은 그대로, 판 겉모습만 (2026-10-29)
+  const groundFile = artFile('ground', theme) // 땅 그림 파일 (반복 무늬)
   const st = s.stages[s.stageIdx]
   const focusPos = posOf(focus)
   const fd = st.tiles[focusPos].d
@@ -107,8 +109,8 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
         const far = LANE * (maxLane + 1) + 320 + band * 520 + (seed % 4) * 90 // 건물·나무(길에서 ~650px)보다 바깥
         const kind = DECOR_KINDS[seed % DECOR_KINDS.length]
         const flat = kind === 'pond' || kind === 'flowers' // 연못·꽃밭은 땅에 눕고, 나머지는 서 있음
-        if (band === 0 && seed % 3 === 0) ground.push(<div key={`fn${i}-${side}`} className="far-decor" style={{ left: xAt(t) + 60 + side * (520 + (seed % 4) * 40) - (side < 0 ? 200 : 0), top: yAt(t) + 30 }}><GroundDecor kind="flowers" /></div>) // 가까운 쪽 잔디에도 꽃밭·풀 (땅에 눕힘)
-        items.push(<div key={`fd${i}-${side}-${band}`} className="far-decor" style={{ ...(flat ? {} : stand), left: xAt(t) + 60 + side * far - (side < 0 ? 260 : 0), top: yAt(t) - 60 + (seed % 3) * 40 }}><GroundDecor kind={kind} /></div>)
+        if (band === 0 && seed % 3 === 0) ground.push(<div key={`fn${i}-${side}`} className="far-decor" style={{ left: xAt(t) + 60 + side * (520 + (seed % 4) * 40) - (side < 0 ? 200 : 0), top: yAt(t) + 30 }}><GroundDecor kind="flowers" theme={theme} /></div>) // 가까운 쪽 잔디에도 꽃밭·풀 (땅에 눕힘)
+        items.push(<div key={`fd${i}-${side}-${band}`} className="far-decor" style={{ ...(flat ? {} : stand), left: xAt(t) + 60 + side * far - (side < 0 ? 260 : 0), top: yAt(t) - 60 + (seed % 3) * 40 }}><GroundDecor kind={kind} theme={theme} /></div>)
       }
     }
     if (t.road === 'main') {
@@ -160,7 +162,7 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
       const shop = t.point === 'shop'
       items.push(
         <div key={`p${i}`} className="bld" style={{ ...stand, left, top: yAt(t) - 260, width: 260, height: 320 }}>
-          <Building name={shop ? '상점' : '결혼식장'} />
+          <Building name={shop ? '상점' : '결혼식장'} theme={theme} />
         </div>,
       )
     } else if (t.road === 'main' && !t.fork && t.d % 4 === 2) {
@@ -168,21 +170,21 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
       const left = decorX(t, (t.d / 4) % 2 ? 1 : -1, 190, 430)
       items.push(
         <div key={`d${i}`} className="bld" style={{ ...stand, left, top: yAt(t) - 200, width: 220, height: 270 }}>
-          <Building name={name} color={ROOFS[i % ROOFS.length]} />
+          <Building name={name} color={ROOFS[i % ROOFS.length]} theme={theme} />
         </div>,
       )
     } else if (t.road === 'main' && Math.round(t.d) % 2 === 1) {
       const left = decorX(t, Math.round(t.d) % 3 ? -1 : 1, 120, 400)
       items.push(
         <div key={`r${i}`} className="tree" style={{ ...stand, left, top: yAt(t) - 60 }}>
-          <Tree variant={i} />
+          <Tree variant={i} theme={theme} />
         </div>,
       )
     }
     if (t.kind === 'campus') {
       items.push(
         <div key={`u${i}`} className="bld" style={{ ...stand, left: xAt(t) - 300, top: yAt(t) - 220, width: 240, height: 290 }}>
-          <Building name="학교" color="#8A4FA8" />
+          <Building name="학교" color="#8A4FA8" theme={theme} />
         </div>,
       )
     }
@@ -248,9 +250,9 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
   }
   const panned = Math.abs(pan.x) > 20 || Math.abs(pan.y) > 40
   return (
-    <div className={`world stage-${st.id}${theme ? ` theme-${theme}` : ''}${canPan ? ' can-pan' : ''}`} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onDragStart={(e) => e.preventDefault()}>
+    <div className={`world stage-${st.id}${theme ? ` theme-${theme}` : ''}${groundFile ? ' has-ground' : ''}${canPan ? ' can-pan' : ''}`} style={groundFile ? ({ '--ground-img': `url(${groundFile})` } as CSSProperties) : undefined} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onDragStart={(e) => e.preventDefault()}>
       <div className="sky-deco">
-        <SkyScenery />
+        <SkyScenery theme={theme} />
         <div className="ground" />
       </div>
       <div className="camera">

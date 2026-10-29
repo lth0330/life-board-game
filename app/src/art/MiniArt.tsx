@@ -1,3 +1,4 @@
+import { artFile } from './slots'
 // 미니게임 안 그림 (2026-10-22): 이모지·기호 대신 잉크 테두리 + 밝은 색 그림 (칸 아이콘·건물과 같은 그림체)
 // 이모지는 기기마다 모양이 달라서 직접 그림. viewBox 0 0 48 48
 import type { ReactElement } from 'react'
@@ -47,6 +48,8 @@ const ICONS: Record<string, ReactElement> = {
 }
 
 export function MiniIcon({ name, size = 40 }: { name: string; size?: number }) {
+  const file = artFile(`mini-${name}`)
+  if (file) return <img src={file} width={size} height={size} alt="" draggable={false} style={{ display: 'block', objectFit: 'contain' }} />
   return <svg viewBox="0 0 48 48" width={size} height={size} aria-hidden="true" style={{ display: 'block' }}>{ICONS[name] ?? ICONS.star}</svg>
 }
 

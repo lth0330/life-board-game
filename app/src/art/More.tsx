@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { sfx } from '../sound'
 import { awning, box, door, gable, sideWin } from './toyParts'
+import { artFile } from './slots'
 
 // 추가 그림 (기본 버전 — 아트 단계에서 다시 그림, docs/12-art.md)
 // 이벤트 길 입구 랜드마크, 결정 창 그림
@@ -25,7 +26,11 @@ const toy = (body: ReactElement) => (
 
 // 이벤트 길 이름 → 입구 랜드마크
 const LANDMARKS = ['운동회', '두뇌 올림피아드', '축제 거리', '카지노', '세계일주']
+const LANDMARK_FILE: Record<string, string> = { 운동회: 'sport', '두뇌 올림피아드': 'brain', '축제 거리': 'fest', 카지노: 'casino', 세계일주: 'travel' }
 export function Landmark({ name }: { name: string }) {
+  const key = name.includes('학교 축제') ? '축제 거리' : LANDMARKS.find((k) => name.includes(k))
+  const file = key ? artFile(`landmark-${LANDMARK_FILE[key]}`) : undefined
+  if (file) return toy(<image href={file} x="0" y="0" width="260" height="270" preserveAspectRatio="xMidYMax meet" />)
   switch (name.includes('학교 축제') ? '축제 거리' : LANDMARKS.find((k) => name.includes(k))) {
     case '운동회':
       // 운동장 트랙 + 만국기 + 출발 아치
@@ -366,6 +371,8 @@ export function EventPopup({ art, title, text, tone, who, hint = false, onClose 
 }
 
 export function EventArt({ type }: { type: string }) {
+  const file = artFile(`event-${TYPE_ART[type] ?? type}`)
+  if (file) return <img className="event-art" src={file} width="96" height="80" alt="" draggable={false} style={{ objectFit: 'contain' }} />
   const draw = ART[TYPE_ART[type] ?? '']
   if (!draw) return null
   return <svg className="event-art" viewBox="0 0 120 100" width="96" height="80" aria-hidden="true">{draw('')}</svg>

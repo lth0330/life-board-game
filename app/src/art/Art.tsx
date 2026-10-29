@@ -1,6 +1,7 @@
 // 기본 그림 모음 (칸 아이콘, 건물, 로고, 주사위 면). 기본 버전 — 아트 단계에서 다시 그린다 (docs/12-art.md)
 import type { ReactElement } from 'react'
 import titleArt from '../assets/title-art.webp'
+import { artFile } from './slots'
 import { awning, box, door, gable, GLASS, GLASS_SIDE, INK, shade, shadow, sideWin, win, WOOD } from './toyParts'
 
 // ───── 칸 아이콘 (viewBox 0 0 48 48). 2026-10-17 다시 그림: 잉크 테두리 + 밝은 색, 캐릭터·종이 보드게임 UI와 같은 느낌 ─────
@@ -33,6 +34,8 @@ const ICONS: Record<string, ReactElement> = {
 }
 
 export function TileIcon({ kind, size = 44 }: { kind: string; size?: number }) {
+  const file = artFile(`tile-${kind}`)
+  if (file) return <img src={file} width={size} height={size} alt="" draggable={false} style={{ objectFit: 'contain' }} />
   return <svg viewBox="0 0 48 48" width={size} height={size} aria-hidden="true">{ICONS[kind] ?? ICONS.happy}</svg>
 }
 
@@ -49,8 +52,9 @@ const BUILDING_FOR: Record<string, BuildingKind> = {
   상점: 'shop', 결혼식장: 'chapel',
 }
 
-export function Building({ name, color = '#B5452F' }: { name: string; color?: string }) {
+export function Building({ name, color = '#B5452F', theme }: { name: string; color?: string; theme?: string | null }) {
   const kind = BUILDING_FOR[name] ?? 'house'
+  const file = artFile(`building-${kind}`, theme) // 그림 파일이 있으면 그 그림 + 이름판
   // 이름판: 평평하게, 글자 수에 맞춰 너비
   const pw = Math.min(200, Math.max(110, name.length * 24 + 44))
   const plate = (bg: string) => (
@@ -249,6 +253,7 @@ export function Building({ name, color = '#B5452F' }: { name: string; color?: st
         </g>
       )
   }
+  if (file) body = <g><image href={file} x="0" y="0" width="220" height="228" preserveAspectRatio="xMidYMax meet" />{plate(kind === 'house' ? shade(color, 0.85) : '#5A3A21')}</g>
   return (
     <svg viewBox="0 0 220 270" width="100%" height="100%" aria-hidden="true">
       <g stroke={INK} strokeWidth="5" strokeLinejoin="round" strokeLinecap="round">{body}</g>
@@ -256,7 +261,9 @@ export function Building({ name, color = '#B5452F' }: { name: string; color?: st
   )
 }
 
-export function Tree({ variant = 0 }: { variant?: number }) {
+export function Tree({ variant = 0, theme }: { variant?: number; theme?: string | null }) {
+  const file = artFile(variant % 2 ? 'tree-pine' : 'tree-round', theme)
+  if (file) return <img src={file} width="100%" height="100%" alt="" draggable={false} style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
   return (
     <svg viewBox="0 0 90 150" width="100%" height="100%" aria-hidden="true">
       <rect x="38" y="80" width="14" height="70" rx="4" fill="#7A5232" />

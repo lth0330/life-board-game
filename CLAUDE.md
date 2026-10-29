@@ -13,6 +13,7 @@
 - `docs/spec.md` — **먼저 읽을 것.** 확정 요약 + 진행 체크리스트 + 문서 목록
 - `docs/10-prototype.md` 시험판 현황
 - `docs/12-art.md` 그림·연출·로그인 **기본 버전** — 나중에 다시 그리거나 고칠 목록
+- `docs/14-images.md` **그림 파일로 바꾸기**: `app/src/assets/art/`에 이름 맞는 그림을 넣으면 코드 그림 대신 씀 (이름·크기 목록)
 - `docs/01-structure.md` 구조 / `02-character.md` 능력치·직업 / `03-money.md` 돈·재테크 / `04-luck.md` 운세 / `05-marriage.md` 결혼 / `06-players.md` 플레이어끼리 / `07-cards.md` 카드 / `08-ai.md` AI / `reference.md` 참고 게임
 
 ## 이어서 할 일 (2026-10-29 마지막)

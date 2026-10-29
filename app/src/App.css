@@ -1170,3 +1170,6 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .w-leaves.fly .w-leaf { width: 9px; height: 7px; border-radius: 50%; background: #F49AB4; }
 .w-snow.water span { border-radius: 10px; background: repeating-linear-gradient(90deg, #E2553B 0 5px, #fff 5px 10px); }
 .w-snow.water span.up { background: #FFD45C; }
+
+/* 땅 그림 파일이 있으면 (src/assets/art/ground*.webp, 2026-10-29) */
+.world.has-ground .plane::before { background: var(--ground-img) 0 0 / 512px 512px repeat, var(--grass); }
