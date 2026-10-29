@@ -13,7 +13,7 @@ const cloud = (x: number, y: number, s: number, key: string) => (
 const tree = (x: number, y: number, s: number, key: string, dark = false) => (
   <g key={key} transform={`translate(${x} ${y}) scale(${s})`}>
     <rect x="-3" y="0" width="6" height="14" rx="2" fill="#8A5A3B" stroke={K} strokeWidth="2" />
-    <circle cx="0" cy="-6" r="12" fill={dark ? '#4F9A5E' : '#6DBB5A'} stroke={K} strokeWidth="2" />
+    <circle cx="0" cy="-6" r="12" style={{ fill: dark ? 'var(--tree-b, #4F9A5E)' : 'var(--tree-c, #6DBB5A)' }} stroke={K} strokeWidth="2" />
     <path d="M-6 -10q2-5 7-6" stroke="#fff" strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.5" />
   </g>
 )
@@ -66,6 +66,17 @@ export function TitleScenery() {
 }
 
 // 게임 안 하늘 (지평선 위): 해·흘러가는 구름·산·새. 색은 단계마다 CSS 변수로
+// 테마 맵 날씨: 가을은 떨어지는 낙엽, 겨울은 눈 (2026-10-29). 위치·속도는 고정 값이라 매번 같은 모양
+export function Weather({ kind }: { kind: 'leaves' | 'snow' }) {
+  return (
+    <div className={`weather ${kind}`} aria-hidden="true">
+      {Array.from({ length: kind === 'snow' ? 28 : 14 }, (_, i) => (
+        <i key={i} style={{ left: `${(i * 37) % 100}%`, animationDuration: `${(kind === 'snow' ? 7 : 9) + ((i * 13) % 6)}s`, animationDelay: `${-((i * 7) % 11)}s`, transform: `scale(${0.6 + ((i * 5) % 5) / 8})` }} />
+      ))}
+    </div>
+  )
+}
+
 export function SkyScenery() {
   return (
     <svg className="sky-scenery" viewBox="0 0 1000 200" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
@@ -86,15 +97,15 @@ export function SkyScenery() {
 
 // 판 바깥쪽 잔디 꾸미기 (2026-10-22: 게임 안 배경. 넓은 화면에서 양옆 잔디가 비어 보여서)
 const DECOR: Record<string, { w: number; h: number; body: ReactElement }> = {
-  bush: { w: 120, h: 70, body: <g stroke={K} strokeWidth="3" strokeLinejoin="round"><path d="M10 64a20 20 0 0 1 14-34 26 26 0 0 1 46-10 22 22 0 0 1 38 18 16 16 0 0 1 2 26z" fill="#5DAA5E" /><path d="M30 34q6-8 16-8" stroke="#fff" strokeWidth="3" fill="none" opacity="0.45" /><circle cx="44" cy="48" r="4" fill="#FF7AA2" strokeWidth="2" /><circle cx="78" cy="40" r="4" fill="#FFD45C" strokeWidth="2" /></g> },
+  bush: { w: 120, h: 70, body: <g stroke={K} strokeWidth="3" strokeLinejoin="round"><path d="M10 64a20 20 0 0 1 14-34 26 26 0 0 1 46-10 22 22 0 0 1 38 18 16 16 0 0 1 2 26z" style={{ fill: 'var(--bush, #5DAA5E)' }} /><path className="snow-cap" d="M14 34a26 26 0 0 1 46-14 22 22 0 0 1 38 18q-8 5-16 0-8 6-16 0-8 6-16 0-8 6-16 0-8 6-20-4z" /><path d="M30 34q6-8 16-8" stroke="#fff" strokeWidth="3" fill="none" opacity="0.45" /><circle cx="44" cy="48" r="4" fill="#FF7AA2" strokeWidth="2" /><circle cx="78" cy="40" r="4" fill="#FFD45C" strokeWidth="2" /></g> },
   flowers: { w: 130, h: 60, body: <g stroke={K} strokeWidth="2.2">{[[16, 40, '#FF7AA2'], [40, 26, '#FFD45C'], [62, 44, '#fff'], [86, 30, '#C9B6F0'], [108, 46, '#FF7AA2'], [30, 52, '#FFB27A'], [96, 54, '#fff']].map(([x, y, c], i) => <g key={i} transform={`translate(${x} ${y})`}><path d="M0 4v12" stroke="#4F9A5E" strokeWidth="3" /><circle r="7" fill={c as string} /><circle r="2.8" fill="#E2A92C" strokeWidth="1.2" /></g>)}</g> },
-  pond: { w: 200, h: 90, body: <g stroke={K} strokeWidth="3" strokeLinejoin="round"><path d="M14 46c0-22 40-38 90-38s92 14 92 36-44 40-96 40S14 68 14 46z" fill="#8FC8F0" /><path d="M50 40q20-8 44-4M120 56q20-4 34 2" stroke="#fff" strokeWidth="3" fill="none" opacity="0.7" /><ellipse cx="150" cy="34" rx="14" ry="7" fill="#5DAA5E" strokeWidth="2.4" /><path d="M36 74l-6-26M44 76l2-30" stroke="#4F9A5E" strokeWidth="3" /><ellipse cx="30" cy="46" rx="4" ry="9" fill="#8A5A3B" strokeWidth="2" /></g> },
+  pond: { w: 200, h: 90, body: <g stroke={K} strokeWidth="3" strokeLinejoin="round"><path d="M14 46c0-22 40-38 90-38s92 14 92 36-44 40-96 40S14 68 14 46z" style={{ fill: 'var(--pond, #8FC8F0)' }} /><path d="M50 40q20-8 44-4M120 56q20-4 34 2" stroke="#fff" strokeWidth="3" fill="none" opacity="0.7" /><ellipse cx="150" cy="34" rx="14" ry="7" fill="#5DAA5E" strokeWidth="2.4" /><path d="M36 74l-6-26M44 76l2-30" stroke="#4F9A5E" strokeWidth="3" /><ellipse cx="30" cy="46" rx="4" ry="9" fill="#8A5A3B" strokeWidth="2" /></g> },
   fence: { w: 190, h: 60, body: <g stroke={K} strokeWidth="3" strokeLinejoin="round" fill="#E9D3A8"><path d="M6 26h178M6 44h178" strokeWidth="8" stroke={K} /><path d="M6 26h178M6 44h178" strokeWidth="4" stroke="#E9D3A8" />{[10, 50, 90, 130, 170].map((x) => <path key={x} d={`M${x} 56V14l6-8 6 8v42z`} />)}</g> },
   rocks: { w: 110, h: 50, body: <g stroke={K} strokeWidth="3" strokeLinejoin="round"><path d="M8 44q2-22 24-26 20 2 22 26z" fill="#B9B5A6" /><path d="M48 44q4-30 32-32 22 6 22 32z" fill="#A5A294" /><path d="M60 22q8-6 16-4" stroke="#fff" strokeWidth="2.6" fill="none" opacity="0.6" /></g> },
-  tuft: { w: 70, h: 40, body: <g stroke={K} strokeWidth="2.4" strokeLinejoin="round" fill="#5DAA5E"><path d="M8 36l8-26 6 24 8-30 6 30 8-24 6 26z" /></g> },
+  tuft: { w: 70, h: 40, body: <g stroke={K} strokeWidth="2.4" strokeLinejoin="round" style={{ fill: 'var(--tuft, #5DAA5E)' }}><path d="M8 36l8-26 6 24 8-30 6 30 8-24 6 26z" /></g> },
 }
 export const DECOR_KINDS = Object.keys(DECOR)
 export function GroundDecor({ kind }: { kind: string }) {
   const d = DECOR[kind] ?? DECOR.tuft
-  return <svg viewBox={`0 0 ${d.w + 10} ${d.h + 10}`} width={d.w * 1.6} height={d.h * 1.6} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>{d.body}</svg>
+  return <svg className={`decor-${kind}`} viewBox={`0 0 ${d.w + 10} ${d.h + 10}`} width={d.w * 1.6} height={d.h * 1.6} aria-hidden="true" style={{ display: 'block', overflow: 'visible' }}>{d.body}</svg>
 }

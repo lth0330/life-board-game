@@ -2,14 +2,15 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Logo } from '../art/Art'
 import { Character } from '../art/Character'
 import type { Outfit } from '../engine/outfit'
-import type { Difficulty } from '../engine/types'
+import type { Difficulty, MapTheme } from '../engine/types'
+import { THEMES } from './format'
 import type { Profile, SaveSlot } from '../storage'
 import { TitleScenery } from '../art/Scenery'
 import { Dresser } from './Dresser'
 import { Manual } from './Manual'
 
 export type Speed = 'fast' | 'normal' | 'slow'
-export interface SetupResult { name: string; names: string[]; humans: number; ai: number; difficulty: Difficulty; outfit: Outfit; teams?: (0 | 1)[] }
+export interface SetupResult { name: string; names: string[]; humans: number; ai: number; difficulty: Difficulty; outfit: Outfit; teams?: (0 | 1)[]; theme?: MapTheme }
 
 // 왼쪽 위에 늘 같은 자리에 있는 뒤로 가기 버튼 (2026-10-22 사용자: 모든 화면에서)
 // 폰의 뒤로 버튼·뒤로 쓸기(브라우저 뒤로)도 지금 보이는 '‹' 버튼과 똑같이 (2026-10-22)
@@ -141,6 +142,7 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
   const aiCount = Math.min(ai, maxAi)
   // 팀전 (4명일 때): 자리마다 A/B. 처음엔 사람 2·AI 2면 사람 vs AI, 아니면 번갈아 (2026-10-21)
   const [teamOn, setTeamOn] = useState(false)
+  const [theme, setTheme] = useState<MapTheme | ''>('')
   const [teamPick, setTeamPick] = useState<(0 | 1)[] | null>(null)
   const four = humans + aiCount === 4
   const seatNames = [name || '나', ...Array.from({ length: humans - 1 }, (_, i) => names[i] || `친구${i + 1}`), ...Array.from({ length: aiCount }, (_, i) => `AI ${i + 1}`)]
@@ -187,10 +189,13 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
           )}
         </div>
       )}
+      <div className="field"><span>판 테마 (겉모습만 바뀌어요)</span>
+        <Choice value={theme} options={THEMES} onChange={setTheme} />
+      </div>
       <div className="field"><span>AI 난이도</span>
         <Choice value={difficulty} options={[['normal', '보통'], ['hard', '어려움']]} onChange={setDifficulty} />
       </div>
-      <button className="wide big" disabled={humans + aiCount < 2 || (four && teamOn && !teamOk)} onClick={() => onStart({ name, names: names.slice(0, humans - 1), humans, ai: aiCount, difficulty, outfit, teams: four && teamOn ? teams : undefined })}>게임 시작</button>
+      <button className="wide big" disabled={humans + aiCount < 2 || (four && teamOn && !teamOk)} onClick={() => onStart({ name, names: names.slice(0, humans - 1), humans, ai: aiCount, difficulty, outfit, teams: four && teamOn ? teams : undefined, theme: theme || undefined })}>게임 시작</button>
       <button className="wide ghost" onClick={onBack}>뒤로</button>
       {dress && <Dresser value={outfit} onChange={(o) => { setOutfit(o); onOutfit(o) }} onDone={() => setDress(false)} />}
       {manual && <Manual onClose={() => setManual(false)} />}

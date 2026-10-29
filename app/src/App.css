@@ -1077,3 +1077,41 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .mini-count { font-size: 96px; text-align: center; line-height: 1.2; color: var(--ink); animation: count-pop 1s ease-out both; }
 @keyframes count-pop { from { transform: scale(1.6); opacity: 0; } 30% { transform: scale(1); opacity: 1; } to { transform: scale(0.9); opacity: 0.6; } }
 @media (prefers-reduced-motion: reduce) { .mini-count { animation: none; } }
+
+/* ───── 테마 맵 (2026-10-29): 규칙은 그대로, 판 겉모습만. 가을·겨울 ───── */
+.snow-cap { display: none; fill: #fff; }
+.weather { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 2; }
+.weather i { position: absolute; top: -6%; display: block; animation: weather-fall linear infinite; }
+.weather.leaves i { width: 16px; height: 11px; border-radius: 0 80% 0 80%; background: #E07A2E; border: 1.5px solid rgba(42, 33, 24, 0.55); }
+.weather.leaves i:nth-child(3n) { background: #C9452B; }
+.weather.leaves i:nth-child(3n + 1) { background: #F0B53A; }
+.weather.snow i { width: 9px; height: 9px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px rgba(120, 150, 180, 0.45); }
+@keyframes weather-fall {
+  0% { translate: 0 0; rotate: 0deg; }
+  50% { translate: 30px 55vh; rotate: 200deg; }
+  100% { translate: -10px 112vh; rotate: 380deg; }
+}
+@media (prefers-reduced-motion: reduce) { .weather { display: none; } }
+
+.world.theme-autumn {
+  --grass: #C9B565; --tree-a: #E07A2E; --tree-b: #F0B53A; --tree-c: #C9452B; --pine: #3F6B3A; --bush: #D9772F; --tuft: #B59A4A; --pond: #7FB4D6; --lawn: #D8C377;
+  --mtn-far: #E3A86C; --mtn-near: #B9763E;
+}
+.world.theme-autumn.stage-child, .world.theme-autumn.stage-student, .world.theme-autumn.stage-young { background: linear-gradient(#78BDEB, #D8EEF7 22%); }
+.theme-autumn .ground-bit.gb-0 { width: 22px; height: 15px; border-radius: 0 80% 0 80%; background: #E07A2E; }
+.theme-autumn .ground-bit.gb-1 { width: 20px; height: 14px; border-radius: 80% 0 80% 0; background: #C9452B; }
+.theme-autumn .ground-bit.gb-3 { background: #A98A3E; box-shadow: 12px -6px 0 -3px #BFA04E; }
+.theme-autumn .ground-bit.gb-4 { width: 22px; height: 15px; border-radius: 0 80% 0 80%; background: #F0B53A; }
+/* 가을 꽃밭은 그대로 (코스모스) */
+
+.world.theme-winter {
+  --grass: #EAF2F7; --tree-a: #E4EEF4; --tree-b: #CFE0EA; --tree-c: #DCE8F0; --pine: #2F6A4A; --bush: #D7E5EE; --tuft: #C9DBE6; --pond: #CDE7F5; --lawn: #F4F8FB;
+  --sun: #FFF0B8; --sun-glow: #FFF8DC; --mtn-far: #C6D6E8; --mtn-near: #E2ECF4;
+}
+.world.theme-winter, .world.theme-winter.stage-middle, .world.theme-winter.stage-old { background: linear-gradient(#A9C3DC, #E3EDF5 22%); }
+.theme-winter .snow-cap { display: inline; }
+.theme-winter .plane::before { background: radial-gradient(circle at 20% 30%, rgba(160, 190, 215, 0.35) 0 3px, transparent 4px) 0 0 / 46px 46px, radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.9) 0 3px, transparent 4px) 0 0 / 58px 58px, var(--grass); }
+.theme-winter .road-seg { box-shadow: inset 0 0 0 5px #C9A26A, 0 0 0 7px rgba(255, 255, 255, 0.9); }
+.theme-winter .ground-bit.gb-0, .theme-winter .ground-bit.gb-1, .theme-winter .ground-bit.gb-4 { width: 34px; height: 18px; border-radius: 50% 50% 40% 40%; background: #fff; box-shadow: inset 0 -4px 0 rgba(140, 170, 200, 0.4); }
+.theme-winter .ground-bit.gb-3 { background: #fff; box-shadow: 12px -6px 0 -3px #E4EEF4; }
+.theme-winter .decor-flowers { display: none !important; }

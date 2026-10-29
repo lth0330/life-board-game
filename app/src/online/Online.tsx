@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { createGame } from '../engine/game'
 import { applyOp, opActor, type Op } from '../engine/ops'
 import type { GameState } from '../engine/types'
+import { THEMES } from '../ui/format'
 import { Frame } from '../ui/Screens'
 import { EMOTES } from '../ui/emoteData'
 import type { MiniView } from '../ui/miniView'
@@ -208,7 +209,7 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
       humanName: people[0]?.name ?? '방장', humanNames: people.slice(1).map((s) => s.name ?? '친구'), humans: people.length, aiCount: ai,
       outfits: people.map((s) => (s.outfit ? cleanOutfit(s.outfit) : undefined)),
       teams,
-      settings: { startAdult: false, difficulty: lobby.settings.difficulty, online: true },
+      settings: { startAdult: false, difficulty: lobby.settings.difficulty, online: true, theme: lobby.settings.theme },
     })
     const owners = [...people.map((s) => s.userId ?? null), ...Array<null>(ai).fill(null)]
     const r = await saveRoom(room, { status: 'playing', state: { ...lobby, owners, game } })
@@ -252,6 +253,9 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
             {!teamOk && <p className="bad">두 명씩 나눠 주세요 (방장이 눌러서 바꿔요)</p>}
           </div>
         )}
+        <div className="seg">
+          {THEMES.map(([v, l]) => <button key={l} className={(lobby.settings.theme ?? '') === v ? 'on' : ''} disabled={!isHost} onClick={() => setSettings({ theme: v || undefined })}>{l}</button>)}
+        </div>
         <div className="seg">
           {DIFF.map(([v, l]) => <button key={v} className={lobby.settings.difficulty === v ? 'on' : ''} disabled={!isHost} onClick={() => setSettings({ difficulty: v })}>AI {l}</button>)}
         </div>

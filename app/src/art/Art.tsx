@@ -176,12 +176,12 @@ export function Building({ name, color = '#B5452F' }: { name: string; color?: st
     case 'park':
       body = (
         <g>
-          <ellipse cx="110" cy="206" rx="104" ry="26" fill="#7FCB8A" />
+          <ellipse cx="110" cy="206" rx="104" ry="26" style={{ fill: 'var(--lawn, #7FCB8A)' }} />
           <path d="M18 206q20 12 50 16" stroke="#5DAA6C" strokeWidth="3" fill="none" />
           <rect x="52" y="128" width="12" height="80" rx="3" fill="#7A5232" />
-          <circle cx="58" cy="112" r="40" fill="#4F9A5E" /><path d="M36 100q6-16 22-20" stroke="#fff" strokeWidth="5" opacity="0.45" fill="none" />
+          <circle cx="58" cy="112" r="40" style={{ fill: 'var(--tree-b, #4F9A5E)' }} /><path d="M36 100q6-16 22-20" stroke="#fff" strokeWidth="5" opacity="0.45" fill="none" />
           <rect x="156" y="118" width="12" height="84" rx="3" fill="#7A5232" />
-          <circle cx="162" cy="100" r="44" fill="#3F8A4F" /><path d="M138 88q6-18 24-22" stroke="#fff" strokeWidth="5" opacity="0.45" fill="none" />
+          <circle cx="162" cy="100" r="44" style={{ fill: 'var(--tree-a, #3F8A4F)' }} /><path d="M138 88q6-18 24-22" stroke="#fff" strokeWidth="5" opacity="0.45" fill="none" />
           <path d="M80 196l12-8h46l-12 8z" fill="#C98F5B" strokeWidth="4" />
           <path d="M80 196h46v8H80z" fill="#B47A48" strokeWidth="4" />
           <path d="M86 204v14M120 204v14M132 194v14" strokeWidth="4" />
@@ -261,9 +261,9 @@ export function Tree({ variant = 0 }: { variant?: number }) {
     <svg viewBox="0 0 90 150" width="100%" height="100%" aria-hidden="true">
       <rect x="38" y="80" width="14" height="70" rx="4" fill="#7A5232" />
       {variant % 2 ? (
-        <path d="M45 6L84 96H6z" fill="#2F7A44" />
+        <><path d="M45 6L84 96H6z" style={{ fill: 'var(--pine, #2F7A44)' }} /><path className="snow-cap" d="M45 6L63 48q-6 6-12 0-6 6-12 0-6 6-12 0z" /></>
       ) : (
-        <><circle cx="45" cy="52" r="40" fill="#3F8A4F" /><circle cx="30" cy="40" r="14" fill="#4F9A5E" /></>
+        <><circle cx="45" cy="52" r="40" style={{ fill: `var(--tree-${variant % 4 ? 'a' : 'c'}, #3F8A4F)` }} /><circle cx="30" cy="40" r="14" style={{ fill: 'var(--tree-b, #4F9A5E)' }} /><path className="snow-cap" d="M9 44a36 36 0 0 1 72 0q-8 6-18 0-9 7-18 0-9 7-18 0-9 6-18 0z" /></>
       )}
     </svg>
   )

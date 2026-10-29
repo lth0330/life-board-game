@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactElement } from 'react'
 import { Building, TileIcon, Tree } from '../art/Art'
-import { DECOR_KINDS, GroundDecor, SkyScenery } from '../art/Scenery'
+import { DECOR_KINDS, GroundDecor, SkyScenery, Weather } from '../art/Scenery'
 import { Landmark } from '../art/More'
 import { Character, type Expr } from '../art/Character'
 import { heightOf } from '../art/height'
@@ -66,6 +66,7 @@ interface Props {
 }
 
 export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = null, canPan = false, emotes = {}, hands = {}, say = null }: Props) {
+  const theme = s.settings.theme // 테마 맵: 규칙은 그대로, 판 겉모습만 (2026-10-29)
   const st = s.stages[s.stageIdx]
   const focusPos = posOf(focus)
   const fd = st.tiles[focusPos].d
@@ -247,7 +248,7 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
   }
   const panned = Math.abs(pan.x) > 20 || Math.abs(pan.y) > 40
   return (
-    <div className={`world stage-${st.id}${canPan ? ' can-pan' : ''}`} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onDragStart={(e) => e.preventDefault()}>
+    <div className={`world stage-${st.id}${theme ? ` theme-${theme}` : ''}${canPan ? ' can-pan' : ''}`} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onDragStart={(e) => e.preventDefault()}>
       <div className="sky-deco">
         <SkyScenery />
         <div className="ground" />
@@ -257,6 +258,7 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
           <div key={s.stageIdx} className={`track${dragging ? ' dragging' : ''}`} style={{ transform: `translate(${-st.tiles[focusPos].lane * LANE + pan.x}px, ${fd * 150 + pan.y}px)` }}>{ground}{items}</div>
         </div>
       </div>
+      {theme && <Weather kind={theme === 'winter' ? 'snow' : 'leaves'} />}
       {panned && <button className="pan-home" onClick={(e) => { e.stopPropagation(); setPan({ x: 0, y: 0 }) }} onPointerDown={(e) => e.stopPropagation()}>내 위치로</button>}
     </div>
   )
