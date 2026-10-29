@@ -1,4 +1,5 @@
 // 미니게임·단계 끝 대회·같은 칸 만남(대결) (2026-10-29 game.ts에서 나눔)
+import { josa } from './josa'
 import { STAT_NAMES, JOB_AFFINITY } from './data'
 import type { Rng } from './rng'
 import type { DuelId, GameState, MiniId, Player, StageId, StatKey, Suitor } from './types'
@@ -242,12 +243,12 @@ export function affinityGain(s: GameState, p: Player, x: Suitor) {
 
 // 축제 거리: 호감도가 아니라 새 사람을 만나는 곳. 대성공이면 높은 등급이 잘 나옴
 function addAffinityOrMeet(s: GameState, p: Player, amount: number, target?: string) {
-  if (p.spouse) { p.happy += Math.round(amount / 5); log(s, p.id, `${p.spouse.name}와 축제를 즐겼다. 행복 +${Math.round(amount / 5)}`, 'good'); return }
+  if (p.spouse) { p.happy += Math.round(amount / 5); log(s, p.id, `${josa(p.spouse.name, '와/과')} 축제를 즐겼다. 행복 +${Math.round(amount / 5)}`, 'good'); return }
   const known = target && target !== 'new' ? findSuitor(p, target) : undefined
   if (known) {
     const add = Math.min(100 - known.affinity, amount)
     known.affinity += add
-    log(s, p.id, `축제에서 ${known.name}와 더 가까워졌다! 호감도 +${add}% (지금 ${known.affinity}%)`, 'good')
+    log(s, p.id, `축제에서 ${josa(known.name, '와/과')} 더 가까워졌다! 호감도 +${add}% (지금 ${known.affinity}%)`, 'good')
     return
   }
   const x = makeSuitor(s, p, { vip: amount >= 30 })

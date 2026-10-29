@@ -1,3 +1,4 @@
+import { josa } from '../engine/josa'
 import { useState, type ReactNode } from 'react'
 import { Character } from '../art/Character'
 import { Trophy } from '../art/More'
@@ -376,7 +377,7 @@ export function GameOver({ s, onRestart }: { s: GameState; onRestart: () => void
               </div>
               <div className="muted">
                 {jobOf(p)?.name ?? '백수'} · 자산 {won(sc.assets)} ({sc.assetScore}점){loanTotal(p) + friendDebt(s, p) > 0 ? ` (빚 -${won(loanTotal(p) + friendDebt(s, p))} 포함)` : ''} · 행복 {sc.happy}{sc.awardScore ? ` · 상 ${sc.awardScore}점` : ''}
-                {p.spouse ? ` · ${p.spouse.name}와 결혼` : p.divorced ? ' · 이혼' : ' · 비혼'}
+                {p.spouse ? ` · ${josa(p.spouse.name, '와/과')} 결혼` : p.divorced ? ' · 이혼' : ' · 비혼'}
                 {p.children + p.adopted ? ` · 자녀 ${p.children + p.adopted}` : ''}
               </div>
               {awardsOf(s, p).length > 0 && <div className="tags">{awardsOf(s, p).map((a) => <span key={a.id} className="award" title={a.desc}>🏆 {a.name} +{a.points}{a.ties > 1 ? ` (${a.ties}명 공동)` : ''}</span>)}</div>}

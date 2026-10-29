@@ -1,4 +1,5 @@
 // 연애와 결혼 (2026-10-29 game.ts에서 나눔)
+import { josa } from './josa'
 import { CARS, DICE_ITEMS, HOUSES, HOUSE_RULES, MAX_DICE_ITEMS, PRESTIGE_JOBS, SECTORS, SPOUSE_NAMES, TRAITS } from './data'
 import type { ChoiceOption, DiceItem, GameState, Player, Sector, Suitor } from './types'
 import {
@@ -64,7 +65,7 @@ export function dateTile(s: GameState, p: Player) {
         type: 'baby', playerId: p.id, title: '아기를 낳을까요?', text: `지금 자녀 ${p.children}명 (최대 3명). 자녀는 매 턴 행복을 주고 양육비가 들어요. 어른이 되면 용돈을 줘요.`,
         options: [{ id: 'yes', label: '낳는다' }, { id: 'no', label: '나중에' }],
       }
-    } else { p.happy += 2; log(s, p.id, `${p.spouse.name}와 데이트. 행복 +2`, 'good') }
+    } else { p.happy += 2; log(s, p.id, `${josa(p.spouse.name, '와/과')} 데이트. 행복 +2`, 'good') }
     return
   }
   if (!canDate(s, p)) { p.happy += 2; log(s, p.id, '좋은 사람들을 만났다. 행복 +2', 'good'); return }
@@ -110,24 +111,24 @@ export function shopBuy(s: GameState, p: Player, optionId: string, useCoupon: bo
   if (optionId.startsWith('mortgage')) {
     const i = +optionId.slice(8) as 0 | 1 | 2 | 3
     const m = mortgagePlan(s, p, i, useCoupon)
-    const old = p.house ? `${HOUSES[p.house].name}을 팔고 ` : ''
+    const old = p.house ? `${josa(HOUSES[p.house].name, '을/를')} 팔고 ` : ''
     spend(p, m.down)
     p.loans.push({ amount: m.borrow, dueTurn: p.turnsPlayed + HOUSE_RULES.mortgageTurns, kind: '주담대', installment: m.installment, missed: 0 })
     p.house = i; p.happy += HOUSES[i].happy
-    log(s, p.id, `${old}${HOUSES[i].name}을 대출 끼고 샀다! 계약금 ${won(m.down)}, 매 턴 ${won(m.installment)}씩 갚기. 행복 +${HOUSES[i].happy}`, 'good')
+    log(s, p.id, `${old}${josa(HOUSES[i].name, '을/를')} 대출 끼고 샀다! 계약금 ${won(m.down)}, 매 턴 ${won(m.installment)}씩 갚기. 행복 +${HOUSES[i].happy}`, 'good')
     say(s, p, 'house')
     s.banner = { title: '내 집 마련!', text: `${p.name}: ${HOUSES[i].name}`, tone: 'good' }
   } else if (optionId.startsWith('house')) {
     const i = +optionId.slice(5) as 0 | 1 | 2 | 3
     const cost = houseCost(s, p, i, useCoupon)
-    const old = p.house ? `${HOUSES[p.house].name}을 ${won(houseValue(s, p))}에 팔고 ` : ''
+    const old = p.house ? `${josa(HOUSES[p.house].name, '을/를')} ${won(houseValue(s, p))}에 팔고 ` : ''
     spend(p, cost); p.house = i; p.happy += HOUSES[i].happy
-    log(s, p.id, `${old}${HOUSES[i].name}을 샀다! 행복 +${HOUSES[i].happy}`, 'good')
+    log(s, p.id, `${old}${josa(HOUSES[i].name, '을/를')} 샀다! 행복 +${HOUSES[i].happy}`, 'good')
     say(s, p, 'house')
   } else if (optionId.startsWith('car')) {
     const i = +optionId.slice(3) as 0 | 1 | 2 | 3
     const cost = carCost(p, i, useCoupon)
-    const old = p.car ? `${CARS[p.car].name}를 ${won(carResale(p))}에 팔고 ` : ''
+    const old = p.car ? `${josa(CARS[p.car].name, '을/를')} ${won(carResale(p))}에 팔고 ` : ''
     spend(p, cost)
     p.carValue = CARS[i].price
     // 차를 바꿔도 이번 단계에 이미 쓴 횟수는 이어진다
@@ -136,7 +137,7 @@ export function shopBuy(s: GameState, p: Player, optionId: string, useCoupon: bo
     p.carStage = s.stageIdx
     p.carCharges = Math.max(0, carChargesAt(p, s.stageIdx) - usedThisStage)
     if (i === 3) p.happy += 4
-    log(s, p.id, `${old}${CARS[i].name}를 샀다!`, 'good')
+    log(s, p.id, `${old}${josa(CARS[i].name, '을/를')} 샀다!`, 'good')
   } else if (optionId.startsWith('agency')) {
     const vip = optionId === 'agency1'
     s.pending = {
@@ -155,7 +156,7 @@ export function shopBuy(s: GameState, p: Player, optionId: string, useCoupon: bo
     if (p.diceItems.length < MAX_DICE_ITEMS) {
       spend(p, DICE_ITEMS[k].price)
       p.diceItems.push(k)
-      log(s, p.id, `${DICE_ITEMS[k].name}를 샀다 (가진 주사위 아이템 ${p.diceItems.length}개)`, 'info')
+      log(s, p.id, `${josa(DICE_ITEMS[k].name, '을/를')} 샀다 (가진 주사위 아이템 ${p.diceItems.length}개)`, 'info')
     }
   }
 }

@@ -1,4 +1,5 @@
 // 창업·퇴직금·메달·동업·사업 기회 (2026-10-29 game.ts에서 나눔)
+import { josa } from './josa'
 import { BIZ_OPP, BIZ_RISK, bizEventsFor, findBizEvent, type BizEvent } from './bizEvents'
 import {
   BIZ, CARS, HOUSES, CAR_CRASH_LOSS, HOUSE_RULES, INSURANCE, JOBS, MEDALS, PENSION, SEVERANCE_RATE, SECTORS, STAT_NAMES, TAX_RATE, JOB_HEALTH,
@@ -34,13 +35,13 @@ export function bizTick(s: GameState, p: Player, mult: number) {
   const stat = bizStat(p)
   if (p.fortune >= 2 && p.jobRank < (biz.maxRank ?? 2) && rng.chance(stat * BIZ.growPerStat)) {
     p.jobRank++
-    log(s, p.id, `${biz.name}가 커졌다! ${bizRankOf(p)} (${biz.avg ? '능력치 평균' : STAT_NAMES[biz.stat]} ${stat} 덕분)`, 'good')
+    log(s, p.id, `${josa(biz.name, '이/가')} 커졌다! ${bizRankOf(p)} (${biz.avg ? '능력치 평균' : STAT_NAMES[biz.stat]} ${stat} 덕분)`, 'good')
     s.banner = { title: '회사 성장!', text: `${p.name}: ${biz.name}`, tone: 'good' }
     say(s, p, 'promoted')
     if (biz.sector) { s.stockPrice[biz.sector] = Math.round(s.stockPrice[biz.sector] * 1.1); log(s, null, `${p.name}의 회사가 커졌다! ${biz.sector}주 +10%`, 'good') }
   } else if (p.fortune <= 1 && p.jobRank > 0 && rng.chance(Math.max(0.05, BIZ.fallBase - stat * BIZ.fallPerStat))) {
     p.jobRank--
-    log(s, p.id, `${biz.name}가 휘청… ${bizRankOf(p)}로 줄었다`, 'bad')
+    log(s, p.id, `${josa(biz.name, '이/가')} 휘청… ${bizRankOf(p)}로 줄었다`, 'bad')
     if (biz.sector) { s.stockPrice[biz.sector] = Math.max(10, Math.round(s.stockPrice[biz.sector] * 0.85)); log(s, null, `${p.name}의 회사가 휘청! ${biz.sector}주 -15%`, 'bad') }
   }
 }
@@ -48,7 +49,7 @@ export function bizTick(s: GameState, p: Player, mult: number) {
 // 승진 심사 칸에 사업가가 서면 사업 평가: 이번 턴 사업 수익을 한 번 더 (2026-10-21 사용자)
 export function bizReview(s: GameState, p: Player) {
   const raw = bizBase(p) * bizStatMult(p) * BIZ.fortune[p.fortune]
-  if (raw <= 0) { log(s, p.id, `사업 평가: ${p.biz!.name}가 적자라 보너스가 없다`, 'info'); return }
+  if (raw <= 0) { log(s, p.id, `사업 평가: ${josa(p.biz!.name, '이/가')} 적자라 보너스가 없다`, 'info'); return }
   const income = Math.round(raw * (1 - TAX_RATE(raw)))
   p.money += income
   log(s, p.id, `사업 평가 좋음! ${p.biz!.name} 수익 한 번 더 +${won(income)}`, 'good')
@@ -65,7 +66,7 @@ export function severanceOf(p: Player) {
 export function severanceNote(p: Player) {
   const job = jobOf(p)
   if (!job) return ''
-  if (job.boom) return `${job.name}은 퇴직금이 없어요`
+  if (job.boom) return `${josa(job.name, '은/는')} 퇴직금이 없어요`
   const amt = severanceOf(p)
   return amt ? `${job.name} 퇴직금 +${won(amt)} (${p.jobTenure}턴 근무)` : `${job.name} 퇴직금은 아직 없어요 (일한 턴이 없음)`
 }
@@ -286,12 +287,12 @@ export function forceLiquidate(s: GameState, p: Player, overdue: { amount: numbe
   }
   if (p.money < need && p.car > 0) {
     p.money += carResale(p)
-    log(s, p.id, `강제 청산: ${CARS[p.car].name}를 ${won(carResale(p))}에 팔았다`, 'bad')
+    log(s, p.id, `강제 청산: ${josa(CARS[p.car].name, '을/를')} ${won(carResale(p))}에 팔았다`, 'bad')
     p.car = 0; p.carValue = 0; p.carCharges = 0
   }
   if (p.money < need && p.house > 0) {
     p.money += Math.round(houseValue(s, p) * HOUSE_RULES.forcedRate)
-    log(s, p.id, `강제 청산: ${HOUSES[p.house].name}을 팔았다`, 'bad')
+    log(s, p.id, `강제 청산: ${josa(HOUSES[p.house].name, '을/를')} 팔았다`, 'bad')
     p.house = 0
     // 집을 판 돈으로 주택담보대출부터 갚음 (집이 없는데 할부금만 남지 않게)
     const m = p.loans.find((l) => l.kind === '주담대')

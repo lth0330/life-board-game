@@ -1,4 +1,5 @@
 // 자녀 (2026-10-29 game.ts에서 나눔)
+import { josa } from './josa'
 import { KIDS } from './data'
 import type { GameState, Player, Kid } from './types'
 import { ageOf, badEvent, clampStat, fortuneName, isAdultStage, log, rngOf, say, scaleOf, stageOf, won, workJob } from './game'
@@ -114,12 +115,12 @@ export function familyTick(s: GameState, p: Player) {
     if (workJob(s, p)?.id === 'chef') p.happy += 1 // 요리사 특성: 집밥
     if (sp.kindness <= 3) {
       p.happy -= 1
-      if (rng.chance(0.1)) { p.happy -= 3; log(s, p.id, `${sp.name}와 부부 싸움을 했다`, 'bad') }
+      if (rng.chance(0.1)) { p.happy -= 3; log(s, p.id, `${josa(sp.name, '와/과')} 부부 싸움을 했다`, 'bad') }
     }
     if (sp.fame >= 7 && rng.chance(0.08)) {
       p.money += sc * 3
       p.happy += 2
-      log(s, p.id, `${sp.name}가 방송·광고에 나왔다! 수입 ${won(sc * 3)}`, 'good')
+      log(s, p.id, `${josa(sp.name, '이/가')} 방송·광고에 나왔다! 수입 ${won(sc * 3)}`, 'good')
     }
     if (sp.fame >= 7 && rng.chance(0.05)) {
       s.stockPrice[sp.sector] = Math.max(10, Math.round(s.stockPrice[sp.sector] * 0.85))
@@ -164,17 +165,17 @@ function traitEvent(s: GameState, p: Player) {
   const sp = p.spouse!
   const sc = scaleOf(s)
   switch (sp.trait) {
-    case '짠돌이': p.money += Math.round(sc * 0.5); p.happy -= 1; log(s, p.id, `${sp.name}가 아껴서 돈을 모아 왔다 (대신 행복 -1)`, 'info'); break
+    case '짠돌이': p.money += Math.round(sc * 0.5); p.happy -= 1; log(s, p.id, `${josa(sp.name, '이/가')} 아껴서 돈을 모아 왔다 (대신 행복 -1)`, 'info'); break
     case '요리왕': p.happy += 2; log(s, p.id, `${sp.name}의 요리로 행복 +2`, 'good'); break
-    case '재테크 고수': p.money += sc; log(s, p.id, `${sp.name}가 주식으로 ${won(sc)} 벌었다`, 'good'); break
+    case '재테크 고수': p.money += sc; log(s, p.id, `${josa(sp.name, '이/가')} 주식으로 ${won(sc)} 벌었다`, 'good'); break
     case '육아 천재': if (p.children + p.adopted) { p.happy += 3; log(s, p.id, '아이들이 무럭무럭 자란다 (행복 +3)', 'good') } break
-    case '운동 마니아': p.stats.str = clampStat(p.stats.str + 1); log(s, p.id, `${sp.name}와 같이 운동해서 체력 +1`, 'good'); break
-    case '인맥왕': p.money += sc; log(s, p.id, `${sp.name}가 좋은 거래를 소개해 줬다 +${won(sc)}`, 'good'); break
-    case '도박증': p.money -= sc; log(s, p.id, `${sp.name}가 도박으로 ${won(sc)} 날렸다`, 'bad'); break
+    case '운동 마니아': p.stats.str = clampStat(p.stats.str + 1); log(s, p.id, `${josa(sp.name, '와/과')} 같이 운동해서 체력 +1`, 'good'); break
+    case '인맥왕': p.money += sc; log(s, p.id, `${josa(sp.name, '이/가')} 좋은 거래를 소개해 줬다 +${won(sc)}`, 'good'); break
+    case '도박증': p.money -= sc; log(s, p.id, `${josa(sp.name, '이/가')} 도박으로 ${won(sc)} 날렸다`, 'bad'); break
     case '명품 중독': p.money -= Math.round(sc * 1.5); log(s, p.id, `${sp.name}의 명품 쇼핑 -${won(sc * 1.5)}`, 'bad'); break
-    case '까칠함': p.happy -= 3; log(s, p.id, `${sp.name}와 다퉜다 (행복 -3)`, 'bad'); break
+    case '까칠함': p.happy -= 3; log(s, p.id, `${josa(sp.name, '와/과')} 다퉜다 (행복 -3)`, 'bad'); break
     case '게으름': p.happy -= 2; log(s, p.id, '집안일이 쌓였다 (행복 -2)', 'bad'); break
-    case '술고래': badEvent(s, p, { text: `${sp.name}가 술 마시다 다쳤다`, loss: sc, happyLoss: 1, kind: 'health' }); break
+    case '술고래': badEvent(s, p, { text: `${josa(sp.name, '이/가')} 술 마시다 다쳤다`, loss: sc, happyLoss: 1, kind: 'health' }); break
     default: break
   }
 }
@@ -194,7 +195,7 @@ function divorce(s: GameState, p: Player, fault: 'me' | 'spouse', reason: string
   p.spouse = null
   p.divorced = true
   p.suitors = [{ ...sp, affinity: fault === 'me' ? 10 : 35 }] // 재결합 후보
-  log(s, p.id, `${sp.name}와 이혼했다 (${reason} · ${fault === 'spouse' ? '배우자 잘못, 위자료 받음' : '내 잘못, 위자료 냄'})`, 'bad')
-  s.banner = { title: '이혼', text: `${p.name}와 ${sp.name}`, tone: 'bad' }
+  log(s, p.id, `${josa(sp.name, '와/과')} 이혼했다 (${reason} · ${fault === 'spouse' ? '배우자 잘못, 위자료 받음' : '내 잘못, 위자료 냄'})`, 'bad')
+  s.banner = { title: '이혼', text: `${josa(p.name, '와/과')} ${sp.name}`, tone: 'bad' }
   say(s, p, 'divorce')
 }

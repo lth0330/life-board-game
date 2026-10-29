@@ -1,3 +1,4 @@
+import { josa } from './josa'
 import { BIZ_OPP, findBizEvent } from './bizEvents'
 import { buildStages, isEnd, maxDepth, walkAhead } from './board'
 import {
@@ -553,7 +554,7 @@ function mortgageTick(s: GameState, p: Player) {
   p.loans = p.loans.filter((l) => l !== m)
   if (left > 0) { p.loans.push({ amount: left, dueTurn: p.turnsPlayed + 8, kind: '일반' }); p.creditBad = 8 }
   else p.money += -left
-  log(s, p.id, `${name}이 경매로 ${won(sale)}에 넘어갔다… 행복 -8${left > 0 ? `, 남은 빚 ${won(left)}은 일반 대출로 · 신용불량` : `, 남은 돈 +${won(-left)}`}`, 'bad')
+  log(s, p.id, `${josa(name, '이/가')} 경매로 ${won(sale)}에 넘어갔다… 행복 -8${left > 0 ? `, 남은 빚 ${won(left)}은 일반 대출로 · 신용불량` : `, 남은 돈 +${won(-left)}`}`, 'bad')
   s.banner = { title: '집 경매', text: p.name, tone: 'bad' }
 }
 
@@ -766,8 +767,8 @@ export function aiWantsCar(s: GameState, p: Player): boolean {
 
 function applyAfterRoll(s: GameState, p: Player, choice: string, item: DiceItem | null = null, bonus = 0) {
   let n = s.lastRoll ?? 1
-  if (choice === 'minus' && n > 1) { n -= 1; log(s, p.id, `${CARS[p.car].name}로 1칸 덜 갔다`, 'info') }
-  if (choice === 'plus') { n += 1; log(s, p.id, `${CARS[p.car].name}로 1칸 더 갔다`, 'info') }
+  if (choice === 'minus' && n > 1) { n -= 1; log(s, p.id, `${josa(CARS[p.car].name, '으로/로')} 1칸 덜 갔다`, 'info') }
+  if (choice === 'plus') { n += 1; log(s, p.id, `${josa(CARS[p.car].name, '으로/로')} 1칸 더 갔다`, 'info') }
   if (choice === 'reroll' && p.human) {
     // 사람은 직접 다시 굴림 (2026-10-17 사용자)
     p.chance = null
@@ -938,7 +939,7 @@ function happyScene(s: GameState, p: Player): { art: string; title: string; text
   if (sid === 'child') c.push({ art: 'playground', title: '놀이터', text: '놀이터에서 신나게 놀았다!', bonus: 0 }, { art: 'game', title: '게임', text: '친구네서 게임을 했다!', bonus: 0 })
   else if (sid === 'student') c.push({ art: 'karaoke', title: '노래방', text: '친구들과 노래방에 갔다!', bonus: 0 }, { art: 'friends', title: '떡볶이', text: '친구들과 떡볶이를 먹었다!', bonus: 0 })
   else {
-    if (p.spouse) c.push({ art: 'travel', title: '함께 여행', text: `${p.spouse.name}와 여행을 다녀왔다!`, bonus: 1 })
+    if (p.spouse) c.push({ art: 'travel', title: '함께 여행', text: `${josa(p.spouse.name, '와/과')} 여행을 다녀왔다!`, bonus: 1 })
     if (p.kids.some((k) => k.result === null)) c.push({ art: 'amusement', title: '놀이동산', text: '아이들과 놀이동산에 갔다!', bonus: 1 })
     if (sid === 'old' && p.kids.length) c.push({ art: 'family', title: '손주', text: '손주들이 놀러 왔다!', bonus: 1 })
     if (p.pet?.alive) c.push({ art: 'walk', title: '산책', text: '반려동물과 공원을 산책했다!', bonus: 0 })
@@ -1700,7 +1701,7 @@ export function choose(s: GameState, optionId: string) {
       break
     case 'bizRetire':
       if (optionId === 'sell') sellCompany(s, p)
-      else { p.bizKeep = true; log(s, p.id, `노년에도 ${p.biz?.name}를 계속 경영한다`, 'info') }
+      else { p.bizKeep = true; log(s, p.id, `노년에도 ${josa(p.biz?.name ?? '사업', '을/를')} 계속 경영한다`, 'info') }
       break
     case 'idolNext': {
       const rank = p.exIdol ?? 0
@@ -1865,7 +1866,7 @@ export function choose(s: GameState, optionId: string) {
         }
       } else {
         const x = findSuitor(p, optionId)
-        if (x) { const add = affinityGain(s, p, x); x.affinity = Math.min(100, x.affinity + add); log(s, p.id, `${x.name}와 데이트. 호감도 ${x.affinity}% (+${add})`, 'good') }
+        if (x) { const add = affinityGain(s, p, x); x.affinity = Math.min(100, x.affinity + add); log(s, p.id, `${josa(x.name, '와/과')} 데이트. 호감도 ${x.affinity}% (+${add})`, 'good') }
       }
       break
     }
@@ -1875,7 +1876,7 @@ export function choose(s: GameState, optionId: string) {
         spend(p, cost)
         x.affinity = rng.int(25, 35)
         p.suitors.push(x)
-        log(s, p.id, `소개팅으로 ${x.name}와 연애 시작! 호감도 ${x.affinity}%`, 'good')
+        log(s, p.id, `소개팅으로 ${josa(x.name, '와/과')} 연애 시작! 호감도 ${x.affinity}%`, 'good')
       }
       break
     }
@@ -1884,10 +1885,10 @@ export function choose(s: GameState, optionId: string) {
         const x = (pd.data as { fresh: Suitor[] }).fresh[+optionId.slice(3)]
         x.affinity = rng.int(25, 40)
         p.suitors.push(x)
-        log(s, p.id, `${x.name}와 첫 데이트! 호감도 ${x.affinity}%`, 'good')
+        log(s, p.id, `${josa(x.name, '와/과')} 첫 데이트! 호감도 ${x.affinity}%`, 'good')
       } else {
         const x = findSuitor(p, optionId)
-        if (x) { const add = affinityGain(s, p, x); x.affinity = Math.min(100, x.affinity + add); log(s, p.id, `${x.name}와 데이트. 호감도 ${x.affinity}% (+${add})`, 'good') }
+        if (x) { const add = affinityGain(s, p, x); x.affinity = Math.min(100, x.affinity + add); log(s, p.id, `${josa(x.name, '와/과')} 데이트. 호감도 ${x.affinity}% (+${add})`, 'good') }
       }
       p.happy += 1
       break
@@ -1902,7 +1903,7 @@ export function choose(s: GameState, optionId: string) {
       if (p.creditBad > 0) prob -= 0.2
       if (rng.chance(Math.max(0.05, Math.min(0.95, prob)))) {
         s.pending = {
-          type: 'wedding', playerId: p.id, title: `${x.name}가 고백을 받아줬다!`, text: '결혼식장을 골라요. 비쌀수록 축의금과 좋은 일이 늘어요.',
+          type: 'wedding', playerId: p.id, title: `${josa(x.name, '이/가')} 고백을 받아줬다!`, text: '결혼식장을 골라요. 비쌀수록 축의금과 좋은 일이 늘어요.',
           options: [
             { id: '1', label: '작은 결혼식', desc: won(sc * 3) },
             { id: '2', label: '보통 결혼식', desc: won(sc * 8) },
@@ -1940,7 +1941,7 @@ export function choose(s: GameState, optionId: string) {
         gifts += g
       }
       p.money += gifts
-      log(s, p.id, `${x.name}와 결혼! 행복 +${happy}, 지참금 +${won(x.wealth * 60)}, 축의금 +${won(gifts)}`, 'good')
+      log(s, p.id, `${josa(x.name, '와/과')} 결혼! 행복 +${happy}, 지참금 +${won(x.wealth * 60)}, 축의금 +${won(gifts)}`, 'good')
       log(s, p.id, `결혼해 보니 ${x.name}의 숨은 특성: ${x.trait}`, x.traitGood ? 'good' : 'bad')
       s.banner = { title: '결혼!', text: `${p.name} ♥ ${x.name}`, tone: 'good' }
       say(s, p, 'married')
@@ -2028,7 +2029,7 @@ export function choose(s: GameState, optionId: string) {
     }
     case 'bizTakeInvest':
       if (optionId === 'yes') { log(s, p.id, `${p.biz?.name ?? '회사'} 투자를 받기로 했다`, 'info'); offerInvest(s, p, (pd.data as { queue: number[] }).queue) }
-      else log(s, p.id, `${p.biz?.name ?? '회사'}는 혼자 하기로 했다`, 'info')
+      else log(s, p.id, `${josa(p.biz?.name ?? '회사', '은/는')} 혼자 하기로 했다`, 'info')
       break
     case 'bizInvest': {
       const d = pd.data as { founderId: number; queue: number[] }
@@ -2182,7 +2183,7 @@ function applySabotage(s: GameState, p: Player, target: Player) {
   if (card === 'rumor') badEvent(s, victim, { text: '나쁜 소문이 퍼졌다', loss: 0, happyLoss: 6 })
   if (card === 'stockRumor') {
     const sector = SECTORS.reduce((a, k) => (victim.stocks[k] > victim.stocks[a] ? k : a), SECTORS[0])
-    if (victim.stocks[sector] <= 0) log(s, victim.id, `주가 루머… 그런데 ${victim.name}은(는) 주식이 없어서 효과가 없었다`, 'info')
+    if (victim.stocks[sector] <= 0) log(s, victim.id, `주가 루머… 그런데 ${josa(victim.name, '은/는')} 주식이 없어서 효과가 없었다`, 'info')
     else {
       s.stockPrice[sector] = Math.max(10, Math.round(s.stockPrice[sector] * 0.8))
       log(s, null, `주가 루머로 ${sector}주 -20%`, 'bad')

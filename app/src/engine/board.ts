@@ -1,3 +1,4 @@
+import { josa } from './josa'
 import type { Rng } from './rng'
 import type { ForkId, UniEvent, MiniId, PointKind, RoadId, Stage, StageId, StopEvent, Tile, TileKind } from './types'
 
@@ -200,7 +201,7 @@ export function buildStage(d: StageDef, rng: Rng): Stage {
   const mainNext = evFork.next[0]
   evFork.next = [...evFork.next, first, ...(second >= 0 ? [second] : [])]
   evFork.fork = {
-    id: 'event', title: d.event2 ? `${ev.name}? ${d.event2.name}?` : `${ev.name}로 갈까요?`, text: `옆길로 빠지면 칸마다 미니게임이 있어요. ${ev.desc}${d.event2 ? ` / ${d.event2.name}: ${d.event2.desc}` : ''}`,
+    id: 'event', title: d.event2 ? `${ev.name}? ${d.event2.name}?` : `${josa(ev.name, '으로/로')} 갈까요?`, text: `옆길로 빠지면 칸마다 미니게임이 있어요. ${ev.desc}${d.event2 ? ` / ${d.event2.name}: ${d.event2.desc}` : ''}`,
     options: [
       { label: '본 길로 가기', desc: '그대로 가요', to: mainNext, road: 'main' },
       { label: `${ev.name} 길`, desc: ev.desc, to: first, road: 'event' },
