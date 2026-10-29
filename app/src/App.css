@@ -1051,6 +1051,8 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 .w-runner { bottom: 0; transform: translateX(-50%); }
 .w-gauge { position: relative; height: 16px; border-radius: 8px; background: var(--paper-2); border: 2px solid var(--ink); overflow: hidden; }
 .w-zone { position: absolute; top: 0; bottom: 0; background: #7fe0a8; }
+.w-needle { position: absolute; top: -2px; bottom: -2px; width: 4px; margin-left: -2px; background: var(--ink); border-radius: 2px; transition: left 0.12s linear; }
+.w-needle.stop { background: #e2553b; transition: none; }
 .w-fill { position: absolute; top: 0; bottom: 0; left: 0; background: rgba(226, 85, 59, 0.75); transition: width 0.25s linear; }
 .w-row { display: flex; justify-content: center; align-items: flex-end; gap: 2px; min-height: 20px; flex-wrap: wrap; }
 .w-row.tall { min-height: 38px; border-radius: 8px; }

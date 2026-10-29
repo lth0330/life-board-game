@@ -10,5 +10,5 @@ export type MiniView = {
   target?: number; zone?: number // 목표 칸 시작·너비 (%)
   item?: string; ok?: boolean | null // 지금 물건·문제·랜드마크 / 맞았나
 }
-// 장면을 보여 줄 수 있는 게임 (대회에 나오는 게임 전부)
-export const WATCHABLE: string[] = ['tug', 'race', 'throw', 'memory', 'photo', 'pairs', 'quickmath', 'rhythm', 'dance', 'snap', 'pack']
+// 장면을 보여 줄 수 있는 게임 (대회에 나오는 게임 전부 + 같은 칸 대결 타이밍)
+export const WATCHABLE: string[] = ['timing', 'tug', 'race', 'throw', 'memory', 'photo', 'pairs', 'quickmath', 'rhythm', 'dance', 'snap', 'pack']

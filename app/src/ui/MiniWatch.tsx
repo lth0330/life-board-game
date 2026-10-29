@@ -40,6 +40,16 @@ function ghost(game: string, grade: number, t: number, seed: number, level: numb
   const r = (k: number) => rnd(seed, k)
   const L = Math.max(0, Math.min(2, level))
   switch (game) {
+    case 'timing': {
+      // grade는 점수(0~100). 바늘이 몇 번 오가다가 그 점수 자리에서 멈춤
+      const zone = [25, 17, 10][L]
+      const speed = [1.0, 1.4, 1.8][L]
+      const at = 1.2 + r(1) * 2.2
+      const side = r(2) < 0.5 ? -1 : 1
+      const stopAt = 50 + side * (100 - grade) / 2
+      if (t < at) return play({ pos: Math.round(50 + Math.sin(t * speed * Math.PI + r(3) * 6) * 50), zone }, false)
+      return play({ pos: Math.round(stopAt), zone, right: grade }, t >= at + 0.6)
+    }
     case 'tug': {
       // 대성공: 4초 안에 끝까지 / 성공: 늦게 끝까지 / 실패: 6초 끝에 반도 못 감
       const end = grade === 2 ? 3.2 + r(1) * 0.7 : grade === 1 ? 4.6 + r(1) * 1.2 : 6
@@ -164,7 +174,8 @@ function ghost(game: string, grade: number, t: number, seed: number, level: numb
 }
 
 // startAt: 내가 진짜 시작을 누른 때 (AI는 그때부터 흉내). 내가 이미 끝냈으면 그때부터
-export function MiniWatch({ game, people, startAt, seed }: { game: string; people: Watcher[]; startAt: number | null; seed: number }) {
+// duel: 같은 칸 대결이면 grade 자리에 점수(0~100)
+export function MiniWatch({ game, people, startAt, seed, duel = false }: { game: string; people: Watcher[]; startAt: number | null; seed: number; duel?: boolean }) {
   const [now, setNow] = useState(() => Date.now())
   const ghosting = startAt !== null && people.some((p) => p.kind === 'ai')
   useEffect(() => {
@@ -187,12 +198,12 @@ export function MiniWatch({ game, people, startAt, seed }: { game: string; peopl
           view = p.view ?? null
           grade = p.grade
         }
-        const status = grade !== undefined ? GRADE[grade] ?? ''
+        const status = grade !== undefined ? (duel ? `${grade}점` : GRADE[grade] ?? '')
           : !p.go ? (p.ready ? '✅ 준비 완료' : view?.phase === 'help' ? '📖 설명서 보는 중' : view?.practice ? '🔁 연습 중' : '준비 중…')
           : p.kind === 'local' ? '차례 기다리는 중' : !view || view.phase !== 'play' ? '시작!' : '하는 중…'
         const scene = p.go && view && view.phase !== 'ready' && view.phase !== 'help' && !view.practice && WATCHABLE.includes(game) && Object.keys(view).some((k) => k !== 'phase' && k !== 'practice' && k !== 'k')
         return (
-          <div key={p.id} className={`watch-card${grade !== undefined ? ` done g${grade}` : ''}`} style={{ borderColor: p.color }}>
+          <div key={p.id} className={`watch-card${grade !== undefined ? ` done g${duel ? (grade >= 80 ? 2 : grade >= 50 ? 1 : 0) : grade}` : ''}`} style={{ borderColor: p.color }}>
             <div className="watch-head">
               <Character outfit={p.outfit} age={p.age} size={20} crop="head" />
               <b>{p.name}</b>

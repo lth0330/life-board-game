@@ -407,8 +407,10 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
   const st = stageOf(game)
   useEffect(() => { setBgmStage(st.id) }, [st.id])
 
-  // ── 단계 끝 대회 ──
+  // ── 단계 끝 대회 (같은 칸 대결 타이밍도 같은 방식) ──
   const contest = game.mini?.contest
+  const duelIds = game.mini?.duel?.ids
+  const contestTitle = duelIds ? '⚔️ 같은 칸 대결' : `🏆 ${CONTEST_NAMES[stageOf(game).id]}`
   const myContestant = contest?.queue.find((i) => isMine(i))
   const [contestStart, setContestStart] = useState<number | null>(null) // 다 같이 시작한 때 (3·2·1 뒤, AI 흉내는 그때부터)
   const contestKey = contest ? `${game.turn}-${contest.seed}` : ''
@@ -422,7 +424,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
   }, [contestKey, contestGo, online, act])
   const watchers = (me: number | null): Watcher[] => {
     if (!contest || !game.mini) return []
-    return game.players.filter((q) => q.id !== me && !(me === null && isMine(q.id))).map((q) => ({
+    return game.players.filter((q) => q.id !== me && !(me === null && isMine(q.id)) && (!duelIds || duelIds.includes(q.id))).map((q) => ({
       id: q.id, name: q.name, color: q.color, outfit: q.outfit, age: ageOf(game, q),
       kind: !q.human ? 'ai' : isMine(q.id) ? 'local' : 'remote',
       view: online?.miniViews?.[q.id]?.k === contest.seed ? online?.miniViews?.[q.id] : null,
@@ -764,19 +766,19 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
       {/* 단계 끝 대회: 모두 동시에, 내 게임은 크게 + 다른 사람 장면은 작게 (2026-10-29) */}
       {!busy && game.mini && contest && myContestant !== undefined && (
         <MiniGame key={`${game.turn}-${game.mini.game}-${myContestant}`} mini={{ ...game.mini, playerId: myContestant, level: miniLevel(game.players[myContestant], game.mini.game) }}
-          guide={miniGuide(game, game.mini.game, false, true)} contest={`🏆 ${CONTEST_NAMES[stageOf(game).id]} · ${game.players[myContestant].name}`}
+          guide={miniGuide(game, game.mini.game, !!duelIds, !duelIds)} contest={`${contestTitle} · ${game.players[myContestant].name}`}
           practiceLimit={online ? MINI_PRACTICE_LIMIT.online : MINI_PRACTICE_LIMIT.local} outfit={game.players[myContestant].outfit} age={ageOf(game, game.players[myContestant])}
           onView={online?.miniView ? (v) => online.miniView?.(myContestant, { ...v, k: contest.seed }) : undefined}
           ready={{ mine: !!contest.ready?.includes(myContestant), go: !!contest.go, onReady: () => { for (const i of contest.queue) if (isMine(i)) run(['contestReady', i]) } }}
-          watch={<MiniWatch game={game.mini.game} people={watchers(myContestant)} startAt={contestStart} seed={contest.seed ?? 1} />}
+          watch={<MiniWatch game={game.mini.game} people={watchers(myContestant)} startAt={contestStart} seed={contest.seed ?? 1} duel={!!duelIds} />}
           onFinish={(v) => run(['finishMini', v, myContestant])} />
       )}
       {!busy && game.mini && contest && myContestant === undefined && (
         <div className="sheet-backdrop mini-backdrop">
           <div className="mini-wrap has-watch">
-            <MiniWatch game={game.mini.game} people={watchers(null)} startAt={contestStart} seed={contest.seed ?? 1} />
+            <MiniWatch game={game.mini.game} people={watchers(null)} startAt={contestStart} seed={contest.seed ?? 1} duel={!!duelIds} />
             <div className="sheet mini center">
-              <h2 className="jua">🏆 {CONTEST_NAMES[stageOf(game).id]}</h2>
+              <h2 className="jua">{contestTitle}</h2>
               <p>다른 사람이 끝날 때까지 기다리는 중…</p>
             </div>
           </div>

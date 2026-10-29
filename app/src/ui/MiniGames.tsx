@@ -137,7 +137,7 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
   const canPractice = practiced < practiceLimit
   const body = (() => {
     switch (mini.game) {
-      case 'timing': return <Timing level={mini.level} rounds={1} duel={isDuel} onDone={done} />
+      case 'timing': return <Timing level={mini.level} rounds={1} duel={isDuel} onDone={done} report={report} />
       case 'tug': return <Tug level={mini.level} onDone={done} report={report} />
       case 'throw': return <Throw level={mini.level} outfit={outfit} age={age} onDone={done} report={report} />
       case 'confess': return <Confess level={mini.level} onDone={done} />
@@ -238,7 +238,7 @@ function useKeys(map: Record<string, () => void>, up?: Record<string, () => void
 // 키보드 안내 한 줄 (마우스 기기에서만)
 const KeyHint = ({ children }: { children: ReactNode }) => (finePointer() ? <p className="muted center">⌨️ 키보드로: {children}</p> : null)
 
-function Timing({ level, rounds, duel, onDone }: { level: number; rounds: number; duel: boolean; onDone: (v: number) => void }) {
+function Timing({ level, rounds, duel, onDone, report }: { level: number; rounds: number; duel: boolean; onDone: (v: number) => void; report?: Report }) {
   const zone = [25, 17, 10][level]
   const speed = [1.0, 1.4, 1.8][level]
   const [pos, setPos] = useState(0)
@@ -256,6 +256,7 @@ function Timing({ level, rounds, duel, onDone }: { level: number; rounds: number
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [posAt, frozen])
+  useEffect(() => { report?.({ pos: Math.round(pos), zone, right: frozen ? scores[scores.length - 1] : undefined }) }, [report, pos, zone, frozen, scores])
   // 손을 뗄 때가 아니라 누르는 순간의 바늘 위치로 판정 (화면에 그려진 위치가 아니라 그 순간 시각으로 계산)
   const stop = () => {
     if (frozen) return

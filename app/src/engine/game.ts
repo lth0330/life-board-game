@@ -1968,15 +1968,21 @@ export function finishMini(s: GameState, value: number, who?: number) {
   if (m.contest) {
     const id = who ?? m.playerId
     if (!m.contest.queue.includes(id)) return
-    const results = { ...m.contest.results, [id]: Math.max(0, Math.min(2, Math.round(value))) }
+    const results = { ...m.contest.results, [id]: m.duel ? Math.max(0, Math.min(100, Math.round(value))) : Math.max(0, Math.min(2, Math.round(value))) }
     const queue = m.contest.queue.filter((x) => x !== id)
     if (queue.length) {
-      s.mini = { game: m.game, playerId: queue[0], level: miniLevel(s.players[queue[0]], m.game), contest: { ...m.contest, results, queue } }
+      s.mini = { ...m, playerId: queue[0], level: miniLevel(s.players[queue[0]], m.game), contest: { ...m.contest, results, queue } }
       return
     }
     s.mini = null
     const p = s.players[id]
     const start = s.logCount
+    if (m.duel) { // 같은 칸 대결: 모두 끝나면 결과를 보이고 하던 차례를 이어감
+      resolveDuel(s, 'timing', m.duel.ids, results)
+      showPop(s, p, start, 'medal', '대결 결과')
+      resume(s)
+      return
+    }
     resolveContest(s, m.game as MiniId, results)
     // 결과 창은 모두의 등수를 보여 줌 (showPop은 한 사람 것만 모음). 다음 단계 첫 사건 창보다 먼저 보이게 나중에 넣음
     const lines = s.log.slice(-(s.logCount - start))
@@ -2006,7 +2012,7 @@ export function aiFinishMini(s: GameState) {
   if (!m) return
   const rng = rngOf(s)
   if (m.contest) { // 대회: 나간 사람 모두 AI 결과로
-    for (const id of m.contest.queue) if (!s.players[id].human) finishMini(s, aiGrade(rng, miniLevel(s.players[id], m.game)), id)
+    for (const id of m.contest.queue) if (!s.players[id].human) finishMini(s, m.duel ? timingScore(rng, s.players[id]) : aiGrade(rng, miniLevel(s.players[id], m.game)), id)
     return
   }
   if (s.players[m.playerId].human) return
@@ -2216,7 +2222,8 @@ function meet(s: GameState) {
     } else if (game === 'timing') {
       const res: Record<number, number> = {}
       for (const q of all) if (!players.includes(q.id)) res[q.id] = timingScore(rng, q)
-      if (players.length) s.mini = { game: 'timing', playerId: players[0], level: miniLevel(s.players[players[0]], 'timing'), duel: { ids, results: res, queue: players.slice(1) } }
+      // 직접 하는 사람은 모두 동시에 (준비 완료 → 3·2·1), 다른 사람 장면도 보임 (2026-10-29 사용자)
+      if (players.length) s.mini = { game: 'timing', playerId: players[0], level: miniLevel(s.players[players[0]], 'timing'), duel: { ids, results: {} }, contest: { results: res, queue: players, seed: rng.int(1, 1e9) } }
       else resolveDuel(s, game, ids, res)
     }
     return

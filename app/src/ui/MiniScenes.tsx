@@ -7,6 +7,16 @@ import type { MiniView } from './miniView'
 export function MiniScene({ game, view, outfit, age }: { game: string; view: MiniView; outfit: Outfit; age?: number }) {
   const v = view
   switch (game) {
+    case 'timing':
+      return (
+        <>
+          <div className="w-gauge">
+            <span className="w-zone" style={{ left: `${50 - (v.zone ?? 17) / 2}%`, width: `${v.zone ?? 17}%` }} />
+            <span className={`w-needle${v.right !== undefined ? ' stop' : ''}`} style={{ left: `${v.pos ?? 50}%` }} />
+          </div>
+          <div className="w-text">{v.right !== undefined ? `${v.right}점` : '멈출 때를 노리는 중'}</div>
+        </>
+      )
     case 'tug':
       return (
         <>

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { aiStep } from './ai'
 import { distancesFrom } from './board'
-import { canSeekJob, choose, createGame, cur, finishMini, requestFriendLoan, roll, seekJob, stageOf } from './game'
+import { canSeekJob, choose, contestReady, createGame, cur, finishMini, requestFriendLoan, roll, seekJob, stageOf } from './game'
 import type { GameState } from './types'
+import { opActor } from './ops'
 
 const newGame = (seed: number, startAdult = false, humans = 0, ai = 4) =>
   createGame({ humanName: '나', humans, aiCount: ai, settings: { startAdult, difficulty: 'normal' }, seed })
@@ -164,6 +165,24 @@ describe('온라인 같은 칸 대결', () => {
     finishMini(s, 10)
     expect(s.mini).toBe(null)
     expect(s.log.some((l) => l.text.startsWith('타이밍:') && l.text.includes('가 90점') && l.text.includes('나 10점'))).toBe(true)
+  })
+  it('타이밍 대결은 모두 동시에: 준비 완료 뒤 시작, 누가 먼저 끝내도 되고, 모두 끝나면 결과 (2026-10-29)', () => {
+    const s = createGame({ humanName: '가', humanNames: ['나'], humans: 2, aiCount: 1, settings: { startAdult: true, difficulty: 'normal', online: true }, seed: 4 })
+    s.pending = null
+    s.mini = { game: 'timing', playerId: 0, level: 1, duel: { ids: [0, 1, 2], results: {} }, contest: { results: { 2: 50 }, queue: [0, 1], seed: 9 } }
+    contestReady(s, 0)
+    expect(s.mini.contest?.go).toBeFalsy()
+    contestReady(s, 1)
+    expect(s.mini.contest?.go).toBe(true)
+    expect(opActor(s, ['finishMini', 10, 1])).toBe(1)
+    finishMini(s, 10, 1)
+    expect(s.mini?.contest?.queue).toEqual([0])
+    finishMini(s, 10, 1) // 끝낸 사람은 다시 못 보냄
+    expect(s.mini?.contest?.queue).toEqual([0])
+    finishMini(s, 90, 0)
+    expect(s.mini).toBe(null)
+    expect(s.log.some((l) => l.text.startsWith('타이밍:') && l.text.includes('가 90점') && l.text.includes('나 10점'))).toBe(true)
+    expect(s.popup?.title).toBe('대결 결과')
   })
   it('가위바위보는 사람마다 차례로 고른다', () => {
     const s = createGame({ humanName: '가', humanNames: ['나'], humans: 2, aiCount: 0, settings: { startAdult: true, difficulty: 'normal', online: true }, seed: 4 })

@@ -9,7 +9,7 @@ it('단계가 끝날 때마다 대회를 하고, 끝나면 다음 단계로 간�
   const seen: string[] = []
   let n = 0
   while (s.phase !== 'gameover' && n++ < 8000) {
-    if (s.mini?.contest) {
+    if (s.mini?.contest && !s.mini.duel) {
       const stage = s.stageIdx
       seen.push(s.stages[stage].id)
       expect(s.mini.playerId).toBe(0)
@@ -31,9 +31,9 @@ it('단계가 끝날 때마다 대회를 하고, 끝나면 다음 단계로 간�
 it('사람이 여럿이면 차례대로 하고, 모두 실패하면 상이 없다', () => {
   const s = createGame({ humanName: '나', humans: 2, aiCount: 0, settings: { startAdult: false, difficulty: 'normal' }, seed: 3 })
   let n = 0
-  while (!s.mini?.contest && n++ < 4000) {
+  while (!(s.mini?.contest && !s.mini.duel) && n++ < 4000) {
     if (s.pending && s.players[s.pending.playerId].human) { choose(s, aiChoose(s)); continue }
-    if (s.mini) { finishMini(s, 1); continue }
+    if (s.mini) { finishMini(s, 1, s.mini.contest?.queue[0]); continue }
     const p = s.players[s.current]
     p.human = false; aiStep(s); p.human = true
   }
@@ -50,9 +50,9 @@ it('사람이 여럿이면 차례대로 하고, 모두 실패하면 상이 없�
 it('사람이 여럿이면 동시에: 누가 먼저 끝내도 되고, 끝낸 사람은 다시 못 보냄', () => {
   const s = createGame({ humanName: '나', humans: 3, aiCount: 1, settings: { startAdult: false, difficulty: 'normal' }, seed: 5 })
   let n = 0
-  while (!s.mini?.contest && n++ < 4000) {
+  while (!(s.mini?.contest && !s.mini.duel) && n++ < 4000) {
     if (s.pending && s.players[s.pending.playerId].human) { choose(s, aiChoose(s)); continue }
-    if (s.mini) { finishMini(s, 1); continue }
+    if (s.mini) { finishMini(s, 1, s.mini.contest?.queue[0]); continue }
     const p = s.players[s.current]
     if (p.human) { p.human = false; aiStep(s); p.human = true } else aiStep(s)
   }
@@ -74,9 +74,9 @@ it('사람이 여럿이면 동시에: 누가 먼저 끝내도 되고, 끝낸 사
 it("'준비 완료'를 모두 눌러야 go, 끝낸 사람·없는 사람은 무시", () => {
   const s = createGame({ humanName: '나', humans: 2, aiCount: 1, settings: { startAdult: false, difficulty: 'normal' }, seed: 9 })
   let n = 0
-  while (!s.mini?.contest && n++ < 4000) {
+  while (!(s.mini?.contest && !s.mini.duel) && n++ < 4000) {
     if (s.pending && s.players[s.pending.playerId].human) { choose(s, aiChoose(s)); continue }
-    if (s.mini) { finishMini(s, 1); continue }
+    if (s.mini) { finishMini(s, 1, s.mini.contest?.queue[0]); continue }
     const p = s.players[s.current]
     if (p.human) { p.human = false; aiStep(s); p.human = true } else aiStep(s)
   }
