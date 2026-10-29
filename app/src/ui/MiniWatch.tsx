@@ -40,6 +40,27 @@ function ghost(game: string, grade: number, t: number, seed: number, level: numb
   const r = (k: number) => rnd(seed, k)
   const L = Math.max(0, Math.min(2, level))
   switch (game) {
+    case 'flower': {
+      const speed = [0.55, 0.75, 0.95][L]
+      const bloomN = grade === 2 ? 5 : grade === 1 ? 3 + Math.floor(r(1) * 2) : Math.floor(r(1) * 3)
+      const tries = grade === 2 ? 5 + Math.floor(r(2) * 3) : 7
+      const gap = 1.1 + r(3) * 0.4 // 누르는 사이
+      const k = Math.min(tries, Math.floor(t / gap))
+      const okAt = shuffled(Array.from({ length: tries }, (_, i) => i < bloomN), r, 20) // 몇 번째 물 주기가 맞았나
+      const order = shuffled([0, 1, 2, 3, 4], r, 40)
+      const got = okAt.slice(0, k).filter(Boolean).length
+      const marks = [0, 1, 2, 3, 4].map((p) => (order.indexOf(p) < got ? 1 : 0))
+      return play({ pos: Math.round(50 + Math.sin(t * speed * Math.PI * 2 + seed) * 46), marks, n: k, m: 7 }, t >= tries * gap + 0.5)
+    }
+    case 'melon': {
+      const target = 12 + Math.floor(r(1) * 77)
+      const start = target > 50 ? 4 : 96
+      const miss = grade === 2 ? r(2) * 3 : grade === 1 ? 4 + r(2) * 5 : 11 + r(2) * 15
+      const final = Math.max(0, Math.min(100, target + (r(3) < 0.5 ? -miss : miss)))
+      const T = 4 + r(4) * 6 // 내리치는 때
+      const k = Math.min(1, t / T)
+      return play({ pos: Math.round(start + (final - start) * k + (k < 1 ? Math.sin(t * 5) * 3 : 0)), target, ok: t >= T ? grade >= 1 : null, left: Math.max(0, Math.ceil(12 - t)) }, t >= T + 0.9)
+    }
     case 'leaves':
     case 'butterfly': {
       const fly = game === 'butterfly'

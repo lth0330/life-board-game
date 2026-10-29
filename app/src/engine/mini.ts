@@ -16,7 +16,7 @@ const MINI_STAT: Record<MiniId, StatKey | 'fortune' | null> = {
   firstImpression: 'cha', rhythm: 'cha', confess: 'cha', dance: 'cha',
   oddEven: 'fortune', highLow: 'fortune', slot: 'fortune',
   snap: 'str', pack: 'int', photo: 'int',
-  leaves: 'str', snowball: 'str', butterfly: 'str', watergun: 'str',
+  leaves: 'str', snowball: 'str', flower: 'cha', melon: 'str', butterfly: 'str', watergun: 'str',
 }
 export const MINI_NAMES: Record<MiniId | DuelId, string> = {
   race: '달리기', tug: '줄다리기', throw: '공 던지기',
@@ -24,7 +24,7 @@ export const MINI_NAMES: Record<MiniId | DuelId, string> = {
   firstImpression: '첫인상', rhythm: '무대 공연', confess: '고백 타이밍', dance: '댄스 따라 하기',
   oddEven: '홀짝', highLow: '카드 높낮이', slot: '슬롯머신',
   snap: '사진 찍기', pack: '짐 싸기', photo: '여행 코스 기억',
-  leaves: '낙엽 잡기', snowball: '눈싸움', butterfly: '나비 잡기', watergun: '물총 싸움',
+  leaves: '낙엽 잡기', snowball: '눈싸움', flower: '꽃 심기', melon: '수박 깨기', butterfly: '나비 잡기', watergun: '물총 싸움',
   dice: '주사위 대결', rps: '가위바위보', timing: '타이밍 멈추기',
 }
 export const CASINO: MiniId[] = ['oddEven', 'highLow', 'slot']
@@ -170,7 +170,7 @@ const CONTEST_GAMES: Partial<Record<StageId, MiniId[]>> = {
 }
 export const CONTEST_NAMES: Partial<Record<StageId, string>> = { child: '꼬마 운동회', student: '두뇌 대회', young: '청춘 무대', middle: '여행 사진 대회' }
 // 대회 이름: 테마 게임이 뽑히면 단계 이름 대신 테마 대회 (두뇌 대회에서 낙엽 잡기를 하면 어색해서)
-const THEME_CONTEST: Partial<Record<MiniId, string>> = { leaves: '가을 낙엽 대회', snowball: '겨울 눈싸움 대회', butterfly: '봄 나비 대회', watergun: '여름 물총 대회' }
+const THEME_CONTEST: Partial<Record<MiniId, string>> = { leaves: '가을 낙엽 대회', snowball: '겨울 눈싸움 대회', flower: '봄 꽃 심기 대회', melon: '여름 수박 깨기 대회', butterfly: '봄 나비 대회', watergun: '여름 물총 대회' }
 export const contestName = (s: GameState, game: string) => THEME_CONTEST[game as MiniId] ?? CONTEST_NAMES[stageOf(s).id] ?? '대회'
 // 청년·중년은 돈 (2등은 절반), 어린이·학생은 그 게임 능력치 +1
 const CONTEST_PRIZE: Partial<Record<StageId, number>> = { young: 300, middle: 500 }

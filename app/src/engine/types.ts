@@ -14,7 +14,7 @@ export type MiniId =
   | 'firstImpression' | 'rhythm' | 'confess' | 'dance'
   | 'oddEven' | 'highLow' | 'slot'
   | 'snap' | 'pack' | 'photo'
-  | 'leaves' | 'snowball' | 'butterfly' | 'watergun' // 테마 맵 전용: 가을 낙엽 잡기·겨울 눈싸움·봄 나비 잡기·여름 물총 싸움 (2026-10-29)
+  | 'leaves' | 'snowball' | 'flower' | 'melon' | 'butterfly' | 'watergun' // 테마 맵 전용 (2026-10-29): 가을 낙엽 잡기·겨울 눈싸움·봄 꽃 심기·여름 수박 깨기. 나비 잡기·물총 싸움은 예전 저장용
 export type DuelId = 'dice' | 'rps' | 'timing'
 export type DiceItem = 'twin' | 'even' | 'odd'
 

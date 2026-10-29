@@ -16,14 +16,14 @@ function playAll(theme: MapTheme | undefined, seed: number) {
     }
     if (s.pending && s.players[s.pending.playerId].human) { choose(s, aiChoose(s)); continue }
     if (s.mini && s.players[s.mini.playerId].human) {
-      if (['leaves', 'snowball', 'butterfly', 'watergun'].includes(s.mini.game)) { seen.games++; if (s.mini.as) seen.rewardAs++ }
+      if (['leaves', 'snowball', 'flower', 'melon'].includes(s.mini.game)) { seen.games++; if (s.mini.as) seen.rewardAs++ }
       finishMini(s, 1, s.mini.contest?.queue[0])
       continue
     }
     const p = s.players[s.current]
     if (p.human) { p.human = false; aiStep(s); p.human = true } else aiStep(s)
   }
-  const aiGames = s.log.filter((l) => /^\[(낙엽 잡기|눈싸움|나비 잡기|물총 싸움)\]/.test(l.text)).length
+  const aiGames = s.log.filter((l) => /^\[(낙엽 잡기|눈싸움|꽃 심기|수박 깨기)\]/.test(l.text)).length
   return { s, ...seen, aiGames }
 }
 

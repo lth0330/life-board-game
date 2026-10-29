@@ -50,6 +50,8 @@ const HOW: Record<string, string> = {
   pack: '물건이 하나씩 나와요. 여행에 필요한 것은 챙기고, 필요 없는 것은 두고 가세요. 시간 안에 골라야 해요.',
   leaves: '낙엽이 위에서 떨어져요. 땅에 닿기 전에 낙엽을 눌러서 잡으세요. 8초 동안 목표만큼 잡으면 성공이에요.',
   snowball: '눈벽 뒤에서 친구가 고개를 내밀어요. 숨기 전에 눌러서 눈덩이를 맞히세요. 10번 나와요.',
+  flower: '물뿌리개가 화분 위를 왔다 갔다 해요. 아직 안 핀 화분 바로 위에 왔을 때 "물 주기!"를 누르세요. 7번 안에 5개를 다 피우면 대성공이에요.',
+  melon: '눈을 가렸어요. 친구들이 외치는 말을 보고 큰 걸음·작은 걸음으로 수박 앞까지 가서 "내리치기!"를 누르세요. 가까울수록 잘 깨져요. 어려우면 친구 하나가 가끔 장난으로 반대로 말해요.',
   butterfly: '나비가 왼쪽에서 오른쪽으로 날아가요. 화면 밖으로 나가기 전에 눌러서 잡으세요. 8초 동안 목표만큼 잡으면 성공이에요.',
   watergun: '튜브 뒤에서 친구가 고개를 내밀어요. 숨기 전에 눌러서 물총을 쏘세요. 10번 나와요.',
   timing: '바늘이 왔다 갔다 해요. 가운데 초록 구역에 왔을 때 "멈춰!"를 누르세요. 가운데에 가까울수록 점수가 높아요.',
@@ -69,7 +71,7 @@ const MINI_THEME: Record<string, string> = {
   firstImpression: 'fest', rhythm: 'fest', confess: 'fest', dance: 'fest',
   oddEven: 'casino', highLow: 'casino', slot: 'casino',
   snap: 'travel', pack: 'travel', photo: 'travel',
-  leaves: 'fall', snowball: 'snow', butterfly: 'bloom', watergun: 'sun',
+  leaves: 'fall', snowball: 'snow', flower: 'bloom', melon: 'sun', butterfly: 'bloom', watergun: 'sun',
 }
 const THEME_LANDMARK: Record<string, string> = { sport: '운동회', brain: '두뇌 올림피아드', fest: '축제 거리', casino: '카지노', travel: '세계일주' }
 
@@ -147,6 +149,8 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
       case 'tug': return <Tug level={mini.level} onDone={done} report={report} />
       case 'leaves': return <Leaves level={mini.level} onDone={done} report={report} />
       case 'snowball': return <Snowball level={mini.level} onDone={done} report={report} />
+      case 'flower': return <Flower level={mini.level} onDone={done} report={report} />
+      case 'melon': return <Melon level={mini.level} outfit={outfit} age={age} onDone={done} report={report} />
       case 'butterfly': return <Leaves level={mini.level} onDone={done} report={report} fly />
       case 'watergun': return <Snowball level={mini.level} onDone={done} report={report} water />
       case 'throw': return <Throw level={mini.level} outfit={outfit} age={age} onDone={done} report={report} />
@@ -712,6 +716,139 @@ function Snowball({ level, onDone, report, water = false }: { level: number; onD
       </div>
       <div className="mini-big jua">맞힘 {hits.length} · {Math.min(i + 1, SNOW_TOTAL)}/{SNOW_TOTAL}</div>
       <KeyHint>숫자 1~6 ({water ? '튜브' : '눈벽'}에 쓰인 번호)</KeyHint>
+    </div>
+  )
+}
+
+// 물뿌리개 그림 (잉크 테두리)
+function WateringCan() {
+  return (
+    <svg viewBox="0 0 60 44" width="54" height="40">
+      <g stroke="#2A2118" strokeWidth="2.6" strokeLinejoin="round">
+        <path d="M14 14h26l-2 26H16z" fill="#4C8FD6" />
+        <path d="M40 20l16-10 2 4-15 12" fill="#4C8FD6" />
+        <path d="M18 14a9 9 0 0 1 18 0" fill="none" />
+        <circle cx="56" cy="11" r="3.5" fill="#9FD3F2" />
+      </g>
+    </svg>
+  )
+}
+
+// 봄 꽃 심기 (2026-10-29): 물뿌리개가 화분 5개 위를 왔다 갔다. 안 핀 화분 위에서 누르면 핌. 7번 안에
+const POTS = 5
+const POT_AT = (i: number) => 10 + i * 20 // 화분 가운데 (%)
+const FLOWER_TRIES = 7
+function Flower({ level, onDone, report }: { level: number; onDone: (v: number) => void; report?: Report }) {
+  const speed = [0.55, 0.75, 0.95][level] // 1초에 왕복 몇 번 쯤
+  const half = [6, 4.5, 3.2][level] // 화분 위로 쳐 주는 너비 (%)
+  const [pos, setPos] = useState(50)
+  const [bloom, setBloom] = useState<boolean[]>(() => Array(POTS).fill(false))
+  const [tries, setTries] = useState(0)
+  const [splash, setSplash] = useState<{ at: number; ok: boolean } | null>(null)
+  const t0 = useRef(performance.now())
+  const posAt = useCallback((now: number) => 50 + Math.sin(((now - t0.current) / 1000) * speed * Math.PI * 2) * 46, [speed])
+  const doneRef = useRef(false)
+  useEffect(() => {
+    let raf = 0
+    const tick = (now: number) => { setPos(posAt(now)); raf = requestAnimationFrame(tick) }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [posAt])
+  const water = () => {
+    if (doneRef.current || tries >= FLOWER_TRIES) return
+    const at = posAt(performance.now()) // 누르는 순간 위치로 판정
+    const i = bloom.findIndex((b, k) => !b && Math.abs(at - POT_AT(k)) <= half)
+    const next = i >= 0 ? bloom.map((b, k) => b || k === i) : bloom
+    const n = tries + 1
+    setBloom(next); setTries(n); setSplash({ at, ok: i >= 0 })
+    sfx(i >= 0 ? 'pop' : 'click')
+    const count = next.filter(Boolean).length
+    if (count === POTS || n >= FLOWER_TRIES) {
+      doneRef.current = true
+      setTimeout(() => onDone(count === POTS ? 2 : count >= 3 ? 1 : 0), 500)
+    }
+  }
+  useKeys({ Space: water, Enter: water })
+  useEffect(() => { report?.({ pos: Math.round(pos), marks: bloom.map((b) => (b ? 1 : 0)), n: tries, m: FLOWER_TRIES, zone: half }) }, [report, pos, bloom, tries, half])
+  return (
+    <div className="mini-body">
+      <p>안 핀 화분 위에서 물을 주세요! 남은 물 {FLOWER_TRIES - tries}번</p>
+      <div className="flower-field">
+        <span className="can" style={{ left: `${pos}%` }} aria-hidden="true"><WateringCan /></span>
+        {splash && <span key={tries} className={`drop${splash.ok ? ' ok' : ''}`} style={{ left: `${splash.at}%` }} />}
+        {Array.from({ length: POTS }, (_, k) => (
+          <span key={k} className={`pot${bloom[k] ? ' bloom' : ''}`} style={{ left: `${POT_AT(k)}%`, width: `${half * 2}%` }}>
+            <i className="sprout" />
+          </span>
+        ))}
+      </div>
+      <div className="mini-big jua">{bloom.filter(Boolean).length}/{POTS} 핌</div>
+      <button className="wide big" onPointerDown={(e) => { e.preventDefault(); water() }}>물 주기!</button>
+      <KeyHint>스페이스바로 물을 줘요</KeyHint>
+    </div>
+  )
+}
+
+// 여름 수박 깨기 (2026-10-29): 눈을 가리고 친구 3명의 말을 보고 걸어가서 내리침. 가까울수록 잘 깨짐
+// 어려움이면 친구 한 명이 가끔 장난으로 반대로 말함
+const MELON_T = 12
+type Shout = { who: string; text: string }
+function melonShouts(x: number, target: number, level: number, liar: number): Shout[] {
+  const d = target - x
+  const far = Math.abs(d)
+  const dir = d > 0 ? '오른쪽' : '왼쪽'
+  const wrong = d > 0 ? '왼쪽' : '오른쪽'
+  const how = far <= 3 ? '바로 앞이야! 지금!' : far <= 10 ? `${dir}으로 조금만!` : far <= 25 ? `${dir}으로 더 가!` : `${dir}! 아직 멀었어!`
+  return ['민트', '보리', '호두'].map((who, i) => {
+    const lie = level === 2 && i === liar && far > 3 && (x * 7 + target) % 2 === 0 // 어려움에서만 (설명서와 같게)
+    return { who, text: lie ? `${wrong}으로 가!` : how }
+  })
+}
+function Melon({ level, outfit, age, onDone, report }: { level: number; outfit: Outfit; age?: number; onDone: (v: number) => void; report?: Report }) {
+  const target = useMemo(() => 12 + rand(77), [])
+  const liar = useMemo(() => rand(3), [])
+  const [x, setX] = useState(() => (target > 50 ? 4 : 96))
+  const [left, setLeft] = useState(MELON_T)
+  const [hit, setHit] = useState<number | null>(null) // 내리친 자리
+  const doneRef = useRef(false)
+  const xRef = useRef(x)
+  xRef.current = x
+  const smash = useCallback(() => {
+    if (doneRef.current) return
+    doneRef.current = true
+    const d = Math.abs(xRef.current - target)
+    setHit(xRef.current)
+    sfx(d <= 9 ? 'pop' : 'click')
+    setTimeout(() => onDone(d <= 3 ? 2 : d <= 9 ? 1 : 0), 900)
+  }, [target, onDone])
+  useEffect(() => {
+    const t = setInterval(() => setLeft((l) => Math.max(0, l - 1)), 1000)
+    return () => clearInterval(t)
+  }, [])
+  useEffect(() => { if (left === 0) smash() }, [left, smash]) // 시간이 다 되면 그 자리에서 내리침
+  const move = (dx: number) => { if (!doneRef.current) setX((v) => Math.max(0, Math.min(100, v + dx))) }
+  useKeys({ ArrowLeft: () => move(-8), ArrowRight: () => move(8), KeyA: () => move(-3), KeyD: () => move(3), Space: smash, Enter: smash })
+  const shouts = melonShouts(x, target, level, liar)
+  const d = Math.abs(x - target)
+  useEffect(() => { report?.({ pos: Math.round(x), target, ok: hit === null ? null : d <= 9, left }) }, [report, x, target, hit, d, left])
+  return (
+    <div className="mini-body">
+      <div className="shouts">{shouts.map((s) => <p key={s.who}><b>{s.who}</b> {s.text}</p>)}</div>
+      <div className="melon-field">
+        {/* 수박은 내리친 뒤에야 보임 (눈을 가렸으니까) */}
+        {hit !== null && <span className={`melon${d <= 9 ? ' broken' : ''}`} style={{ left: `${6 + target * 0.88}%` }} aria-hidden="true"><MiniIcon name="watermelon" size={40} /></span>}
+        <span className={`blind${hit !== null ? ' swing' : ''}`} style={{ left: `${6 + x * 0.88}%` }} aria-hidden="true"><Character outfit={outfit} age={age} pose="up" size={46} /><i className="band" /></span>
+      </div>
+      <div className="mini-big jua">{hit !== null ? (d <= 3 ? '쩍! 반으로!' : d <= 9 ? '퍽! 깨졌다' : '헛스윙…') : `${left}초`}</div>
+      <div className="melon-btns">
+        <button aria-label="왼쪽 큰 걸음" onPointerDown={(e) => { e.preventDefault(); move(-8) }}>◀◀</button>
+        <button aria-label="왼쪽 작은 걸음" onPointerDown={(e) => { e.preventDefault(); move(-3) }}>◀</button>
+        <button aria-label="오른쪽 작은 걸음" onPointerDown={(e) => { e.preventDefault(); move(3) }}>▶</button>
+        <button aria-label="오른쪽 큰 걸음" onPointerDown={(e) => { e.preventDefault(); move(8) }}>▶▶</button>
+      </div>
+      <p className="muted center small">◀◀ ▶▶ 큰 걸음 · ◀ ▶ 작은 걸음</p>
+      <button className="wide big" onPointerDown={(e) => { e.preventDefault(); smash() }}>내리치기!</button>
+      <KeyHint>← → 큰 걸음 · A D 작은 걸음 · 스페이스바 내리치기</KeyHint>
     </div>
   )
 }

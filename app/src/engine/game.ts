@@ -991,7 +991,7 @@ function uniTile(s: GameState, p: Player, ev: string) {
 // ───────── 테마 맵 (2026-10-29 사용자): 테마마다 미니게임 1개 + 사건 4개, 가끔 섞여 나옴 ─────────
 const THEME_EVENT_CHANCE = 0.25 // 좋은 일·랜덤이벤트 칸 중
 export const THEME_MINI_CHANCE = 1 / 3 // 미니게임 칸·단계 끝 대회 중
-export const THEME_GAME: Record<MapTheme, MiniId> = { spring: 'butterfly', summer: 'watergun', autumn: 'leaves', winter: 'snowball' }
+export const THEME_GAME: Record<MapTheme, MiniId> = { spring: 'flower', summer: 'melon', autumn: 'leaves', winter: 'snowball' }
 const THEME_LABEL: Record<MapTheme, string> = { spring: '🌸 봄 이벤트', summer: '☀️ 여름 이벤트', autumn: '🍂 가을 이벤트', winter: '❄️ 겨울 이벤트' }
 const themePool = (theme: MapTheme): Partial<Record<StageId, SpecialEvent[]>> => {
   const all = THEME_EVENTS[theme]

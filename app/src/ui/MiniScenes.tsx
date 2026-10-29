@@ -7,6 +7,20 @@ import type { MiniView } from './miniView'
 export function MiniScene({ game, view, outfit, age }: { game: string; view: MiniView; outfit: Outfit; age?: number }) {
   const v = view
   switch (game) {
+    case 'flower':
+      return (
+        <>
+          <div className="w-flower"><span className="w-can" style={{ left: `${v.pos ?? 50}%` }} />{Array.from({ length: 5 }, (_, k) => <span key={k} className={`w-pot${v.marks?.[k] ? ' bloom' : ''}`} style={{ left: `${10 + k * 20}%` }} />)}</div>
+          <div className="w-text">{(v.marks ?? []).filter(Boolean).length}/5 핌 · 물 {Math.max(0, (v.m ?? 7) - (v.n ?? 0))}번</div>
+        </>
+      )
+    case 'melon':
+      return (
+        <>
+          <div className="w-melon"><span className="w-mel" style={{ left: `${v.target ?? 50}%` }} /><span className="w-blind" style={{ left: `${v.pos ?? 50}%` }} /></div>
+          <div className="w-text">{v.ok === true ? '깨졌다!' : v.ok === false ? '헛스윙…' : `${v.left ?? 12}초`}</div>
+        </>
+      )
     case 'leaves':
     case 'butterfly':
       return (

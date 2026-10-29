@@ -12,4 +12,4 @@ export type MiniView = {
   xs?: number[] // 낙엽 잡기: 떨어지는 낙엽 가로 자리(%) (ys와 짝)
 }
 // 장면을 보여 줄 수 있는 게임 (대회에 나오는 게임 전부 + 같은 칸 대결 타이밍)
-export const WATCHABLE: string[] = ['leaves', 'snowball', 'butterfly', 'watergun', 'timing', 'tug', 'race', 'throw', 'memory', 'photo', 'pairs', 'quickmath', 'rhythm', 'dance', 'snap', 'pack']
+export const WATCHABLE: string[] = ['leaves', 'snowball', 'flower', 'melon', 'butterfly', 'watergun', 'timing', 'tug', 'race', 'throw', 'memory', 'photo', 'pairs', 'quickmath', 'rhythm', 'dance', 'snap', 'pack']
