@@ -22,6 +22,8 @@ export const cleanPw = (v: string) => v.toLowerCase().replace(/[^\x21-\x7e]/g, '
 export const ID_OK = /^[a-z0-9]{4,16}$/
 export const PW_OK = /^[\x21-\x7e]{6,32}$/
 export const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// 구글로 가입한 계정: 아이디가 google_숫자 (비밀번호·찾기 메일 없음, 이메일은 구글 것)
+export const isGoogleId = (id: string) => /^google_/i.test(id)
 
 export interface Me { userId: string; loginId: string; nick: string }
 

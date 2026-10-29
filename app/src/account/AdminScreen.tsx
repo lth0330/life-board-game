@@ -2,7 +2,7 @@
 // 비밀번호는 저장 방식상 아무도 볼 수 없음
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { Frame } from '../ui/Screens'
-import { adminDeleteUser, adminUpdateUser, adminUsers, amAdmin, cleanId, cleanPw, currentMe, EMAIL_OK, getNotice, login, logoutOnline, setNotice, type AdminUser, type Me } from '../online/client'
+import { adminDeleteUser, adminUpdateUser, adminUsers, amAdmin, cleanId, cleanPw, currentMe, EMAIL_OK, getNotice, isGoogleId, login, logoutOnline, setNotice, type AdminUser, type Me } from '../online/client'
 const AccountSheet = lazy(() => import('./AccountSheet'))
 
 const day = (iso: string | null) => (iso ? new Date(iso).toLocaleString('ko-KR', { year: '2-digit', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '-')
@@ -74,7 +74,7 @@ export default function AdminScreen({ onBack }: { onBack: () => void }) {
         {users?.map((u) => (
           <div key={u.id} className="admin-user">
             <div className="grow">
-              <b>{u.nick || '(닉네임 없음)'}</b> <span className="muted">{u.id}</span>{u.admin && <em className="admin-tag">관리자</em>}{!u.enabled && <em className="admin-tag locked">잠김</em>}
+              <b>{u.nick || '(닉네임 없음)'}</b> {isGoogleId(u.id) ? <em className="admin-tag google">구글 계정</em> : <span className="muted">{u.id}</span>}{u.admin && <em className="admin-tag">관리자</em>}{!u.enabled && <em className="admin-tag locked">잠김</em>}
               <div className="muted">{u.email ?? '이메일 없음'}</div>
               <div className="muted">가입 {day(u.created)} · 최근 접속 {day(u.lastSeen)}</div>
             </div>
@@ -136,12 +136,14 @@ function EditUser({ u, onClose, onSaved }: { u: AdminUser; onClose: () => void; 
     <div className="sheet-backdrop">
       <div className="sheet account-sheet">
         <div className="sheet-head">
-          <h2 className="jua">회원 수정: {u.id}</h2>
+          <h2 className="jua">회원 수정: {isGoogleId(u.id) ? `${u.nick || '구글 계정'} (구글)` : u.id}</h2>
           <button className="x" onClick={onClose}>닫기</button>
         </div>
         <label className="field"><span>닉네임 (8자까지)</span><input value={nick} maxLength={8} onChange={(e) => setNick(e.target.value)} /></label>
         <label className="field"><span>이메일</span><input value={email} type="email" autoCapitalize="none" spellCheck={false} onChange={(e) => setEmail(e.target.value.trim())} /></label>
-        <label className="field"><span>새 비밀번호 (비워 두면 그대로. 바꾸면 그 사람에게 알려 주세요)</span><input value={pw} onChange={(e) => setPw(cleanPw(e.target.value))} autoComplete="off" /></label>
+        {isGoogleId(u.id)
+          ? <p className="muted">구글로 로그인하는 계정이라 비밀번호가 없어요</p>
+          : <label className="field"><span>새 비밀번호 (비워 두면 그대로. 바꾸면 그 사람에게 알려 주세요)</span><input value={pw} onChange={(e) => setPw(cleanPw(e.target.value))} autoComplete="off" /></label>}
         {err && <p className="bad">{err}</p>}
         <button className="wide big" disabled={busy} onClick={save}>저장</button>
         <button className={`wide ${u.enabled ? 'danger' : 'secondary'}`} disabled={busy} onClick={() => void run({ enabled: !u.enabled })}>

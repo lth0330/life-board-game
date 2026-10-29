@@ -52,7 +52,7 @@ export const handler = async (ev: Ev) => {
       if (!EMAIL_OK.test(email)) return false
       const users = await allUsers(`email = "${email.replace(/"/g, '')}"`)
       for (const u of users) {
-        if (attr(u, 'email_verified') !== 'true' || !u.Username) continue
+        if (attr(u, 'email_verified') !== 'true' || !u.Username || /^google_/i.test(u.Username)) continue // 구글 계정은 비밀번호가 없어서 뺌 (2026-10-29)
         await cognito.send(new ForgotPasswordCommand({ ClientId: CLIENT, Username: u.Username })).catch(() => {})
       }
       return true

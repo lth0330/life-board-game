@@ -1,6 +1,7 @@
 // 내 계정 (2026-10-21): 아이디·닉네임·이메일 보기, 이메일 바꾸기(확인 코드 없이), 비밀번호 바꾸기
+// 구글 계정(2026-10-29)은 이메일·비밀번호를 구글에서 관리해서 바꾸기를 안 보여 줌
 import { useEffect, useState } from 'react'
-import { changeEmail, changePassword, cleanPw, EMAIL_OK, myEmail, PW_OK } from '../online/client'
+import { changeEmail, changePassword, cleanPw, EMAIL_OK, isGoogleId, myEmail, PW_OK } from '../online/client'
 
 export default function AccountSheet({ loginId, nick, onClose }: { loginId: string; nick: string; onClose: () => void }) {
   const [email, setEmail] = useState<string | null | undefined>(undefined) // undefined: 불러오는 중
@@ -28,6 +29,7 @@ export default function AccountSheet({ loginId, nick, onClose }: { loginId: stri
     if (e) { setMsg({ text: e, bad: true }); return }
     setOldPw(''); setNewPw(''); setMsg({ text: '비밀번호를 바꿨어요', bad: false })
   }
+  const google = isGoogleId(loginId)
   return (
     <div className="sheet-backdrop">
       <div className="sheet account-sheet">
@@ -35,11 +37,12 @@ export default function AccountSheet({ loginId, nick, onClose }: { loginId: stri
           <h2 className="jua">내 계정</h2>
           <button className="x" onClick={onClose}>닫기</button>
         </div>
-        <div className="info-row"><b>아이디</b> <span>{loginId}</span></div>
+        <div className="info-row"><b>아이디</b> <span>{google ? '구글 계정으로 로그인' : loginId}</span></div>
         <div className="info-row"><b>닉네임</b> <span>{nick}</span></div>
         <div className="info-row"><b>이메일</b> <span>{email === undefined ? '불러오는 중…' : email ?? '없음 (아래에서 등록해 주세요)'}</span></div>
         {msg && <p className={msg.bad ? 'bad' : 'good'}>{msg.text}</p>}
 
+        {google ? <p className="muted">구글로 로그인하는 계정이에요. 이메일과 비밀번호는 구글 계정에서 관리해요.</p> : <>
         <h3>이메일 {email ? '바꾸기' : '등록'}</h3>
         <p className="muted">아이디·비밀번호를 잊었을 때 이 메일로 아이디와 코드를 보내 드려요.</p>
         <form className="row" onSubmit={(e) => { e.preventDefault(); void saveEmail() }}>
@@ -53,6 +56,7 @@ export default function AccountSheet({ loginId, nick, onClose }: { loginId: stri
           <input value={newPw} type="password" placeholder="새 비밀번호 (6자 이상)" aria-label="새 비밀번호" autoComplete="new-password" onChange={(e) => setNewPw(cleanPw(e.target.value))} />
           <button className="wide" type="submit" disabled={busy}>비밀번호 바꾸기</button>
         </form>
+        </>}
       </div>
     </div>
   )
