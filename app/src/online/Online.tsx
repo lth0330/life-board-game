@@ -352,9 +352,13 @@ function OnlineGame({ me, room, isHost, renderPlay, onLeave }: { me: Me; room: R
     void (async () => {
       const found: { id: string; name: string; text: string; userId: string; at: string }[] = []
       let token: string | null | undefined
-      // 방의 행동은 순서 없이 나와서 끝까지 훑음. 대회 장면 신호('mini')가 많아져서 10 → 30쪽 (2026-10-29)
+      // 채팅만 바로 찾기 (방+종류 색인, 2026-10-29). 서버에 아직 없으면 예전처럼 방의 행동을 훑으면서 채팅만 고름
+      const byKind = client.models.Action.listActionByRoomAndKind
       for (let page = 0; page < 30; page++) {
-        const r = await client.models.Action.listActionByRoomId({ roomId: room.id }, { filter: { kind: { eq: 'chat' } }, nextToken: token, limit: 500 }).catch(() => null)
+        const r = await (byKind
+          ? byKind({ roomId: room.id, kind: { eq: 'chat' } }, { nextToken: token, limit: 500 })
+          : client.models.Action.listActionByRoomId({ roomId: room.id }, { filter: { kind: { eq: 'chat' } }, nextToken: token, limit: 500 })
+        ).catch(() => null)
         if (!r) break
         for (const a of r.data) {
           const p = parse<ActionPayload & { text?: string } | null>(a.payload, null)

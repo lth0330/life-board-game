@@ -37,7 +37,8 @@ const schema = a.schema({
       payload: a.json(),
       expiresAt: a.integer(), // 만든 뒤 1일
     })
-    .secondaryIndexes((index) => [index('roomId')])
+    // roomId만으로 찾기(예전부터) + 방 안에서 종류로 찾기(채팅 기록만 바로, 2026-10-29: 대회 장면 신호가 많아져서)
+    .secondaryIndexes((index) => [index('roomId'), index('roomId').sortKeys(['kind']).name('byRoomKind').queryField('listActionByRoomAndKind')])
     .authorization((allow) => [allow.owner(), allow.authenticated().to(['read'])]),
 
   // 게임 설정 (관리자가 고침, 모두 읽음). 지금은 공지 하나: 처음 화면·메뉴에 보임 (2026-10-21)
