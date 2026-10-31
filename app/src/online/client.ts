@@ -8,6 +8,7 @@ import type { Schema } from '../../amplify/data/resource'
 import type { GameState, MapTheme } from '../engine/types'
 import type { Outfit } from '../engine/outfit'
 import outputs from '../../amplify_outputs.json'
+import { hangulToKeys } from './keys'
 
 Amplify.configure(outputs)
 export const client = generateClient<Schema>()
@@ -17,7 +18,8 @@ export type Action = Schema['Action']['type']
 
 // ───────── 계정 ─────────
 // 아이디: 영어 소문자·숫자 4~16자 / 비밀번호: 한글·띄어쓰기 없이 6자 이상, 대문자는 소문자로
-export const cleanId = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16)
+export const cleanId = (v: string) => hangulToKeys(v).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16)
+
 export const cleanPw = (v: string) => v.toLowerCase().replace(/[^\x21-\x7e]/g, '').slice(0, 32)
 export const ID_OK = /^[a-z0-9]{4,16}$/
 export const PW_OK = /^[\x21-\x7e]{6,32}$/

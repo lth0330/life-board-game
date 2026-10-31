@@ -3,6 +3,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { Frame } from '../ui/Screens'
 import { adminDeleteUser, adminUpdateUser, adminUsers, amAdmin, cleanId, cleanPw, currentMe, EMAIL_OK, getNotice, isGoogleId, login, logoutOnline, setNotice, type AdminUser, type Me } from '../online/client'
+import { idInputProps } from './idInput'
 const AccountSheet = lazy(() => import('./AccountSheet'))
 
 const day = (iso: string | null) => (iso ? new Date(iso).toLocaleString('ko-KR', { year: '2-digit', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '-')
@@ -28,7 +29,7 @@ export default function AdminScreen({ onBack }: { onBack: () => void }) {
   useEffect(() => { void amAdmin().then((ok) => { setState(ok ? 'ok' : 'login'); if (ok) void load() }) }, [load])
   const signIn = async () => {
     setBusy(true); setErr('')
-    const e = await login(id, pw)
+    const e = await login(cleanId(id), pw)
     if (e) { setBusy(false); setErr(e); return }
     const ok = await amAdmin()
     setBusy(false)
@@ -51,7 +52,7 @@ export default function AdminScreen({ onBack }: { onBack: () => void }) {
         <h2 className="jua center">⚙️ 관리자</h2>
         <p className="muted center">관리자 계정으로만 들어갈 수 있어요</p>
         <form className="login-form" onSubmit={(e) => { e.preventDefault(); void signIn() }}>
-          <label className="field"><span>아이디</span><input value={id} onChange={(e) => setId(cleanId(e.target.value))} autoComplete="username" autoCapitalize="none" spellCheck={false} /></label>
+          <label className="field"><span>아이디</span><input value={id} {...idInputProps(setId)} /></label>
           <label className="field"><span>비밀번호</span><input value={pw} type="password" onChange={(e) => setPw(cleanPw(e.target.value))} autoComplete="current-password" /></label>
           {err && <p className="bad">{err}</p>}
           <button className="wide big" type="submit" disabled={busy}>{busy ? '잠시만요…' : '들어가기'}</button>

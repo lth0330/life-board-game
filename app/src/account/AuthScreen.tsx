@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Frame } from '../ui/Screens'
 import { cleanId, cleanPw, currentMe, EMAIL_OK, googleLogin, googleReady, ID_OK, join, login, PW_OK, resetWithCode, sendFindMail, type Me } from '../online/client'
+import { idInputProps } from './idInput'
 
 type Mode = 'login' | 'join' | 'find'
 
@@ -16,12 +17,12 @@ export default function AuthScreen({ initial = 'login', onDone, onBack }: { init
   const [busy, setBusy] = useState(false)
   const go = (m: Mode) => { setMode(m); setErr('') }
   const submit = async () => {
-    if (!ID_OK.test(id)) { setErr('아이디는 영어 소문자·숫자 4~16자예요'); return }
+    if (!ID_OK.test(cleanId(id))) { setErr('아이디는 영어 소문자·숫자 4~16자예요'); return }
     if (!PW_OK.test(pw)) { setErr('비밀번호는 영어·숫자·특수기호 6자 이상이에요'); return }
     if (mode === 'join' && !nick.trim()) { setErr('닉네임을 적어 주세요'); return }
     if (mode === 'join' && !EMAIL_OK.test(email.trim())) { setErr('이메일을 확인해 주세요 (아이디·비밀번호를 찾을 때 써요)'); return }
     setBusy(true)
-    const e = mode === 'join' ? await join(id, pw, nick.trim(), email.trim().toLowerCase()) : await login(id, pw)
+    const e = mode === 'join' ? await join(cleanId(id), pw, nick.trim(), email.trim().toLowerCase()) : await login(cleanId(id), pw)
     if (e) { setBusy(false); setErr(e); return }
     const m = await currentMe()
     setBusy(false)
@@ -38,7 +39,7 @@ export default function AuthScreen({ initial = 'login', onDone, onBack }: { init
       </div>
       <form className="login-form" onSubmit={(e) => { e.preventDefault(); void submit() }}>
         <label className="field"><span>아이디 (영어 소문자·숫자 4~16자)</span>
-          <input value={id} onChange={(e) => setId(cleanId(e.target.value))} autoComplete="username" autoCapitalize="none" spellCheck={false} />
+          <input value={id} {...idInputProps(setId)} />
         </label>
         <label className="field"><span>비밀번호 (영어·숫자·특수기호 6자 이상)</span>
           <input value={pw} type="password" onChange={(e) => setPw(cleanPw(e.target.value))} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
@@ -91,11 +92,11 @@ function FindAccount({ onBack, onDone }: { onBack: () => void; onDone: (id: stri
     setStep(2)
   }
   const reset = async () => {
-    if (!ID_OK.test(id)) { setErr('메일에 적힌 아이디를 적어 주세요'); return }
+    if (!ID_OK.test(cleanId(id))) { setErr('메일에 적힌 아이디를 적어 주세요'); return }
     if (!/^\d{6}$/.test(code)) { setErr('메일에 온 6자리 코드를 적어 주세요'); return }
     if (!PW_OK.test(pw)) { setErr('새 비밀번호는 영어·숫자·특수기호 6자 이상이에요'); return }
     setBusy(true); setErr('')
-    const e = await resetWithCode(id, code, pw)
+    const e = await resetWithCode(cleanId(id), code, pw)
     setBusy(false)
     if (e) { setErr(e); return }
     setOk('비밀번호를 바꿨어요. 새 비밀번호로 로그인해 주세요')
@@ -122,7 +123,7 @@ function FindAccount({ onBack, onDone }: { onBack: () => void; onDone: (id: stri
         <form className="login-form" onSubmit={(e) => { e.preventDefault(); void reset() }}>
           <p className="muted">등록된 이메일이면 메일이 갔어요 (스팸함도 확인해 주세요). 아이디만 잊었으면 메일에서 확인하고 로그인하면 돼요.</p>
           <label className="field"><span>아이디 (메일에 적혀 있어요)</span>
-            <input value={id} onChange={(e) => setId(cleanId(e.target.value))} autoComplete="username" autoCapitalize="none" spellCheck={false} />
+            <input value={id} {...idInputProps(setId)} />
           </label>
           <label className="field"><span>6자리 코드</span>
             <input value={code} inputMode="numeric" maxLength={6} autoComplete="one-time-code" onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} />
