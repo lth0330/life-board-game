@@ -601,7 +601,8 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
 .sheet.mini.theme-brain { background: linear-gradient(160deg, #f3edff, #ddd0f7); }
 .sheet.mini.theme-fest { background: radial-gradient(circle at 20% 10%, #ffe7a8 0 8%, transparent 9%), radial-gradient(circle at 80% 12%, #ffc7d9 0 7%, transparent 8%), linear-gradient(#fff3f7, #ffd9e6); }
 .sheet.mini.theme-casino { background: radial-gradient(circle at 50% 0%, #2f8f5b, #1d5c3b); color: #fff7e8; }
-.sheet.mini.theme-casino .muted, .sheet.mini.theme-casino .note { color: #e8f3ea; }
+.sheet.mini.theme-casino .muted { color: #e8f3ea; }
+.sheet.mini.theme-casino .note { color: var(--ink); } /* 밝은 칸 위 글자는 진하게 (판돈·힌트가 안 보였음, 2026-10-31) */
 .sheet.mini.theme-casino button, .sheet.mini.theme-casino .mini-seq span, .sheet.mini.theme-casino .mini-level { color: var(--ink); } /* 흰 바탕 칸은 진한 글자 */
 .sheet.mini.theme-travel { background: linear-gradient(#cfe7f5, #fdf6e8 70%); }
 .sheet.mini.theme-duel { background: linear-gradient(#ffe2c7, #fdf6e8); }
@@ -1230,3 +1231,5 @@ body { word-break: keep-all; overflow-wrap: break-word; }
 @keyframes tip-in { from { opacity: 0; transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .hud-tip { animation: none; } }
 .sound-row button:nth-child(3) { grid-column: 1 / -1; }
+/* 선택 창: 고를 것이 많아도 위 설명 글이 찌그러지지 않게 (창 전체가 스크롤, 2026-10-31) */
+.sheet > * { flex-shrink: 0; }
