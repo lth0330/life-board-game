@@ -938,6 +938,14 @@ function applyRoadStart(s: GameState, p: Player, road: string) {
 // ───────── 칸 효과 ─────────
 
 // 행복 칸 장면: 내 상황(배우자·아이·반려동물·단계)에 맞춰 고름
+// 행복 칸 '일하기' 선택지를 나이에 맞게 (2026-10-31: 아이 때 '쉬지 않고 일하기'가 어색함)
+const HAPPY_WORK: Record<StageId, [string, string]> = {
+  child: ['🐷 놀지 않고 용돈 아끼기', '놀지 않고 용돈을 아꼈다'],
+  student: ['🧹 집안일 돕고 용돈 받기', '집안일을 돕고 용돈을 받았다'],
+  young: ['💼 쉬지 않고 일하기', '쉬지 않고 일했다'],
+  middle: ['💼 쉬지 않고 일하기', '쉬지 않고 일했다'],
+  old: ['🧺 쉬지 않고 소일거리 하기', '쉬지 않고 소일거리를 했다'],
+}
 function happyScene(s: GameState, p: Player): { art: string; title: string; text: string; bonus: number } {
   const rng = rngOf(s)
   const sid = stageOf(s).id
@@ -1075,8 +1083,8 @@ function land(s: GameState, restLeft = 0) {
           type: 'happyPick', playerId: p.id, title: `행복 칸: ${sc2.title}`, text: `${sc2.text.replace(/!$/, '')}… 어떻게 보낼까요? (기분 ${MOOD_FACES[moodLevel(p)]} ${MOOD_NAMES[moodLevel(p)]})`,
           options: [
             { id: 'big', label: '🎉 크게 놀기', desc: `-${won(cost)} · 행복 +7`, disabled: p.money < cost },
-            { id: 'small', label: '☕ 소소하게', desc: '돈 안 듦 · 행복 +3' },
-            { id: 'work', label: '💼 쉬지 않고 일하기', desc: `+${won(cost)} · 행복 -1` },
+            { id: 'small', label: stageOf(s).id === 'child' ? '🧸 소소하게' : '☕ 소소하게', desc: '돈 안 듦 · 행복 +3' },
+            { id: 'work', label: HAPPY_WORK[stageOf(s).id][0], desc: `+${won(cost)} · 행복 -1` },
           ],
           data: { cost, art: sc2.art },
         }
@@ -1841,7 +1849,7 @@ export function choose(s: GameState, optionId: string) {
     case 'happyPick': {
       const cost = (pd.data as { cost: number }).cost
       if (optionId === 'big') { spend(p, cost); p.happy += 7; log(s, p.id, `크게 놀았다! -${won(cost)}, 행복 +7`, 'good') }
-      else if (optionId === 'work') { p.money += cost; p.happy -= 1; log(s, p.id, `쉬지 않고 일했다. +${won(cost)}, 행복 -1`, 'info') }
+      else if (optionId === 'work') { p.money += cost; p.happy -= 1; log(s, p.id, `${HAPPY_WORK[stageOf(s).id][1]}. +${won(cost)}, 행복 -1`, 'info') }
       else { p.happy += 3; log(s, p.id, '소소하게 즐겼다. 행복 +3', 'good') }
       break
     }
