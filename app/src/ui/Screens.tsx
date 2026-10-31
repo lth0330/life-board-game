@@ -112,7 +112,7 @@ export function MenuScreen({ profile, slot, gameNotice, onContinue, onNew, onOnl
         {profile && <Character outfit={profile.outfit} size={44} />}
         <div>
           <b className="jua">{profile ? `${profile.nick}님, 어서 오세요` : '손님 모드'}</b>
-          <p className="muted">{profile ? `${profile.loginId} · 게임은 계정에 자동 저장돼요` : '로그인하지 않으면 저장되지 않아요'}</p>
+          <p className="muted">{profile ? `${/^google_/i.test(profile.loginId) ? '구글 계정' : profile.loginId} · 게임은 계정에 자동 저장돼요` : '로그인하지 않으면 저장되지 않아요'}</p>
         </div>
       </div>
       {st && p0 && (
@@ -131,7 +131,7 @@ export function MenuScreen({ profile, slot, gameNotice, onContinue, onNew, onOnl
       )}
       <button className="wide secondary" onClick={onOnline}>🌐 온라인으로 하기</button>
       {profile && <button className="wide secondary" onClick={onDress}>캐릭터 꾸미기</button>}
-      {profile && <button className="wide ghost" onClick={onAccount}>내 계정 (이메일·비밀번호)</button>}
+      {profile && <button className="wide ghost" onClick={onAccount}>{/^google_/i.test(profile.loginId) ? '내 계정' : '내 계정 (이메일·비밀번호)'}</button>}
       <button className="wide ghost" onClick={() => setManual(true)}>게임 설명서</button>
       <button className="wide ghost" onClick={onLogout}>{profile ? '로그아웃' : '처음 화면으로'}</button>
       {manual && <Manual onClose={() => setManual(false)} />}
@@ -212,7 +212,7 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
           )}
         </div>
       )}
-      <div className="field"><span>판 테마 (계절 미니게임·사건이 가끔 나와요)</span>
+      <div className="field"><span>판 테마 (계절 미니게임·사건이 나와요)</span>
         <Choice value={theme} options={THEMES} onChange={setTheme} tight />
       </div>
       <div className="field"><span>AI 난이도</span>
