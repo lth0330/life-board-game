@@ -5,8 +5,11 @@ import type { ChoiceOption, DiceItem, GameState, Player, Sector, Suitor } from '
 import { breakSavings } from './money'
 import {
   adoptPet, canBankLoan, carChargesAt, carCost, carResale, couponOff, giveChance, hasMortgage, HOUSE_HAPPY, houseCost, housePriceOf, houseValue,
-  LOAN_RATE, LOAN_TURNS, loanLimit, log, mortgagePlan, randomChance, rngOf, say, spend, stageOf, tileOf, won,
+  LOAN_RATE, LOAN_TURNS, loanLimit, log, lotteryMult, mortgagePlan, randomChance, rngOf, say, spend, stageOf, tileOf, won,
 } from './game'
+
+// 찬스 카드 값: 청년 100만, 중년 200만 (2026-11-01: 복권처럼 단계가 오르면 커짐)
+export const chancePrice = (s: GameState) => 100 * lotteryMult(s)
 
 // ───────── 연애와 결혼 ─────────
 
@@ -147,7 +150,7 @@ export function shopBuy(s: GameState, p: Player, optionId: string, useCoupon: bo
       data: { vip, visit: after },
     }
   } else if (optionId === 'chance') {
-    spend(p, 100)
+    spend(p, chancePrice(s))
     giveChance(s, p, randomChance(rng))
   } else if (optionId === 'pet') {
     spend(p, 50)
@@ -190,7 +193,7 @@ export function openShop(s: GameState, p: Player, visit: ShopVisit = { big: fals
     opts.push({ id: 'agency1', label: '소개팅 회사 VIP 회원', desc: '매 턴 100만, 연애 시작 300만, 원하는 속성을 고르고 ★3 이상이 잘 나와요' })
   }
   if (!p.pet?.alive) opts.push({ id: 'pet', label: '반려동물 데려오기', desc: `${won(50)} · 매 턴 행복 +1, 사료값이 들어요`, disabled: p.money < 50 })
-  opts.push({ id: 'chance', label: '찬스 카드 사기', desc: `${won(100)}${p.chance ? ' · 이미 1장 있어요' : ''}`, disabled: p.money < 100 || !!p.chance })
+  opts.push({ id: 'chance', label: '찬스 카드 사기', desc: `${won(chancePrice(s))}${p.chance ? ' · 이미 1장 있어요' : ''}`, disabled: p.money < chancePrice(s) || !!p.chance })
   const full = p.diceItems.length >= MAX_DICE_ITEMS
   for (const k of Object.keys(DICE_ITEMS) as DiceItem[]) {
     const d = DICE_ITEMS[k]

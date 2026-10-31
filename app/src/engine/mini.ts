@@ -177,7 +177,7 @@ export const CONTEST_NAMES: Partial<Record<StageId, string>> = { child: '꼬마 
 const THEME_CONTEST: Partial<Record<MiniId, string>> = { leaves: '가을 낙엽 대회', snowball: '겨울 눈싸움 대회', flower: '봄 꽃 심기 대회', melon: '여름 수박 깨기 대회', butterfly: '봄 나비 대회', watergun: '여름 물총 대회' }
 export const contestName = (s: GameState, game: string) => THEME_CONTEST[game as MiniId] ?? CONTEST_NAMES[stageOf(s).id] ?? '대회'
 // 청년·중년은 돈 (2등은 절반), 어린이·학생은 그 게임 능력치 +1
-const CONTEST_PRIZE: Partial<Record<StageId, number>> = { young: 300, middle: 500 }
+const CONTEST_PRIZE: Partial<Record<StageId, number>> = { young: 300, middle: 1000 } // 중년 500 → 1,000 (2026-11-01: 돈이 많아져서 상금이 작게 느껴짐)
 
 // 대회 '준비 완료': 사람이 모두 누르면 go (화면에서 3·2·1 뒤 다 같이 시작)
 export function contestReady(s: GameState, who: number) {
