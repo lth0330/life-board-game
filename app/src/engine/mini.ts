@@ -103,10 +103,14 @@ export function finishMini(s: GameState, value: number, who?: number) {
   if (m.contest) {
     const id = who ?? m.playerId
     if (!m.contest.queue.includes(id)) return
-    const results = { ...m.contest.results, [id]: m.duel ? Math.max(0, Math.min(100, Math.round(value))) : Math.max(0, Math.min(2, Math.round(value))) }
+    // 맞힌 비율로 등수를 가리는 대회: 화면이 '등급 + 맞힌 비율 × 0.5'로 보냄 (예: 2.5 = 대성공·100%)
+    const scored = SCORED_CONTEST.includes(m.game as MiniId) && !m.duel
+    const grade = scored ? Math.floor(Math.max(0, Math.min(2, value))) : Math.max(0, Math.min(2, Math.round(value)))
+    const results = { ...m.contest.results, [id]: m.duel ? Math.max(0, Math.min(100, Math.round(value))) : grade }
+    const scores = scored ? { ...m.contest.scores, [id]: Math.max(0, Math.min(100, Math.round((value - grade) * 200))) } : m.contest.scores
     const queue = m.contest.queue.filter((x) => x !== id)
     if (queue.length) {
-      s.mini = { ...m, playerId: queue[0], level: miniLevel(s.players[queue[0]], m.game), contest: { ...m.contest, results, queue } }
+      s.mini = { ...m, playerId: queue[0], level: miniLevel(s.players[queue[0]], m.game), contest: { ...m.contest, results, queue, scores } }
       return
     }
     s.mini = null
@@ -118,7 +122,7 @@ export function finishMini(s: GameState, value: number, who?: number) {
       resume(s)
       return
     }
-    resolveContest(s, m.game as MiniId, results)
+    resolveContest(s, m.game as MiniId, results, scores)
     // 결과 창은 모두의 등수를 보여 줌 (showPop은 한 사람 것만 모음). 다음 단계 첫 사건 창보다 먼저 보이게 나중에 넣음
     const lines = s.log.slice(-(s.logCount - start))
     const title = `${contestName(s, m.game)} 결과`
@@ -203,7 +207,40 @@ export function startContest(s: GameState): boolean {
   return true
 }
 
-function resolveContest(s: GameState, game: MiniId, res: Record<number, number>) {
+// 춤 따라 하기는 실패 없이 맞힌 비율로 1~4등 (2026-10-31 사용자). 같은 비율이면 같은 등수
+export const SCORED_CONTEST: MiniId[] = ['dance']
+const DANCE_LEN = [5, 6, 7] // 화면 Dance와 같게 (난이도별 동작 수)
+function resolveScored(s: GameState, game: MiniId, res: Record<number, number>, given: Record<number, number>) {
+  const st = stageOf(s)
+  const rng = rngOf(s)
+  // AI(또는 나간 사람)는 등급에 맞는 맞힌 비율을 만듦
+  const score = (q: Player) => {
+    if (given[q.id] !== undefined) return given[q.id]
+    const len = DANCE_LEN[miniLevel(q, game)] ?? 6
+    const g = res[q.id] ?? 0
+    const right = g === 2 ? len : g === 1 ? len - 1 : rng.int(0, len - 2)
+    return Math.round((right / len) * 100)
+  }
+  const sc = s.players.map((q) => ({ q, v: score(q) })).sort((a, b) => b.v - a.v)
+  log(s, null, sc.map(({ q, v }) => `${q.name} ${v}%`).join(', '), 'info')
+  const prize = CONTEST_PRIZE[st.id]
+  const key = MINI_STAT[game]
+  sc.forEach(({ q, v }) => {
+    const rank = sc.findIndex((x) => x.v === v) + 1 // 같은 비율이면 같은 등수
+    if (rank === 1) {
+      if (prize) { q.money += prize; q.happy += 2; log(s, q.id, `1등! +${won(prize)}, 행복 +2`, 'good') }
+      else { if (key && key !== 'fortune') q.stats[key] = clampStat(q.stats[key] + 1); q.happy += 2; log(s, q.id, `1등! ${key && key !== 'fortune' ? `${STAT_NAMES[key]} +1, ` : ''}행복 +2`, 'good') }
+      say(s, q, 'duelWin')
+    } else if (rank === 2) {
+      if (prize) { q.money += prize / 2; log(s, q.id, `2등! +${won(prize / 2)}`, 'good') }
+      else { q.happy += 1; log(s, q.id, '2등! 행복 +1', 'good') }
+    } else if (rank === 3) { q.happy += 1; log(s, q.id, '3등! 행복 +1', 'good') }
+    else log(s, q.id, `${rank}등`, 'info')
+  })
+}
+
+function resolveContest(s: GameState, game: MiniId, res: Record<number, number>, scores?: Record<number, number>) {
+  if (SCORED_CONTEST.includes(game)) { resolveScored(s, game, res, scores ?? {}); return }
   const st = stageOf(s)
   const names = ['실패', '성공', '대성공']
   log(s, null, s.players.map((q) => `${q.name} ${names[res[q.id] ?? 0]}`).join(', '), 'info')
@@ -264,7 +301,8 @@ export function miniGuide(s: GameState, game: MiniId | DuelId, duel: boolean, co
     const k = MINI_STAT[game as MiniId]
     const prize = CONTEST_PRIZE[stageOf(s).id]
     const stat = k && k !== 'fortune' ? `모두 같은 게임을 해요 · ${STAT_NAMES[k]}이 높을수록 쉬워요` : '모두 같은 게임을 해요'
-    const reward = prize ? `1등 ${won(prize)}·행복 +2 / 2등 ${won(prize / 2)} / 실패는 상 없음` : `1등 ${k && k !== 'fortune' ? STAT_NAMES[k] : '능력치'} +1·행복 +2 / 2등 행복 +1 / 실패는 상 없음`
+    const scored = SCORED_CONTEST.includes(game as MiniId)
+    const reward = scored ? `맞힌 비율로 1~4등 · ${prize ? `1등 ${won(prize)}·행복 +2 / 2등 ${won(prize / 2)}` : '1등 능력치 +1·행복 +2 / 2등 행복 +1'} / 3등 행복 +1` : prize ? `1등 ${won(prize)}·행복 +2 / 2등 ${won(prize / 2)} / 실패는 상 없음` : `1등 ${k && k !== 'fortune' ? STAT_NAMES[k] : '능력치'} +1·행복 +2 / 2등 행복 +1 / 실패는 상 없음`
     return { stat, reward }
   }
   if (duel) return { stat: '같은 칸에 선 사람끼리 점수로 겨뤄요', reward: `1등이 꼴찌에게서 ${won(DUEL_STAKE[stageOf(s).id] ?? scaleOf(s))}을 받아요` }

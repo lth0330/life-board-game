@@ -1,23 +1,47 @@
 // 적금·플레이어끼리 돈 빌려주기 (2026-10-29 game.ts에서 나눔)
 import type { GameState, Player } from './types'
+import { SAVINGS_FEE, SAVINGS_PLANS } from './data'
 import { bankLoan, canAct, canBankLoan, changeFortune, cur, isAdultStage, loanLimit, loanTotal, log, rngOf, say, scaleOf, won } from './game'
 
-// ───────── 적금 (2026-10-21) ─────────
-// 넣어 두면 매 턴 이자. 언제든 뺄 수 있고, 돈이 마이너스가 되면 차례 시작에 자동으로 꺼내 메움
-export function deposit(s: GameState, amount: number) {
+// ───────── 적금 (2026-10-21 → 10-31 사용자: 기간 정해 묶어 두기) ─────────
+// 5차례(+8%)·10차례(+20%) 중 골라 넣고, 만기가 되면 차례 시작에 이자와 함께 돌아옴
+// 하나만 들 수 있음(만기·해지 전에는 더 못 넣음). 노년에는 새로 못 넣음. 만기 전에 꺼내면 이자 없이 수수료 5%
+export const canDeposit = (s: GameState, p: Player) => isAdultStage(s) && s.stageIdx < 4 && !p.savings
+export function deposit(s: GameState, amount: number, term: number = SAVINGS_PLANS[0].term) {
   const p = cur(s)
-  if (!canAct(s) || !isAdultStage(s) || amount <= 0 || p.money < amount) return
+  const plan = SAVINGS_PLANS.find((x) => x.term === term)
+  if (!canAct(s) || !plan || !canDeposit(s, p) || amount <= 0 || p.money < amount) return
   p.money -= amount
-  p.savings = (p.savings ?? 0) + amount
-  log(s, p.id, `적금에 ${won(amount)} 넣었다 (모은 돈 ${won(p.savings)})`, 'info')
+  p.savings = amount
+  p.savingsTerm = plan.term
+  p.savingsDue = p.turnsPlayed + plan.term
+  log(s, p.id, `적금 ${plan.term}차례짜리에 ${won(amount)} 넣었다 (만기에 +${Math.round(plan.rate * 100)}% 이자)`, 'info')
 }
-export function withdraw(s: GameState, amount?: number) {
-  const p = cur(s)
-  const amt = Math.min(p.savings ?? 0, amount ?? Infinity)
-  if (!canAct(s) || amt <= 0) return
-  p.savings = (p.savings ?? 0) - amt
-  p.money += amt
-  log(s, p.id, `적금에서 ${won(amt)} 꺼냈다`, 'info')
+// 만기 전에 꺼내기 (해지). 이자 없이 수수료를 떼고 돌려받음
+export function breakSavings(s: GameState, p: Player, why = '') {
+  const amt = p.savings ?? 0
+  if (amt <= 0) return
+  const fee = p.savingsTerm ? Math.round(amt * SAVINGS_FEE) : 0
+  p.money += amt - fee
+  p.savings = 0
+  p.savingsDue = undefined
+  p.savingsTerm = undefined
+  log(s, p.id, `${why}적금을 깼다: +${won(amt - fee)}${fee ? ` (수수료 ${won(fee)})` : ''}`, 'info')
+}
+export function withdraw(s: GameState) {
+  if (!canAct(s)) return
+  breakSavings(s, cur(s))
+}
+// 차례 시작에: 만기면 이자와 함께 돌려받음
+export function savingsTick(s: GameState, p: Player) {
+  if (!p.savings || (p.savingsDue ?? 0) > p.turnsPlayed) return
+  const plan = SAVINGS_PLANS.find((x) => x.term === p.savingsTerm)
+  const interest = plan ? Math.round(p.savings * plan.rate) : 0
+  p.money += p.savings + interest
+  log(s, p.id, `적금 만기! ${won(p.savings)}${interest ? ` + 이자 ${won(interest)}` : ''} 돌려받았다`, 'good')
+  p.savings = 0
+  p.savingsDue = undefined
+  p.savingsTerm = undefined
 }
 
 export function takeLoan(s: GameState, amount: number) {

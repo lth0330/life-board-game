@@ -2,13 +2,13 @@ import { josa } from './josa'
 import { BIZ_OPP, findBizEvent } from './bizEvents'
 import { buildStages, isEnd, maxDepth, walkAhead } from './board'
 import {
-  AI_NAMES, BIZ, BUSINESSES, CAFE, CARS, CHANCE_NAMES, DICE_ITEMS, FORTUNES, HOUSES, CAR_RESALE, HOUSE_RULES, INSURANCE, JOBS, KIDS, LOTTERY_PRICE, MEDALS, PENSION,
-  ADULT_BONUS_MULT, PERF_BONUS, SAVINGS_RATE, SCORE_PER_POINT, PERSONALITIES, PLAYER_COLORS, PRESTIGE_JOBS, SABOTAGE_NAMES, SECTORS, STAGE_SCALE,
+  AI_NAMES, BIZ, BUSINESSES, CAFE, CARS, CHANCE_NAMES, DICE_ITEMS, FORTUNES, HOUSES, CAR_RESALE, HOUSE_RULES, INSURANCE, JOBS, KIDS, LOTTERY_MULT, LOTTERY_PRICE, MEDALS, PENSION,
+  ADULT_BONUS_MULT, PERF_BONUS, SCORE_PER_POINT, PERSONALITIES, PLAYER_COLORS, PRESTIGE_JOBS, SABOTAGE_NAMES, SECTORS, STAGE_SCALE,
   STAT_NAMES, TAX_RATE, JOB_PROS_CONS,
 } from './data'
 import { DEFAULT_OUTFIT, randomOutfit, type Outfit } from './outfit'
 import { makeRng, type Rng } from './rng'
-import { DILEMMAS, findEvent, SPECIALS, specialDesc, THEME_EVENTS, type SpecialEvent, type SpecialOption } from './special'
+import { DILEMMAS, eventText, eventTitle, findEvent, optionLabel, SPECIALS, specialDesc, THEME_EVENTS, type SpecialEvent, type SpecialOption } from './special'
 import { speechLine, type SpeechKey } from './speech'
 import type {
   ChanceCard, ChoiceOption, DiceItem, GameState, InsuranceKind, JobDef, MapTheme, MiniId, Personality, Player, SabotageCard, Sector, Settings, Stage,
@@ -23,7 +23,7 @@ import {
   bizBase, bizCost, bizOpportunity, bizOppResult, bizOppRule, bizRankOf, bizReview, bizSale, bizShareGain, bizStatMult, bizTick, carCrashTick,
   coachChance, forceLiquidate, healthTick, invest, medalPension, offerInvest, paySeverance, sellCompany, severanceNote, startCompany,
 } from './biz'
-import { friendLoanTick, lawsuit, makeFriendLoan } from './money'
+import { breakSavings, friendLoanTick, lawsuit, makeFriendLoan, savingsTick } from './money'
 export * from './biz'
 export * from './kids'
 export * from './mini'
@@ -346,7 +346,7 @@ function beginTurn(s: GameState) {
     // 1등 1% · 2등 7% · 3등 22% (전체 30%). 운세로 전체 확률이 바뀜: 대흉 -10%p, 흉 -5%p, 길 +5%p, 대길 +10%p (비율은 그대로)
     const luck = (0.3 + [-0.1, -0.05, 0, 0.05, 0.1][p.fortune]) / 0.3
     const rank = r < 0.01 * luck ? 1 : r < 0.08 * luck ? 2 : r < 0.3 * luck ? 3 : 0
-    const prize = [0, 1500, 300, 30][rank] // 1등 3,000만 → 1,500만 (2026-10-29: 산 돈의 약 5배를 돌려받아서)
+    const prize = LOTTERY_PRIZES[rank] * lotteryMult(s) // 1등 3,000만 → 1,500만 (2026-10-29: 산 돈의 약 5배를 돌려받아서). 중년 2배·노년 4배 (10-31)
     if (prize > 0) {
       p.money += prize
       p.record.lotteryWon += prize
@@ -377,6 +377,9 @@ function beginTurn(s: GameState) {
     if (lines.length) s.popup = { id: (s.popup?.id ?? 0) + 1, art: lines.some((l) => /복권/.test(l.text)) ? 'ticket' : 'money', title: '지난 차례 뒤 일어난 일', text: lines.slice(-6).map((l) => l.text).join('\n'), tone: lines.some((l) => l.tone === 'bad') ? 'bad' : 'good', playerId: p.id }
   }
   const sid = stageOf(s).id
+  // 대학 생활은 최대 4차례 (주사위가 작아도 오래 머물지 않게, 2026-10-31 사용자). 5번째 차례 시작에 졸업
+  const onCampus = sid === 'young' && p.campusTurns > 0 && tileOf(s, p).road === 'campus'
+  if (onCampus) p.campusTurns--
   const lastStudentTurn = sid === 'student' && p.rollsLeft === 1
   const careerJob = p.careerDue ? jobOf(p) : null
   p.careerDue = false
@@ -388,12 +391,17 @@ function beginTurn(s: GameState) {
     s.pending = {
       type: 'career', playerId: p.id,
       title: sid === 'student' ? '고등학교 졸업! 진로를 정해요' : '스무 살까지 어떻게 살았나요?',
-      text: `대학은 3종류예요. 먼저 수능 주사위를 굴리고(상위권 합격 +15%, 하위권 -10%), 그다음 합격 룰렛. 고른 대학의 능력치가 높을수록 합격 확률이 올라가요. 떨어지면 바로 취업하거나 재수(1번)를 해요.\n지금 능력치 지력 ${p.stats.int} · 체력 ${p.stats.str} · 매력 ${p.stats.cha}\n\n[직업 조건]\n${jobGuide(p, false)}\n\n합격하면 청년이 되어 대학 길 9칸을 주사위로 걸으며(공부·동아리·연애·알바·시험·축제·장학금) 능력치를 키운 뒤 직업을 골라요. 대신 학자금 대출(수능 상위권 0원 · 중간 500만 · 하위권 800만, 이자 2%)이 생기고 그동안 월급이 없어요.`,
+      text: `대학은 3종류예요. 먼저 수능 주사위를 굴리고(상위권 합격 +15%, 하위권 -10%), 그다음 합격 룰렛. 고른 대학의 능력치가 높을수록 합격 확률이 올라가요. 떨어지면 바로 취업하거나 재수(1번)를 해요.\n지금 능력치 지력 ${p.stats.int} · 체력 ${p.stats.str} · 매력 ${p.stats.cha}\n\n[직업 조건]\n${jobGuide(p, false)}\n\n합격하면 청년이 되어 대학 길(최대 4차례)을 주사위로 걸으며(공부·동아리·연애·알바·시험·축제·장학금) 능력치를 키운 뒤 직업을 골라요. 대신 학자금 대출(수능 상위권 0원 · 중간 500만 · 하위권 800만, 이자 2%)이 생기고 그동안 월급이 없어요.`,
       options: [
         ...UNIS.map((u) => ({ id: `uni:${u.stat}`, label: `${u.name} 지원`, desc: `${STAT_NAMES[u.stat]} ${p.stats[u.stat]} → 합격 확률 ${Math.round(passChance(p, u.stat) * 100)}% (수능 상위권 +15%, 하위권 -10%) · 대학 길에서 ${STAT_NAMES[u.stat]}을 키우면 행복 +1` })),
         { id: 'work', label: '바로 취업', desc: '모아 둔 돈 +400만, 청년 첫 차례부터 직업과 월급이 생겨요' },
       ],
     }
+  } else if (onCampus && p.campusTurns === 0) {
+    graduate(s, p)
+    const st = stageOf(s)
+    p.pos = st.tiles.findIndex((x) => x.stop === 'job')
+    stopTile(s, p, st.tiles[p.pos])
   } else if (sid === 'young' && p.retake) {
     s.pending = { type: 'retake', playerId: p.id, title: '재수 1년', text: `${STAT_NAMES[p.retake]} +1 하고 다시 시험을 봐요 (이번 차례는 이걸로 끝나요)`, options: [{ id: 'go', label: '시험 보기' }] }
   } else if (sid === 'young' && p.collegeDecided && !p.college && !p.jobId && p.pos === 0) {
@@ -477,13 +485,13 @@ function economyTick(s: GameState, p: Player) {
       }
     }
   }
-  if (p.savings) { // 적금 이자
-    const interest = Math.round(p.savings * SAVINGS_RATE)
-    p.savings += interest
-  }
-  const aiKeep = st.id === 'old' ? 500 : st.id === 'middle' ? 5000 : 3000 // AI: 이만큼 남기고 적금에 (상점에서 꺼내 씀)
-  if (!p.human && p.money > aiKeep && (st.id === 'old' || p.personality !== 'gambler')) {
-    p.savings = (p.savings ?? 0) + p.money - aiKeep
+  savingsTick(s, p) // 적금 만기
+  const aiKeep = st.id === 'middle' ? 5000 : 3000 // AI: 이만큼 남기고 적금에 (안정·가족형은 10차례, 나머지는 5차례)
+  if (!p.human && st.id !== 'old' && !p.savings && p.money > aiKeep + 500 && p.personality !== 'gambler') {
+    const term = p.personality === 'safe' || p.personality === 'family' ? 10 : 5
+    p.savings = p.money - aiKeep
+    p.savingsTerm = term
+    p.savingsDue = p.turnsPlayed + term
     p.money = aiKeep
   }
   if (p.house) p.happy += HOUSE_HAPPY[p.house] // 내 집: 매 턴 행복 (2026-10-21)
@@ -524,11 +532,8 @@ function economyTick(s: GameState, p: Player) {
 // 주택담보대출: 매 턴 정해진 돈이 자동으로 빠짐. 못 내면 연체, 3번이면 집을 경매로 팖
 // 적금에서 모자란 만큼 꺼냄 (갚을 돈이 모자랄 때)
 export function fromSavings(s: GameState, p: Player, need: number) {
-  const amt = Math.min(p.savings ?? 0, Math.max(0, need - p.money))
-  if (amt <= 0) return
-  p.savings = (p.savings ?? 0) - amt
-  p.money += amt
-  log(s, p.id, `돈이 모자라 적금에서 ${won(amt)} 꺼냈다`, 'info')
+  if (!p.savings || p.money >= need) return
+  breakSavings(s, p, '돈이 모자라 ')
 }
 
 function mortgageTick(s: GameState, p: Player) {
@@ -800,9 +805,10 @@ function startMove(s: GameState, steps: number) {
 function continueMove(s: GameState) {
   const p = cur(s)
   const st = stageOf(s)
+  let restLeft = 0 // 휴식 칸에 닿고 남은 칸 (도착 보너스, 2026-10-31 사용자)
   while (s.move && s.move.remaining > 0) {
     const here = st.tiles[p.pos]
-    if (isEnd(here)) break
+    if (isEnd(here)) { if (here.kind === 'rest' && s.path.length > 1) restLeft = s.move.remaining; break }
     let to = here.next[0]
     if (here.next.length > 1) {
       if (p.forkChoice == null || !here.next.includes(p.forkChoice)) {
@@ -823,7 +829,7 @@ function continueMove(s: GameState) {
     }
   }
   s.move = null
-  land(s)
+  land(s, restLeft)
 }
 
 export function resume(s: GameState) {
@@ -1021,7 +1027,7 @@ function pickGood(s: GameState): GoodKind {
   return rngOf(s).pick(list)
 }
 
-function land(s: GameState) {
+function land(s: GameState, restLeft = 0) {
   const p = cur(s)
   const t = tileOf(s, p)
   const rng = rngOf(s)
@@ -1099,17 +1105,22 @@ function land(s: GameState) {
       break
     }
     case 'stop':
-      if (t.stop === 'job' && p.campusTurns > 0) {
-        p.campusTurns = 0
-        for (const l of p.loans) if (l.kind === '학자금') l.dueTurn = p.turnsPlayed + 8 // 학자금은 졸업 뒤 8턴 안에
-        log(s, p.id, `대학 졸업! 이제 직업을 골라요${p.loans.some((l) => l.kind === '학자금') ? ' (학자금은 8턴 안에 갚기)' : ''}`, 'good')
-        s.banner = { title: '대학 졸업', text: p.name, tone: 'good' }
-      }
+      if (t.stop === 'job' && p.campusTurns > 0) graduate(s, p)
       stopTile(s, p, t)
       break
     case 'uni': uniTile(s, p, t.uni!); popArt = UNI_ART[t.uni!]; popTitle = UNI_NAMES[t.uni!]; break
-    case 'rest': log(s, p.id, '단계 끝 휴식 칸에 도착했다', 'info'); break
+    case 'rest': {
+      if (restLeft > 0) { // 더 갈 수 있었는데 먼저 닿았으니 남은 칸만큼 보너스
+        const bonus = Math.round(restLeft * scaleOf(s) * REST_BONUS)
+        p.money += bonus
+        p.happy += 1
+        log(s, p.id, `휴식 칸 도착! 남은 ${restLeft}칸 보너스 +${won(bonus)}, 행복 +1`, 'good')
+        popArt = 'rest'; popTitle = '휴식 칸 도착'
+      } else log(s, p.id, '단계 끝 휴식 칸에 도착했다', 'info')
+      break
+    }
     case 'goal': break
+    case 'point': break // 건물은 들어올 때 이미 들렀음
   }
   // 칸 사건 팝업: 고를 게 없으면 이번 칸 기록을 그림과 함께 보여 줌 (화면에서 저절로 꺼짐)
   if (kind === 'money') popTitle = isAdultStage(s) ? '보너스!' : '용돈!'
@@ -1123,7 +1134,7 @@ function riskTile(s: GameState, p: Player, mult: number) {
   const sc = scaleOf(s) * mult
   const opts: Bad[] = [
     { text: '감기에 걸려 병원에 갔다', loss: sc * 2, happyLoss: 2, kind: 'health' },
-    { text: '지갑을 잃어버렸다', loss: sc * 3, happyLoss: 1 },
+    { text: stageOf(s).id === 'child' ? '모아 둔 용돈을 잃어버렸다' : '지갑을 잃어버렸다', loss: sc * 3, happyLoss: 1 },
     { text: '친구와 크게 싸웠다', loss: 0, happyLoss: 5 },
   ]
   if (mult > 1) opts.push({ text: '사업 거래처가 부도났다', loss: sc * 4, happyLoss: 3 })
@@ -1167,9 +1178,10 @@ function specialTile(s: GameState, p: Player, pool: typeof SPECIALS, kind: strin
   const sc = scaleOf(s)
   // 올리는 능력치가 모두 10이고 다른 좋은 점이 없으면 못 고름
   const maxed = (o: SpecialOption) => !!o.stats && !o.happy && Object.values(o.stats).some((v) => v! > 0) && Object.entries(o.stats).every(([k, v]) => v! <= 0 || p.stats[k as StatKey] >= 10)
+  const sid = stageOf(s).id
   s.pending = {
-    type: 'special', playerId: p.id, title: `${kind}: ${ev.title}`, text: ev.text,
-    options: ev.options.map((o) => ({ id: o.id, label: o.label, desc: specialDesc(o, sc, won), disabled: (!!o.cost && o.cost * sc > p.money) || maxed(o) })),
+    type: 'special', playerId: p.id, title: `${kind}: ${eventTitle(ev, sid)}`, text: eventText(ev, sid),
+    options: ev.options.map((o) => ({ id: o.id, label: optionLabel(o, sid), desc: specialDesc(o, sc, won), disabled: (!!o.cost && o.cost * sc > p.money) || maxed(o) })),
     data: { ev: ev.id },
   }
 }
@@ -1202,7 +1214,7 @@ function applySpecial(s: GameState, p: Player, ev: SpecialEvent, o: SpecialOptio
     parts.push(`(${[statLine(o.risk.stats), o.risk.happy ? `행복 ${o.risk.happy}` : ''].filter(Boolean).join(', ')})`)
     if ((o.risk.happy ?? 0) < 0 || Object.values(o.risk.stats ?? {}).some((v) => v! < 0)) good = false
   }
-  log(s, p.id, `[${ev.title}] ${o.label.replace(/^\S+ /, '')}${parts.length ? ` · ${parts.join(' · ')}` : ''}`, good ? 'good' : 'bad')
+  log(s, p.id, `[${eventTitle(ev, stageOf(s).id)}] ${optionLabel(o, stageOf(s).id).replace(/^\S+ /, '')}${parts.length ? ` · ${parts.join(' · ')}` : ''}`, good ? 'good' : 'bad')
   if (o.othersHappy) log(s, null, `${p.name} 덕분에 모두 행복 +${o.othersHappy}`, 'good')
   if (o.luck) changeFortune(s, p, o.luck, ev.title)
   return good
@@ -1235,9 +1247,9 @@ function drawCard(s: GameState, p: Player) {
     ...(stageOf(s).id === 'old' ? [] : [
       () => { p.stats.int = clampStat(p.stats.int + 1); log(s, p.id, '책을 많이 읽었다. 지력 +1', 'good') },
       () => { p.stats.str = clampStat(p.stats.str + 1); log(s, p.id, '운동을 시작했다. 체력 +1', 'good') },
-      () => { p.stats.cha = clampStat(p.stats.cha + 1); log(s, p.id, '패션 감각이 늘었다. 매력 +1', 'good') },
+      () => { p.stats.cha = clampStat(p.stats.cha + 1); log(s, p.id, `${stageOf(s).id === 'child' ? '인사를 잘해서 귀여움을 받았다' : '패션 감각이 늘었다'}. 매력 +1`, 'good') },
     ]),
-    () => badEvent(s, p, { text: '휴대폰 액정이 깨졌다', loss: sc * 2, happyLoss: 1 }),
+    () => badEvent(s, p, { text: stageOf(s).id === 'child' ? '아끼던 장난감이 망가졌다' : '휴대폰 액정이 깨졌다', loss: sc * 2, happyLoss: 1 }), // 아기 때 휴대폰은 어색해서 (2026-10-31)
     () => contest(s, p),
     () => everyoneDraw(s),
     () => changeFortune(s, p, -1, rngOf(s).pick(['검은 고양이가 앞을 지나감', '거울을 깨뜨림', '불길한 꿈을 꿈'])), // 운이 좋아도 가끔 내려가는 일
@@ -1449,9 +1461,10 @@ export function jobGuide(p: Player, collegeAssumed = p.college) {
 function jobOptions(s: GameState, p: Player, includeStay: boolean): ChoiceOption[] {
   const quit = (id: string) => (p.jobId && id !== p.jobId ? `
 💰 ${severanceNote(p)}` : '') // 지금 직업을 그만두게 되면 퇴직금 안내
-  const opts: ChoiceOption[] = eligibleJobs(p, s.stageIdx).filter((j) => !includeStay || j.id !== p.jobId).map((j) => ({
-    id: `job:${j.id}`, label: j.name,
-    desc: `${j.boom ? '대박형' : '꾸준형'} · 월급 ${won(j.salary)} · ${j.ranks.join(' → ')}${JOB_PROS_CONS[j.id] ? `
+  const ok = eligibleJobs(p, s.stageIdx)
+  const opts: ChoiceOption[] = ok.filter((j) => !includeStay || j.id !== p.jobId).map((j) => ({
+    id: `job:${j.id}`, label: `${j.name} · 월급 ${won(j.salary)}`,
+    desc: `✅ 조건 ${reqText(j)} · ${j.boom ? '대박형' : '꾸준형'} · ${j.ranks.join(' → ')}${JOB_PROS_CONS[j.id] ? `
 👍 ${JOB_PROS_CONS[j.id][0]}
 👎 ${JOB_PROS_CONS[j.id][1]}` : ` · ${j.note}`}${quit(j.id)}`,
   }))
@@ -1459,10 +1472,24 @@ function jobOptions(s: GameState, p: Player, includeStay: boolean): ChoiceOption
   if (includeStay && biz && stageOf(s).id === 'middle') {
     opts.push({ id: 'biz', label: `창업: ${biz.name}`, desc: `자금 ${won(bizCost(p))}${p.jobId === 'chef' ? ' (요리사 할인)' : ''} · ${STAT_NAMES[biz.stat]} ${p.stats[biz.stat]}이 바탕이에요 · 소기업부터 시작해요 · ${severanceNote(p)}`, disabled: p.money < bizCost(p) && p.creditBad > 0 })
   }
+  // 조건이 안 되는 직업도 무엇이 모자란지 보여 줌 (2026-10-31 사용자: 조건·월급 보는 칸이 너무 작음)
+  const locked: ChoiceOption[] = JOBS.filter((j) => !ok.includes(j) && j.id !== p.jobId && j.id !== 'ceo' && j.id !== 'coach' && j.id !== 'actor').map((j) => ({
+    id: `job:${j.id}`, label: `${j.name} · 월급 ${won(j.salary)}`, disabled: true,
+    desc: `❌ 조건 ${reqText(j)} · 모자란 것: ${lackText(p, j, s.stageIdx)}`,
+  }))
   opts.push({ id: includeStay ? 'stay' : 'jobless', label: includeStay ? (p.jobId ? '지금 그대로' : '계속 백수로') : '백수로 지내기', desc: includeStay ? '' : `월급 없음
 👍 ${JOB_PROS_CONS.none[0]}
 👎 ${JOB_PROS_CONS.none[1]}${quit('')}` })
-  return opts
+  return [...opts, ...locked]
+}
+const SHORT_STAT = { int: '지력', str: '체력', cha: '매력' } as const
+const reqText = (j: JobDef) => [...(Object.keys(j.req) as StatKey[]).map((k) => `${SHORT_STAT[k]} ${j.req[k]}`), ...(j.college ? ['🎓대학'] : [])].join('·') || '없음'
+function lackText(p: Player, j: JobDef, stageIdx: number) {
+  if ((j.id === 'athlete' || j.id === 'idol') && stageIdx >= 3) return '중년부터는 새로 못 해요'
+  const relax = p.spouse && p.spouse.fame >= 7 ? 1 : 0
+  const out = (Object.keys(j.req) as StatKey[]).filter((k) => p.stats[k] + relax < (j.req[k] ?? 0)).map((k) => `${SHORT_STAT[k]} +${(j.req[k] ?? 0) - relax - p.stats[k]}`)
+  if (j.college && !p.college) out.push('대학 졸업')
+  return out.join(', ') || '조건 확인'
 }
 
 function stopTile(s: GameState, p: Player, t: Tile) {
@@ -1471,7 +1498,7 @@ function stopTile(s: GameState, p: Player, t: Tile) {
       s.pending = { type: 'club', playerId: p.id, title: '동아리', text: '어떤 동아리에 들어갈까요?', options: [{ id: 'int', label: '공부 동아리', desc: '지력 +1' }, { id: 'str', label: '운동부', desc: '체력 +1' }, { id: 'cha', label: '예체능', desc: '매력 +1' }] }
       break
     case 'job':
-      s.pending = { type: 'job', playerId: p.id, title: '직업 선택', text: `지력 ${p.stats.int} · 체력 ${p.stats.str} · 매력 ${p.stats.cha}${p.college ? ' · 대학 졸업' : ''}\n\n${jobGuide(p)}`, options: jobOptions(s, p, false) }
+      s.pending = { type: 'job', playerId: p.id, title: '직업 선택', text: `내 능력치: 지력 ${p.stats.int} · 체력 ${p.stats.str} · 매력 ${p.stats.cha}${p.college ? ' · 대학 졸업' : ''}\n조건이 안 되는 직업은 맨 아래에 흐리게 있어요`, options: jobOptions(s, p, false) }
       break
     case 'promotion': {
       // 승진 심사: 지금 직업의 핵심 능력치가 조건 이상이면 무조건 한 단계 위로
@@ -1500,7 +1527,14 @@ function stopTile(s: GameState, p: Player, t: Tile) {
   }
 }
 
-export const CAMPUS_TURNS = 1 // 0보다 크면 대학 길을 걷는 중 (직업 칸에 닿으면 0)
+function graduate(s: GameState, p: Player) {
+  p.campusTurns = 0
+  for (const l of p.loans) if (l.kind === '학자금') l.dueTurn = p.turnsPlayed + 8 // 학자금은 졸업 뒤 8턴 안에
+  log(s, p.id, `대학 졸업! 이제 직업을 골라요${p.loans.some((l) => l.kind === '학자금') ? ' (학자금은 8턴 안에 갚기)' : ''}`, 'good')
+  s.banner = { title: '대학 졸업', text: p.name, tone: 'good' }
+}
+const REST_BONUS = 0.5 // 휴식 칸 도착 보너스: 남은 한 칸마다 단계 돈 단위의 절반
+export const CAMPUS_TURNS = 5 // 0보다 크면 대학 길을 걷는 중 (직업 칸에 닿으면 0). 대학 길에서 차례를 시작할 때마다 1씩 줄고, 0이 되면(4차례 뒤) 졸업
 const campusIdx = (s: GameState) => stageOf(s).tiles.findIndex((t) => t.kind === 'campus')
 
 function sectorPending(p: Player, title: string, list: Sector[]) {
@@ -1612,6 +1646,7 @@ export function setJob(s: GameState, p: Player, id: string | null) {
 export function choose(s: GameState, optionId: string) {
   const pd = s.pending
   if (!pd) return
+  if (pd.type === 'job' && pd.options.find((o) => o.id === optionId)?.disabled) return // 조건이 안 되는 직업은 보이기만
   const p = s.players[pd.playerId]
   const rng = rngOf(s)
   const sc = scaleOf(s)
@@ -2062,10 +2097,13 @@ const TYPE_POP_ART: Record<string, string> = { wallet: 'money', happyPick: 'rest
 
 // ───────── 차례 전에 하는 행동 (재테크·카드) ─────────
 
+export const lotteryMult = (s: GameState) => LOTTERY_MULT[stageOf(s).id as 'young'] ?? 1
+export const lotteryPrice = (s: GameState) => LOTTERY_PRICE * lotteryMult(s)
+export const LOTTERY_PRIZES = [0, 1500, 300, 30] // 청년 기준 (단계 배수를 곱함)
 export function buyLottery(s: GameState) {
   const p = cur(s)
-  if (!canAct(s) || !isAdultStage(s) || p.lottery.ticket || p.money < LOTTERY_PRICE) return
-  spend(p, LOTTERY_PRICE)
+  if (!canAct(s) || !isAdultStage(s) || p.lottery.ticket || p.money < lotteryPrice(s)) return
+  spend(p, lotteryPrice(s))
   p.lottery.ticket = true
   const rng = rngOf(s)
   if (!p.lottery.addicted && rng.chance(p.lottery.chance / 100)) {
@@ -2086,9 +2124,7 @@ export function canSeekJob(s: GameState, p: Player) {
 export function seekJob(s: GameState) {
   const p = cur(s)
   if (!canAct(s) || !canSeekJob(s, p)) return
-  s.pending = { type: 'job', playerId: p.id, title: '취업 도전', text: `조건이 맞는 직업이에요. (지력 ${p.stats.int} · 체력 ${p.stats.str} · 매력 ${p.stats.cha})
-
-${jobGuide(p)}`, options: jobOptions(s, p, true) }
+  s.pending = { type: 'job', playerId: p.id, title: '취업 도전', text: `내 능력치: 지력 ${p.stats.int} · 체력 ${p.stats.str} · 매력 ${p.stats.cha}${p.college ? ' · 대학 졸업' : ''}\n조건이 안 되는 직업은 맨 아래에 흐리게 있어요`, options: jobOptions(s, p, true) }
   resume(s)
 }
 

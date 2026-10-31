@@ -2,11 +2,11 @@ import { josa } from '../engine/josa'
 import { useState, type ReactNode } from 'react'
 import { Character } from '../art/Character'
 import { Trophy } from '../art/More'
-import { CARS, CHANCE_NAMES, DICE_ITEMS, HOUSE_RULES, HOUSES, INSURANCE, JOB_PROS_CONS, JOBS, KIDS, LOTTERY_PRICE, MEDALS, PERSONALITIES, SABOTAGE_NAMES, SAVINGS_RATE, SECTORS } from '../engine/data'
+import { CARS, CHANCE_NAMES, DICE_ITEMS, HOUSE_RULES, HOUSES, INSURANCE, JOB_PROS_CONS, JOBS, KIDS, MEDALS, SABOTAGE_NAMES, SAVINGS_FEE, SAVINGS_PLANS, SECTORS } from '../engine/data'
 import {
   ageOf, moodLevel, moodOf, MOOD_FACES, MOOD_HELP, MOOD_NAMES, MOOD_TURNS, AWARD_POINTS, awardsOf, canBankLoan, canBorrowFrom, loanCap, LOAN_RATE, LOAN_TURNS, fortuneName, friendDebt, houseValue, isAdultStage, jobOf, kidAllowance, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
   stageOf, stars, stocksValue, teamTotals, TEAM_COLORS, TEAM_NAMES, sameTeam,
-  myStakes,
+  myStakes, lotteryMult, lotteryPrice, LOTTERY_PRIZES,
 } from '../engine/game'
 import type { GameState, InsuranceKind, Player, Sector } from '../engine/types'
 import { playerLine, won } from './format'
@@ -38,8 +38,8 @@ interface FinanceProps {
   onRepay: (amount?: number, idx?: number) => void
   onFriendLoan: (lenderId: number, amount: number, rateIdx: number, term: number) => void
   onRepayFriend: (idx: number) => void
-  onDeposit: (amount: number) => void
-  onWithdraw: (amount?: number) => void
+  onDeposit: (amount: number, term: number) => void
+  onWithdraw: () => void
   onGiveTeam: (toId: number, amount: number) => void
   onClose: () => void
 }
@@ -64,6 +64,7 @@ export function FinanceSheet(f: FinanceProps) {
   const { s, p } = f
   const adult = isAdultStage(s)
   const locked = !f.canUse || !adult
+  const [saveTerm, setSaveTerm] = useState<number>(SAVINGS_PLANS[0].term)
   // 청년 전에는 쓸 수 없는 버튼을 늘어놓지 않고 안내만 (2026-10-22)
   if (!adult) return (
     <Sheet title="재테크" onClose={f.onClose}>
@@ -103,10 +104,11 @@ export function FinanceSheet(f: FinanceProps) {
       )}
       {tab === 'lottery' && (
         <div className="list">
-          <p>한 장 {won(LOTTERY_PRICE)}. 당첨 여부는 다음 내 차례에 알려줘요.</p>
+          <p>한 장 {won(lotteryPrice(s))}. 당첨 여부는 다음 내 차례에 알려줘요.</p>
+          <p className="note">당첨금 1등 {won(LOTTERY_PRIZES[1] * lotteryMult(s))} · 2등 {won(LOTTERY_PRIZES[2] * lotteryMult(s))} · 3등 {won(LOTTERY_PRIZES[3] * lotteryMult(s))} (중년은 2배, 노년은 4배로 커져요)</p>
           <p className="note">이번에 사면 도박중독에 걸릴 확률: <b>{p.lottery.chance}%</b> (살수록 +5%, 쉬면 -10%)</p>
           {p.lottery.addicted && <p className="bad">도박중독 상태예요. 매 턴 나쁜 일이 생길 수 있어요.</p>}
-          <button className="wide" disabled={locked || p.lottery.ticket || p.money < LOTTERY_PRICE} onClick={f.onLottery}>
+          <button className="wide" disabled={locked || p.lottery.ticket || p.money < lotteryPrice(s)} onClick={f.onLottery}>
             {p.lottery.ticket ? '이번 차례에 이미 샀어요' : '복권 사기'}
           </button>
           {p.lottery.addicted && <button className="wide" disabled={locked || p.money < 300} onClick={f.onCure}>상담 치료 (300만)</button>}
@@ -175,15 +177,28 @@ export function FinanceSheet(f: FinanceProps) {
       )}
       {tab === 'save' && (
         <div className="list">
-          <p>모은 돈 <b>{won(p.savings ?? 0)}</b> · 매 턴 이자 {SAVINGS_RATE * 100}%{p.savings ? ` (다음 턴 +${won((p.savings ?? 0) * SAVINGS_RATE)})` : ''}</p>
-          <p className="note">언제든 꺼낼 수 있어요. 돈이 마이너스가 되면 차례 시작에 알아서 꺼내 메워요. 점수에는 모은 돈도 들어가요.</p>
-          <div className="row">
-            {[100, 500, 1000].map((a) => <button key={a} disabled={locked || p.money < a} onClick={() => f.onDeposit(a)}>{won(a)} 넣기</button>)}
-          </div>
-          <div className="row">
-            {[100, 500].map((a) => <button key={a} disabled={locked || (p.savings ?? 0) < a} onClick={() => f.onWithdraw(a)}>{won(a)} 빼기</button>)}
-            <button disabled={locked || !p.savings} onClick={() => f.onWithdraw()}>전부 빼기</button>
-          </div>
+          {p.savings ? (() => {
+            const plan = SAVINGS_PLANS.find((x) => x.term === p.savingsTerm)
+            const left = Math.max(0, (p.savingsDue ?? 0) - p.turnsPlayed)
+            const fee = plan ? Math.round(p.savings * SAVINGS_FEE) : 0
+            return <>
+              <p>적금 <b>{won(p.savings)}</b>{plan ? ` · ${plan.term}차례짜리` : ''}</p>
+              <p>{left > 0 ? `만기까지 ${left}차례` : '다음 차례에 만기'}{plan ? ` · 만기에 이자 +${won(p.savings * plan.rate)}` : ''}</p>
+              <p className="note">만기가 되면 차례 시작에 저절로 돌려받아요. 그 전에는 더 넣을 수 없어요.</p>
+              <button className="wide secondary" disabled={locked} onClick={() => f.onWithdraw()}>만기 전에 꺼내기 (이자 없음{fee ? `, 수수료 ${won(fee)}` : ''})</button>
+            </>
+          })() : s.stageIdx >= 4 ? (
+            <p className="note">노년에는 적금을 새로 넣을 수 없어요.</p>
+          ) : <>
+            <p className="note">기간을 골라 넣으면 만기에 이자와 함께 돌려받아요. 만기 전에 꺼내면 이자 없이 수수료 {SAVINGS_FEE * 100}%를 내요. 적금은 하나만 들 수 있어요.</p>
+            <div className="seg" role="tablist">
+              {SAVINGS_PLANS.map((x) => <button key={x.term} role="tab" aria-selected={saveTerm === x.term} className={saveTerm === x.term ? 'on' : ''} onClick={() => setSaveTerm(x.term)}>{x.term}차례 · 이자 {Math.round(x.rate * 100)}%</button>)}
+            </div>
+            <div className="row">
+              {[100, 500, 1000].map((a) => <button key={a} disabled={locked || p.money < a} onClick={() => f.onDeposit(a, saveTerm)}>{won(a)} 넣기</button>)}
+              <button disabled={locked || p.money <= 0} onClick={() => f.onDeposit(p.money, saveTerm)}>가진 돈 전부</button>
+            </div>
+          </>}
         </div>
       )}
       {tab === 'friend' && (
@@ -285,7 +300,7 @@ export function PeopleSheet({ s, onClose }: { s: GameState; onClose: () => void 
               <div className="person-head">
                 <span className="person-face" style={{ borderColor: p.color }}><Character outfit={p.outfit} size={24} /></span>
                 <b className="jua">{p.name}</b><TeamBadge team={p.team} />
-                <span className="muted">{p.human ? '사람' : PERSONALITIES[p.personality]}</span>
+                <span className="muted">{p.human ? '사람' : 'AI'}</span>
                 <span className="fortune">{fortuneName(p.fortune)}</span>
               </div>
               <div className="muted">{ageOf(s, p)}세 · {playerLine(s, p)}{salaryOf(p) ? ` · 월급 ${won(salaryOf(p))}` : ''}</div>
@@ -356,7 +371,7 @@ function TeamTotal({ s, final = false }: { s: GameState; final?: boolean }) {
   )
 }
 
-export function GameOver({ s, onRestart }: { s: GameState; onRestart: () => void }) {
+export function GameOver({ s, onMenu, onNew }: { s: GameState; onMenu: () => void; onNew?: () => void }) {
   const ranked = [...s.players].map((p) => ({ p, sc: scoreOf(s, p) })).sort((a, b) => b.sc.total - a.sc.total)
   return (
     <div className="sheet-backdrop">
@@ -372,7 +387,7 @@ export function GameOver({ s, onRestart }: { s: GameState; onRestart: () => void
                 <b className="jua rank">{['🥇', '🥈', '🥉'][i] ?? ''}{i + 1}위</b>
                 <span className="person-face" style={{ borderColor: p.color }}><Character outfit={p.outfit} size={24} /></span>
                 <b className="jua">{p.name}</b><TeamBadge team={p.team} />
-                <span className="muted">{p.human ? '사람' : PERSONALITIES[p.personality]}</span>
+                <span className="muted">{p.human ? '사람' : 'AI'}</span>
                 <b className="jua total">{sc.total}점</b>
               </div>
               <div className="muted">
@@ -384,7 +399,10 @@ export function GameOver({ s, onRestart }: { s: GameState; onRestart: () => void
             </div>
           ))}
         </div>
-        <button className="wide big" onClick={onRestart}>새 게임</button>
+        <div className="row-btns">
+          <button className="wide big secondary" onClick={onMenu}>메뉴로</button>
+          {onNew && <button className="wide big" onClick={onNew}>새 게임</button>}
+        </div>
       </div>
     </div>
   )

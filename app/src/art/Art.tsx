@@ -29,6 +29,8 @@ const ICONS: Record<string, ReactElement> = {
   mini: <g><rect x="5" y="14" width="38" height="22" rx="11" fill="#fff" {...L} /><path d="M15 20v10M10 25h10" stroke="#E8742C" strokeWidth="3.4" strokeLinecap="round" /><circle cx="31" cy="22.5" r="2.8" fill="#E8742C" {...L} strokeWidth={1.4} /><circle cx="36" cy="27.5" r="2.8" fill="#4CB0E0" {...L} strokeWidth={1.4} /></g>,
   // 벤치
   rest: <g><rect x="7" y="16" width="34" height="7" rx="2.5" fill="#B47A48" {...L} /><rect x="7" y="26" width="34" height="6" rx="2.5" fill="#C98F5B" {...L} /><path d="M12 32v9M36 32v9" {...L} fill="none" strokeWidth={3.4} /></g>,
+  // 쇼핑백 (상점 칸)
+  shop: <g><path d="M10 17h28l-2 24H12z" fill="#5AA9E6" {...L} /><path d="M18 20v-5a6 6 0 0 1 12 0v5" {...L} fill="none" strokeWidth={2.6} />{hi('M15 24v10')}</g>,
   // 골 깃발
   goal: <g><path d="M14 43V7" {...L} strokeWidth={3.6} fill="none" /><path d="M15 8h21l-5 7 5 7H15z" fill="#E2553B" {...L} /><path d="M20 8v14M25 8v14M30 8v14" stroke="#fff" strokeWidth="1.4" opacity="0.6" /></g>,
 }

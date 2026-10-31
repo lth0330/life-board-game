@@ -2,7 +2,7 @@ import type { Outfit } from './outfit'
 
 export type StageId = 'child' | 'student' | 'young' | 'middle' | 'old'
 export type StatKey = 'int' | 'str' | 'cha'
-export type TileKind = 'good' | 'money' | 'grow' | 'happy' | 'risk' | 'card' | 'stop' | 'date' | 'mini' | 'rest' | 'goal' | 'campus' | 'uni'
+export type TileKind = 'good' | 'money' | 'grow' | 'happy' | 'risk' | 'card' | 'stop' | 'date' | 'mini' | 'rest' | 'goal' | 'campus' | 'uni' | 'point'
 export type UniEvent = 'study' | 'club' | 'love' | 'parttime' | 'exam' | 'party' | 'scholar'
 export type StopEvent = 'club' | 'job' | 'middleBranch' | 'promotion'
 // 갈라지는 길의 테마 (칸 효과가 그 길답게 바뀜)
@@ -124,7 +124,7 @@ export interface MiniState {
   duel?: { ids: number[]; results: Record<number, number>; queue?: number[] }
   // 단계 끝 대회: 모두 같은 미니게임을 동시에. results는 등급(0~2), queue는 아직 안 끝낸 사람, seed는 AI 장면용
   // ready: '준비 완료'를 누른 사람, go: 모두 준비돼서 3·2·1 뒤 다 같이 시작 (2026-10-29)
-  contest?: { results: Record<number, number>; queue: number[]; seed?: number; ready?: number[]; go?: boolean }
+  contest?: { results: Record<number, number>; queue: number[]; seed?: number; ready?: number[]; go?: boolean; scores?: Record<number, number> } // scores: 맞힌 비율(0~100)로 등수를 가리는 대회 (춤)
 }
 
 // 창업한 회사. 회사 크기는 Player.jobRank. avg: 세 능력치 평균으로 / ranks·base·sale: 업종만의 단계 이름·수입·판 값
@@ -147,7 +147,9 @@ export interface Player {
   team?: 0 | 1 // 팀전 팀 (A=0, B=1)
   luckPts?: number // 운세 포인트 -5~5 (평→길 2, 길→대길 5). 2026-10-21
   careerDue?: boolean // 새 단계 첫 차례에 커리어 주사위를 직접 굴림 (사람)
-  savings?: number // 적금 (2026-10-21, 예전 저장엔 없음)
+  savings?: number // 적금 원금 (2026-10-21, 예전 저장엔 없음)
+  savingsDue?: number // 적금 만기 (turnsPlayed가 이 값이 되면 돌려받음)
+  savingsTerm?: number // 적금 기간 (5·10). 없으면 예전 저장 → 이자 없이 바로 돌려받음
   charmTurns: number
   goodDeeds: number
   jobId: string | null

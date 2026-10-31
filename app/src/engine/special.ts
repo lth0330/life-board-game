@@ -16,8 +16,16 @@ export interface SpecialOption {
   risk?: { chance: number; stats?: Partial<Record<StatKey, number>>; happy?: number }
   luck?: number // 운세 한 칸 ↑(+1) / ↓(-1). 착한 선택 ↑, 이기적인 선택 ↓ (2026-10-21)
   othersHappy?: number // 다른 플레이어 모두 행복 (한턱내기 같은 모두에게 좋은 일)
+  ages?: Partial<Record<AgeGroup, string>> // 나이에 맞는 다른 문구 (효과는 같음, 2026-10-31 사용자)
 }
-export interface SpecialEvent { id: string; title: string; text: string; options: SpecialOption[] }
+export interface SpecialEvent { id: string; title: string; text: string; options: SpecialOption[]; ages?: Partial<Record<AgeGroup, { title?: string; text?: string }>> }
+
+// 나이대 문구: 어린이(kid)·학생(teen)·노년(old). 테마 사건은 단계와 상관없이 나와서 (2026-10-31 사용자: 아기 때 '그 시간에 할 일 하기'가 어색함)
+export type AgeGroup = 'kid' | 'teen' | 'old'
+export const ageGroup = (stage: StageId): AgeGroup | null => (stage === 'child' ? 'kid' : stage === 'student' ? 'teen' : stage === 'old' ? 'old' : null)
+export const eventTitle = (e: SpecialEvent, stage: StageId) => { const g = ageGroup(stage); return (g && e.ages?.[g]?.title) || e.title }
+export const eventText = (e: SpecialEvent, stage: StageId) => { const g = ageGroup(stage); return (g && e.ages?.[g]?.text) || e.text }
+export const optionLabel = (o: SpecialOption, stage: StageId) => { const g = ageGroup(stage); return (g && o.ages?.[g]) || o.label }
 
 export const SPECIALS: Partial<Record<StageId, SpecialEvent[]>> = {
   child: [
@@ -221,7 +229,7 @@ export const THEME_EVENTS: Record<MapTheme, SpecialEvent[]> = {
       id: 'th-blossom', title: '벚꽃 축제', text: '동네 길가에 벚꽃이 활짝 폈어요.',
       options: [
         { id: 'picnic', label: '🍱 친구들과 도시락 소풍', cost: 1, happy: 4 },
-        { id: 'photo', label: '📷 사진 찍어 올리기', check: { stat: 'cha', need: 7, win: { stats: { cha: 1 }, happy: 2 }, lose: { happy: -1 } } },
+        { id: 'photo', label: '📷 사진 찍어 올리기', ages: { kid: '📷 꽃 앞에서 사진 찍기' }, check: { stat: 'cha', need: 7, win: { stats: { cha: 1 }, happy: 2 }, lose: { happy: -1 } } },
         { id: 'rest', label: '🏠 창문 열고 쉬기', happy: 1 },
       ],
     },
@@ -235,8 +243,8 @@ export const THEME_EVENTS: Record<MapTheme, SpecialEvent[]> = {
     {
       id: 'th-fresh', title: '새로운 시작', text: '봄이 왔어요. 새로 무언가를 시작해 볼까요?',
       options: [
-        { id: 'plan', label: '📒 계획 세우고 공부', stats: { int: 1 } },
-        { id: 'run', label: '🏃 아침 운동', stats: { str: 1 } },
+        { id: 'plan', label: '📒 계획 세우고 공부', stats: { int: 1 }, ages: { kid: '📒 그림책 읽기' } },
+        { id: 'run', label: '🏃 아침 운동', stats: { str: 1 }, ages: { kid: '🏃 놀이터에서 뛰어놀기' } },
         { id: 'friend', label: '💬 새 친구 사귀기', stats: { cha: 1 } },
       ],
     },
@@ -252,10 +260,11 @@ export const THEME_EVENTS: Record<MapTheme, SpecialEvent[]> = {
   summer: [
     {
       id: 'th-beach', title: '여름 휴가', text: '여름 휴가철이에요. 어디로 갈까요?',
+      ages: { kid: { title: '여름 방학', text: '여름 방학이에요. 어디로 놀러 갈까요?' }, teen: { title: '여름 방학', text: '여름 방학이에요. 어디로 놀러 갈까요?' }, old: { text: '여름이에요. 어디로 놀러 갈까요?' } },
       options: [
-        { id: 'sea', label: '🏖️ 멀리 바다로', cost: 3, happy: 6 },
+        { id: 'sea', label: '🏖️ 멀리 바다로', cost: 3, happy: 6, ages: { kid: '🏖️ 가족과 멀리 바다로', teen: '🏖️ 친구들과 바다로' } },
         { id: 'pool', label: '🏊 동네 수영장', cost: 1, happy: 3 },
-        { id: 'work', label: '💼 휴가 없이 일하기', gain: 1, happy: -1 },
+        { id: 'work', label: '💼 휴가 없이 일하기', gain: 1, happy: -1, ages: { kid: '🐷 용돈 아끼고 집에 있기', teen: '🐷 용돈 아끼고 집에 있기', old: '🐷 돈 아끼고 집에 있기' } },
       ],
     },
     {
@@ -268,8 +277,8 @@ export const THEME_EVENTS: Record<MapTheme, SpecialEvent[]> = {
     {
       id: 'th-rescue', title: '물놀이 사고', text: '계곡에서 아이가 물에 떠내려가요!',
       options: [
-        { id: 'swim', label: '🏊 직접 뛰어들기', check: { stat: 'str', need: 7, win: { stats: { str: 1 }, happy: 4 }, lose: { happy: -2 } } },
-        { id: 'call', label: '📣 안전요원 부르기', happy: 1, luck: 1 },
+        { id: 'swim', label: '🏊 직접 뛰어들기', ages: { kid: '🛟 튜브 던져 주기', teen: '🛟 튜브 던져 주기' }, check: { stat: 'str', need: 7, win: { stats: { str: 1 }, happy: 4 }, lose: { happy: -2 } } },
+        { id: 'call', label: '📣 안전요원 부르기', happy: 1, luck: 1, ages: { kid: '📣 어른 불러오기' } },
       ],
     },
     {
@@ -285,22 +294,22 @@ export const THEME_EVENTS: Record<MapTheme, SpecialEvent[]> = {
     {
       id: 'th-maple', title: '단풍 구경', text: '산이 울긋불긋 물들었어요. 단풍 구경을 갈까요?',
       options: [
-        { id: 'far', label: '🚗 멀리 단풍 명소로', cost: 2, happy: 6 },
-        { id: 'near', label: '🍁 동네 공원 산책', happy: 3 },
-        { id: 'work', label: '💼 그 시간에 할 일 하기', gain: 1, happy: -1 },
+        { id: 'far', label: '🚗 멀리 단풍 명소로', cost: 2, happy: 6, ages: { kid: '🚗 가족과 멀리 단풍 구경', teen: '🚌 친구들과 단풍 명소로' } },
+        { id: 'near', label: '🍁 동네 공원 산책', happy: 3, ages: { kid: '🍁 엄마 아빠랑 공원 산책' } },
+        { id: 'work', label: '💼 그 시간에 할 일 하기', gain: 1, happy: -1, ages: { kid: '🐷 용돈 아끼고 집에서 놀기', teen: '🐷 용돈 아끼고 집에 있기', old: '🐷 돈 아끼고 집에 있기' } },
       ],
     },
     {
       id: 'th-chestnut', title: '밤 줍기', text: '뒷산에서 알밤을 한 바구니 주웠어요. 이웃 할머니가 부러운 눈으로 봐요.',
       options: [
         { id: 'share', label: '🤝 할머니와 나누기', happy: 2, luck: 1 },
-        { id: 'sell', label: '🌰 다 팔기', gain: 2, happy: 1, luck: -1 },
+        { id: 'sell', label: '🌰 다 팔기', ages: { kid: '🌰 팔아서 용돈 벌기' }, gain: 2, happy: 1, luck: -1 },
       ],
     },
     {
       id: 'th-harvest', title: '추수 축제', text: '마을 추수 축제가 열렸어요. 씨름 대회도 있대요!',
       options: [
-        { id: 'wrestle', label: '💪 씨름 나가기', check: { stat: 'str', need: 7, win: { stats: { str: 1 }, happy: 3 }, lose: { happy: -1 } } },
+        { id: 'wrestle', label: '💪 씨름 나가기', ages: { kid: '💪 꼬마 씨름 나가기' }, check: { stat: 'str', need: 7, win: { stats: { str: 1 }, happy: 3 }, lose: { happy: -1 } } },
         { id: 'eat', label: '🍠 군고구마 사 먹기', cost: 1, happy: 4 },
         { id: 'help', label: '🧺 일손 돕기', othersHappy: 1, happy: 1 },
       ],
@@ -326,16 +335,16 @@ export const THEME_EVENTS: Record<MapTheme, SpecialEvent[]> = {
     {
       id: 'th-ice', title: '빙판길', text: '집 앞 길이 꽁꽁 얼었어요. 사람들이 미끄러질 것 같아요.',
       options: [
-        { id: 'sand', label: '🧂 모래 뿌리기', cost: 1, luck: 1 },
+        { id: 'sand', label: '🧂 모래 뿌리기', cost: 1, luck: 1, ages: { kid: '🧂 어른 도와 모래 뿌리기' } },
         { id: 'pass', label: '🙈 그냥 지나가기', risk: { chance: 0.4, happy: -3 } },
       ],
     },
     {
       id: 'th-xmas', title: '크리스마스', text: '거리가 반짝반짝해요. 선물을 어떻게 할까요?',
       options: [
-        { id: 'all', label: '🎁 모두에게 선물', cost: 2, othersHappy: 1, happy: 2, luck: 1 },
-        { id: 'family', label: '🎄 우리 집만 조촐하게', cost: 1, happy: 3 },
-        { id: 'none', label: '🙅 선물 없이 아끼기', gain: 1, happy: -1 },
+        { id: 'all', label: '🎁 모두에게 선물', ages: { kid: '🎁 친구들 선물 사기' }, cost: 2, othersHappy: 1, happy: 2, luck: 1 },
+        { id: 'family', label: '🎄 우리 집만 조촐하게', cost: 1, happy: 3, ages: { kid: '🎄 가족끼리 조촐하게', teen: '🎄 가족끼리 조촐하게' } },
+        { id: 'none', label: '🙅 선물 없이 아끼기', gain: 1, happy: -1, ages: { kid: '🐷 용돈 아끼기', teen: '🐷 용돈 아끼기' } },
       ],
     },
     {
@@ -343,7 +352,7 @@ export const THEME_EVENTS: Record<MapTheme, SpecialEvent[]> = {
       options: [
         { id: 'shovel', label: '❄️ 동네 눈 치우기', stats: { str: 1 }, luck: 1 },
         { id: 'home', label: '🍲 집에서 따뜻하게', happy: 3 },
-        { id: 'go', label: '💼 그래도 나가서 일하기', gain: 2, risk: { chance: 0.3, happy: -2 } },
+        { id: 'go', label: '💼 그래도 나가서 일하기', ages: { kid: '🛒 심부름 가고 용돈 받기', teen: '🛒 심부름 가고 용돈 받기', old: '🛒 그래도 장 보러 나가기' }, gain: 2, risk: { chance: 0.3, happy: -2 } },
       ],
     },
   ],

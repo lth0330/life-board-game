@@ -22,7 +22,9 @@ export const AI_NAMES = ['민트', '보리', '자두', '호두', '살구', '앵�
 export const SCORE_PER_POINT = 150 // 자산 150만당 1점 (2026-10-15 50만 → 10-21 100만 → 10-21 저녁 돈 1.5배와 함께 150만)
 export const ADULT_BONUS_MULT = 2.25 // 성인 보너스 칸 (1.5배 → 2026-10-21 저녁 또 1.5배)
 export const PERF_BONUS = { chance: [0.04, 0.07, 0.1, 0.13, 0.16], salaries: 2 } // 성과급: 운세(대흉~대길)별 매 턴 확률, 월급 몇 배
-export const SAVINGS_RATE = 0.015 // 적금 매 턴 이자
+// 적금 (2026-10-31 사용자): 기간을 정해 넣고, 만기가 되면 이자와 함께 돌아옴. 하나만 들 수 있고 노년에는 새로 못 넣음
+export const SAVINGS_PLANS = [{ term: 5, rate: 0.08 }, { term: 10, rate: 0.2 }] as const
+export const SAVINGS_FEE = 0.05 // 만기 전에 꺼내면 이자 없이 원금의 5%를 수수료로
 export const STAGE_SCALE: Record<StageId, number> = { child: 2, student: 5, young: 60, middle: 90, old: 70 }
 
 export const JOBS: JobDef[] = [
@@ -74,6 +76,8 @@ export const CHANCE_NAMES = { reroll: '다시 굴리기', block: '방해 막기'
 export const SABOTAGE_NAMES = { rumor: '소문 퍼뜨리기', stockRumor: '주가 루머', love: '연애 방해', lawsuit: '소송 걸기' } as const
 
 export const LOTTERY_PRICE = 10
+// 복권 표 값·당첨금 배수 (2026-10-31 사용자: 돈이 많아지면 복권 의미가 없어짐). 시뮬레이션 돈 중간값: 중년 시작 약 2,600만 · 노년 시작 약 8,000만
+export const LOTTERY_MULT: Partial<Record<'young' | 'middle' | 'old', number>> = { young: 1, middle: 2, old: 4 }
 
 export const SPOUSE_NAMES = ['서윤', '지호', '하린', '도윤', '수아', '시우', '예린', '건우', '다은', '현우', '유나', '준서']
 

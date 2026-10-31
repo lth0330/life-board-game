@@ -25,7 +25,13 @@ const TILE_STYLE: Record<string, { label: string; bg: string; fg: string }> = {
   goal: { label: '골', bg: '#FFD45C', fg: '#2A2118' },
   campus: { label: '대학교', bg: '#8A4FA8', fg: '#fff' },
   uni: { label: '대학', bg: '#B48AD8', fg: '#fff' },
+  point: { label: '건물', bg: '#3B82C4', fg: '#fff' },
 }
+const POINT_LOOK: Record<string, { label: string; bg: string; icon: string }> = {
+  shop: { label: '상점', bg: '#3B82C4', icon: 'shop' }, marriage: { label: '결혼식장', bg: '#D9578A', icon: 'date' },
+}
+// 칸 아이콘 이름
+const iconOf = (t: Tile) => (t.stop ? 'stop' : t.uni ? UNI_LOOK[t.uni].icon : t.kind === 'campus' ? 'grow' : t.kind === 'point' && t.point ? POINT_LOOK[t.point].icon : t.kind)
 const UNI_LOOK: Record<string, { bg: string; icon: string }> = {
   study: { bg: '#8A4FA8', icon: 'grow' }, club: { bg: '#2E6FD8', icon: 'happy' }, love: { bg: '#F3A3C0', icon: 'date' },
   parttime: { bg: '#2F8F5B', icon: 'money' }, exam: { bg: '#C9553B', icon: 'risk' }, party: { bg: '#E8742C', icon: 'happy' }, scholar: { bg: '#E2B85C', icon: 'money' },
@@ -37,6 +43,7 @@ function tileLook(t: Tile) {
   const base = TILE_STYLE[t.kind]
   if (t.uni) return { ...base, bg: UNI_LOOK[t.uni].bg, label: UNI_NAMES[t.uni] }
   if (t.kind === 'stop' && !t.stop) return { ...base, label: '갈림길' }
+  if (t.kind === 'point' && t.point) return { ...base, bg: POINT_LOOK[t.point].bg, label: POINT_LOOK[t.point].label }
   const label = t.stop ? STOP_LABEL[t.stop] : t.mini ? MINI_NAMES[t.mini] : base.label
   return { ...base, label }
 }
@@ -128,7 +135,7 @@ export function Board({ s, focus, showSteps, posOf = (p) => p.pos, walkingId = n
     const small = look.label.length > 3
     items.push(
       <div key={`t${i}`} className={`tile${t.kind === 'mini' ? ' tile-mini' : ''}${t.kind === 'stop' ? ' tile-stop' : ''}`} style={{ left: xAt(t), top: yAt(t), background: look.bg, color: look.fg }}>
-        <TileIcon kind={t.stop ? 'stop' : t.uni ? UNI_LOOK[t.uni].icon : t.kind === 'campus' ? 'grow' : t.kind} size={46} />
+        <TileIcon kind={iconOf(t)} size={46} />
         {/* 멀리 있는 칸도 읽히게 글씨를 키움 (2026-10-22) */}
         <span className="tile-label" style={{ fontSize: look.label.length > 5 ? 16 : look.label.length > 4 ? 19 : small ? 22 : 27 }}>{look.label}</span>
         {step && <span className="tile-step">{step}</span>}
@@ -310,10 +317,10 @@ export function FullMap({ s, meId, onClose }: { s: GameState; meId: number; onCl
             const n = steps.get(i)
             return (
               <div key={i} ref={mine ? meRef : undefined} className={`map-node${mine ? ' me' : ''}${n && n <= 6 ? ' reach' : ''}`} style={{ left: `${xOf(i)}%`, top: yOf(i), background: look.bg, color: look.fg }} title={look.label}>
-                <TileIcon kind={t.stop ? 'stop' : t.uni ? UNI_LOOK[t.uni].icon : t.kind === 'campus' ? 'grow' : t.kind} size={28} />
+                <TileIcon kind={iconOf(t)} size={28} />
                 <span className="map-label">{look.label}</span>
                 {n && <b className="map-step">{n}</b>}
-                {t.point && <em className="map-point">{t.point === 'shop' ? '상점' : '결혼식장'}</em>}
+                {t.point && t.kind !== 'point' && <em className="map-point">{t.point === 'shop' ? '상점' : '결혼식장'}</em>}
                 {here.length > 0 && (
                   <span className="map-people">
                     {here.map((p) => (

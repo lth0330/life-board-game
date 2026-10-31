@@ -43,9 +43,9 @@ const HOW: Record<string, string> = {
   rhythm: '음표 4개가 위에서 떨어져요. 노란 선에 닿을 때 "지금!"을 누르세요. 너무 일찍 누르면 그 음표는 놓쳐요.',
   confess: '하트가 콩닥콩닥 커졌다 작아져요. 가장 커졌을 때 "고백!"을 누르세요.',
   dance: '캐릭터가 춤 동작을 하나씩 보여 줘요. 다 본 뒤 같은 순서로 동작 버튼을 누르세요.',
-  oddEven: '주사위 두 개가 구르다가 컵에 덮여요. 컵 속 두 주사위의 합이 홀수일지 짝수일지 맞히세요.',
-  highLow: '다음 카드가 지금 카드보다 높을지 낮을지 두 번 맞히세요. 카드는 1~13이에요.',
-  slot: '시작을 누르면 릴 3개가 돌아요. 버튼으로 하나씩 멈춰서 같은 그림을 맞추세요.',
+  oddEven: '주사위 두 개가 구르다가 컵에 덮여요. 컵 속 두 주사위의 합이 홀수일지 짝수일지 맞히세요. 운세가 좋으면(길·대길) 맞혔을 때 대박이 더 잘 나와요.',
+  highLow: '다음 카드가 지금 카드보다 높을지 낮을지 두 번 맞히세요. 카드는 1~13이에요. 운세가 좋으면(길·대길) 두 번째 판에 힌트가 나와요.',
+  slot: '시작을 누르면 릴 3개의 그림이 차례로 돌아요. 누른 순간의 그림에서 멈추니 타이밍을 맞춰 같은 그림 셋을 만드세요. 운세가 나쁘면 조금 더 빨리 돌고, 가끔 한 칸 미끄러져요.',
   snap: '랜드마크가 왔다 갔다 해요. 사진 틀 안에 들어왔을 때 "찰칵!"을 누르세요. 3장 중 잘 찍은 사진이 많을수록 좋아요.',
   pack: '물건이 하나씩 나와요. 여행에 필요한 것은 챙기고, 필요 없는 것은 두고 가세요. 시간 안에 골라야 해요.',
   leaves: '낙엽이 위에서 떨어져요. 땅에 닿기 전에 낙엽을 눌러서 잡으세요. 8초 동안 목표만큼 잡으면 성공이에요.',
@@ -123,7 +123,7 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
     if (mode === 'help') sendView({ phase: 'help' }, true)
   }, [mode, sendView])
   useEffect(() => { if (result !== null) sendView({ ...lastView.current, phase: 'done', practice: false }, true) }, [result, sendView])
-  const resultText = (v: number) => (isDuel ? `${v}점!` : ['아쉬워요', '성공!', '대성공!'][v])
+  const resultText = (v: number) => (isDuel ? `${v}점!` : v % 1 ? `${Math.round((v - Math.floor(v)) * 200)}% 맞혔어요!` : ['아쉬워요', '성공!', '대성공!'][v])
   const play = (m: 'practice' | 'real') => { setPracticeResult(null); setRound((r) => r + 1); setMode(m) }
   // 모두 준비되면 3·2·1 (연습 중이었어도 멈추고)
   const [count, setCount] = useState<number | null>(null)
@@ -156,7 +156,7 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
       case 'throw': return <Throw level={mini.level} outfit={outfit} age={age} onDone={done} report={report} />
       case 'confess': return <Confess level={mini.level} onDone={done} />
       case 'rhythm': return <Rhythm level={mini.level} onDone={done} report={report} />
-      case 'dance': return <Dance level={mini.level} outfit={outfit} age={age} onDone={done} report={report} />
+      case 'dance': return <Dance level={mini.level} outfit={outfit} age={age} onDone={done} report={report} exact={!!contest && !isDuel} />
       case 'race': return <Mash level={mini.level} outfit={outfit} age={age} onDone={done} report={report} />
       case 'memory': return <Memory level={mini.level} symbols={MEMORY_ICONS} draw={(x) => <MiniIcon name={x} size={34} />} onDone={done} report={report} />
       case 'photo': return <Memory level={mini.level} symbols={Object.keys(CITY_ICON)} draw={(x) => <span className="city"><MiniIcon name={CITY_ICON[x]} size={30} /><small>{x}</small></span>} iconOf={cityIcon} onDone={done} report={report} />
@@ -164,7 +164,7 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
       case 'quickmath': return <QuickMath level={mini.level} onDone={done} report={report} />
       case 'firstImpression': return <FirstImpression level={mini.level} seen={seen.current} onDone={done} />
       case 'oddEven': return <OddEven level={mini.level} onDone={done} />
-      case 'highLow': return <HighLow onDone={done} />
+      case 'highLow': return <HighLow level={mini.level} onDone={done} />
       case 'slot': return <Slot level={mini.level} onDone={done} />
       case 'snap': return <Snap level={mini.level} onDone={done} report={report} />
       case 'pack': return <Pack level={mini.level} onDone={done} report={report} />
@@ -536,7 +536,8 @@ const ARROWS = ['↑', '↓', '←', '→']
 // 춤: 화살표 대신 내 캐릭터가 춤 동작을 보여 줌 (2026-10-17 사용자). ← 왼팔 · ↑ 두 팔 · → 오른팔 · ↓ 팔 벌리기
 const POSE_OF: Record<string, Pose> = { '←': 'left', '↑': 'up', '→': 'right', '↓': 'out' }
 const POSE_NAME: Record<string, string> = { '←': '왼팔', '↑': '만세', '→': '오른팔', '↓': '팔 벌리기' }
-function Dance({ level, outfit, age, onDone, report }: { level: number; outfit: Outfit; age?: number; onDone: (v: number) => void; report?: Report }) {
+// exact: 대회에서는 맞힌 비율도 같이 보냄 (등급 + 비율 × 0.5, 엔진 finishMini가 나눔)
+function Dance({ level, outfit, age, onDone, report, exact }: { level: number; outfit: Outfit; age?: number; onDone: (v: number) => void; report?: Report; exact?: boolean }) {
   const len = [5, 6, 7][level]
   const seq = useMemo(() => Array.from({ length: len }, () => ARROWS[rand(4)]), [len])
   const [shown, setShown] = useState(0) // 지금까지 보여 준 개수 (len이면 내 차례)
@@ -554,7 +555,8 @@ function Dance({ level, outfit, age, onDone, report }: { level: number; outfit: 
     setPicked(next)
     if (next.length === len) {
       const right = next.filter((v, i) => v === seq[i]).length
-      setTimeout(() => onDone(right === len ? 2 : right >= len - 1 ? 1 : 0), 400)
+      const grade = right === len ? 2 : right >= len - 1 ? 1 : 0
+      setTimeout(() => onDone(exact ? grade + (right / len) * 0.5 : grade), 400)
     }
   }
   return (
@@ -1018,7 +1020,8 @@ function OddEven({ level, onDone }: { level: number; onDone: (v: number) => void
     setStage('open')
     sfx('cupUp')
     const win = ((final[0] + final[1]) % 2 === 1) === odd
-    setTimeout(() => onDone(win ? (level === 0 || final[0] === final[1] ? 2 : 1) : 0), 1300)
+    // 대박: 같은 숫자 두 개면 늘, 운세가 길·대길이면 절반 확률로 더 (운세 영향을 줄임, 10-31 사용자)
+    setTimeout(() => onDone(win ? (final[0] === final[1] || (level === 0 && Math.random() < 0.5) ? 2 : 1) : 0), 1300)
   }
   useKeys({ ArrowLeft: () => guess(true), ArrowRight: () => guess(false) })
   const sum = final[0] + final[1]
@@ -1038,67 +1041,82 @@ function OddEven({ level, onDone }: { level: number; onDone: (v: number) => void
   )
 }
 
-// 카드 높낮이 두 판
-function HighLow({ onDone }: { onDone: (v: number) => void }) {
+// 카드 높낮이 두 판. 운세가 좋으면(쉬움) 두 번째 판에 다음 카드 힌트 (2026-10-31 사용자: 카지노는 실력 + 운세)
+const drawCard = (prev: number) => { let n = rand(13) + 1; while (n === prev) n = rand(13) + 1; return n }
+function HighLow({ level, onDone }: { level: number; onDone: (v: number) => void }) {
   const [cards, setCards] = useState(() => [rand(13) + 1])
+  const [next, setNext] = useState(() => drawCard(cards[0])) // 다음 카드는 미리 뽑아 둠 (힌트가 맞게)
   const suits = useMemo(() => [rand(4), rand(4), rand(4)], [])
   const [right, setRight] = useState(0)
   const guess = (higher: boolean) => {
+    if (cards.length > 2) return
     const prev = cards[cards.length - 1]
-    let next = rand(13) + 1
-    while (next === prev) next = rand(13) + 1
     const ok = higher ? next > prev : next < prev
     const r = right + (ok ? 1 : 0)
     setCards([...cards, next])
+    setNext(drawCard(next))
     setRight(r)
     if (cards.length >= 2) setTimeout(() => onDone(r === 2 ? 2 : r === 1 ? 1 : 0), 700)
   }
+  useKeys({ ArrowLeft: () => guess(true), ArrowRight: () => guess(false) })
   const doneGuess = cards.length > 2
+  const hint = level === 0 && cards.length === 2 && !doneGuess
   return (
     <div className="mini-body">
       <p>다음 카드가 더 높을까, 낮을까? (2번)<br /><small>카드 숫자는 1~13 (A=1, J=11, Q=12, K=13), 같은 숫자는 안 나와요</small></p>
+      {hint && <p className="note jua">🍀 운세 힌트: 다음 카드는 {next >= 7 ? '7 이상' : '7 미만'}이에요</p>}
       <div className="card-row">{cards.map((c, i) => <PlayingCard key={i} value={c} suit={suits[i]} size={84} />)}{!doneGuess && <span className="card-back" aria-hidden="true">?</span>}</div>
       <div className="mini-grid two">
         <button disabled={doneGuess} onClick={() => guess(true)}>높다</button>
         <button disabled={doneGuess} onClick={() => guess(false)}>낮다</button>
       </div>
+      <KeyHint>← 높다 · → 낮다</KeyHint>
     </div>
   )
 }
 
-// 슬롯머신: 시작을 누르면 3개가 돌고, 아래 버튼으로 하나씩 멈춤. 결과는 운세가 좋을수록 잘 나옴
+// 슬롯머신: 그림이 차례로 돌고, 멈춤을 누른 순간의 그림에서 멈춤 (2026-10-31 사용자: 진짜 타이밍)
+// 운세가 나쁠수록 빨리 돌고, 멈출 때 한 칸 미끄러질 때가 많음
+const SLOT_FACES = ['seven', 'star', 'heart', 'diamond']
 function Slot({ level, onDone }: { level: number; onDone: (v: number) => void }) {
-  const faces = ['seven', 'star', 'heart', 'diamond']
-  const [reels, setReels] = useState(['?', '?', '?'])
+  const tick = [220, 200, 180][level] // 그림 하나가 보이는 시간 (ms). 운세 차이는 작게 (10-31 사용자)
+  const slip = [0.15, 0.2, 0.25][level] // 멈출 때 한 칸 더 넘어갈 확률
+  const [pos, setPos] = useState(() => [rand(4), rand(4), rand(4)])
   const [stopped, setStopped] = useState([false, false, false])
-  const [plan, setPlan] = useState<{ grade: number; out: string[] } | null>(null)
+  const [started, setStarted] = useState(false)
+  const posRef = useRef(pos)
+  posRef.current = pos
+  const stoppedRef = useRef(stopped)
+  stoppedRef.current = stopped
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
   useEffect(() => () => { if (timer.current) clearInterval(timer.current) }, [])
   const start = () => {
-    const r = Math.random()
-    const grade = r < [0.35, 0.2, 0.1][level] ? 2 : r < [0.75, 0.6, 0.45][level] ? 1 : 0
-    const f = faces[rand(4)]
-    const out = grade === 2 ? [f, f, f] : grade === 1 ? shuffle([f, f, faces[(faces.indexOf(f) + 1) % 4]]) : shuffle([faces[0], faces[1], faces[2]])
-    setPlan({ grade, out })
-    timer.current = setInterval(() => setReels((rs) => rs.map((x, i) => (stoppedRef.current[i] ? x : faces[rand(4)]))), 90)
+    if (started) return
+    setStarted(true)
+    timer.current = setInterval(() => setPos((ps) => ps.map((x, i) => (stoppedRef.current[i] ? x : (x + 1) % 4))), tick)
   }
-  const stoppedRef = useRef(stopped)
-  stoppedRef.current = stopped
   const stop = (i: number) => {
-    if (!plan || stopped[i]) return
-    const next = stopped.map((v, k) => v || k === i)
-    setStopped(next)
+    if (!started || stoppedRef.current[i]) return
+    const at = Math.random() < slip ? (posRef.current[i] + 1) % 4 : posRef.current[i]
+    const ps = posRef.current.map((x, k) => (k === i ? at : x))
+    const next = stoppedRef.current.map((v, k) => v || k === i)
     stoppedRef.current = next
-    setReels((rs) => rs.map((x, k) => (k === i ? plan.out[i] : x)))
-    if (next.every(Boolean)) { if (timer.current) clearInterval(timer.current); setTimeout(() => onDone(plan.grade), 700) }
+    posRef.current = ps
+    setStopped(next)
+    setPos(ps)
+    if (next.every(Boolean)) {
+      if (timer.current) clearInterval(timer.current)
+      const same = Math.max(...ps.map((x) => ps.filter((y) => y === x).length))
+      setTimeout(() => onDone(same === 3 ? 2 : same === 2 ? 1 : 0), 700)
+    }
   }
-  useKeys({ Space: () => { if (!plan) start(); else { const k = stopped.findIndex((v) => !v); if (k >= 0) stop(k) } } })
+  useKeys({ Space: () => { if (!started) start(); else { const k = stoppedRef.current.findIndex((v) => !v); if (k >= 0) stop(k) } } })
   return (
     <div className="mini-body">
-      <p>세 개가 같으면 대박, 두 개면 조금 따요. 버튼을 눌러 하나씩 멈춰요</p>
+      <p>그림이 ⑦ → ⭐ → ♥ → ◆ 순서로 돌아요. 원하는 그림이 왔을 때 멈춰서 셋을 맞추세요 (둘이면 조금 따요)</p>
       <KeyHint>스페이스바로 시작하고, 한 번 누를 때마다 하나씩 멈춰요</KeyHint>
-      <div className="mini-seq slot">{reels.map((x, i) => <span key={i} className={stopped[i] ? 'stopped' : ''}>{x === '?' ? '?' : <MiniIcon name={x} size={46} />}</span>)}</div>
-      {!plan
+      <div className="mini-seq slot">{pos.map((x, i) => <span key={i} className={stopped[i] ? 'stopped' : ''}>{started || stopped[i] ? <MiniIcon name={SLOT_FACES[x]} size={46} /> : '?'}</span>)}</div>
+      {!started
         ? <button className="wide big" onPointerDown={(e) => e.preventDefault()} onClick={start}>시작</button>
         : <div className="mini-grid three">{[0, 1, 2].map((i) => <button key={i} disabled={stopped[i]} onClick={() => stop(i)}>멈춤 {i + 1}</button>)}</div>}
     </div>
@@ -1158,7 +1176,7 @@ function Snap({ level, onDone, report }: { level: number; onDone: (v: number) =>
 const PACK_GOOD: [string, string][] = [['passport', '여권'], ['toothbrush', '칫솔'], ['charger', '충전기'], ['shirt', '옷'], ['sunscreen', '선크림'], ['camera', '카메라'], ['wallet', '지갑'], ['sunglasses', '선글라스']]
 const PACK_BAD: [string, string][] = [['piano', '피아노'], ['plant', '화분'], ['sofa', '소파'], ['bowling', '볼링공'], ['bike', '자전거'], ['watermelon', '수박'], ['fishbowl', '어항'], ['tv', '텔레비전']]
 function Pack({ level, onDone, report }: { level: number; onDone: (v: number) => void; report?: Report }) {
-  const limit = [2600, 2000, 1500][level]
+  const limit = [1800, 1400, 1050][level] // 2026-10-31 사용자: 30% 짧게 (2600·2000·1500 →)
   const items = useMemo(() => shuffle([...shuffle(PACK_GOOD).slice(0, 5).map((x) => ({ x, good: true })), ...shuffle(PACK_BAD).slice(0, 3).map((x) => ({ x, good: false }))]), [])
   const [i, setI] = useState(0)
   const [right, setRight] = useState(0)

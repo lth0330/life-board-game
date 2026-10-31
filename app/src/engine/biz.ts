@@ -192,11 +192,11 @@ export function bizOppResult(s: GameState, p: Player, evId: string, cost: number
   if (score >= r.great) {
     if (ev.grow && p.jobRank < (p.biz!.maxRank ?? 2)) {
       p.jobRank++
-      log(s, p.id, `[사업 기회] ${ev.great} ${bizRankOf(p)}! (점수 ${score})`, 'good')
+      log(s, p.id, `[사업 기회] ${ev.great} ${bizRankOf(p)}! (점수 ${score})`, 'good')
     } else {
       const gain = Math.round(cost * r.reward)
       p.money += gain
-      log(s, p.id, `[사업 기회] ${ev.great} +${won(gain)} (점수 ${score})`, 'good')
+      log(s, p.id, `[사업 기회] ${ev.great} +${won(gain)} (점수 ${score})`, 'good')
       shareBiz(s, p, gain, ev.title)
     }
     p.happy += 2
@@ -206,11 +206,11 @@ export function bizOppResult(s: GameState, p: Player, evId: string, cost: number
   } else if (score >= r.ok) {
     const back = Math.round(cost * BIZ_OPP.okBack)
     p.money += back
-    log(s, p.id, `[사업 기회] ${ev.ok} 쓴 돈의 절반 +${won(back)} 돌아옴 (점수 ${score})`, 'info')
+    log(s, p.id, `[사업 기회] ${ev.ok} 쓴 돈의 절반 +${won(back)} 돌아옴 (점수 ${score})`, 'info')
     s.banner = { title: `${ev.title}: 효과 없음`, text: `${p.name}: 점수 ${score}`, tone: 'info' }
   } else {
     p.happy -= BIZ_OPP.failHappy
-    log(s, p.id, `[사업 기회] ${ev.fail} -${won(cost)}, 행복 -${BIZ_OPP.failHappy} (점수 ${score})`, 'bad')
+    log(s, p.id, `[사업 기회] ${ev.fail} -${won(cost)}, 행복 -${BIZ_OPP.failHappy} (점수 ${score})`, 'bad')
     if (ev.sector) { s.stockPrice[ev.sector] = Math.max(10, Math.round(s.stockPrice[ev.sector] * 0.9)); log(s, null, `${p.name}의 ${ev.title} 실패… ${ev.sector}주 -10%`, 'bad') }
     s.banner = { title: `${ev.title} 실패`, text: `${p.name}: 점수 ${score}`, tone: 'bad' }
   }

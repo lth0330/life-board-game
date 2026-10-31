@@ -9,6 +9,7 @@ import {
 import { applyOp, type Op } from './engine/ops'
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
 import type { DiceItem, GameState } from './engine/types'
+import { setTipsOn, tipsFor, tipsOn } from './ui/tips'
 import { deleteLocalGame, dropOldProfiles, lastAccount, lastWhere, makeSlot, rememberAccount, rememberWhere, saveLocalGame, savedSpeed, saveSpeed, type Profile, type SaveSlot } from './storage'
 import type { Me } from './online/client'
 import { BannerArt, EventArt, EventPopup, Roulette } from './art/More'
@@ -40,6 +41,7 @@ const MiniWatch = lazy(() => import('./ui/MiniWatch').then((m) => ({ default: m.
 const account = () => import('./account/api')
 
 const SPEED_MS: Record<Speed, number> = { fast: 450, normal: 1000, slow: 1700 }
+const MY_POP_MS = 5000 // 내 사건 창이 저절로 닫히는 시간 (2026-10-31 사용자)
 const WALK_MS = 230
 const DICE_ROLL_MS = 400 // AI가 주사위를 손에 쥐고 흔드는 시간 (뒤에 던지는 연출이 붙어서 750 → 400, 2026-10-24)
 const DICE_SHOW_MS = DICE_THROW_MS + 550 // 던져서 멈춘 뒤 숫자를 보여 주는 시간까지
@@ -260,6 +262,11 @@ export default function App() {
       if (profile) setSlot(game.phase === 'gameover' ? null : makeSlot(game))
       setGame(null)
       setScreen('menu')
+    }} onNew={() => { // 결산 화면의 '새 게임': 메뉴를 거치지 않고 바로 설정으로
+      flush()
+      if (profile) setSlot(null)
+      setGame(null)
+      setScreen('setup')
     }} />
   )
 }
@@ -281,7 +288,7 @@ export interface OnlinePlay {
 }
 
 // onSpeed: 게임 안 설정에서 AI 속도 바꾸기 (혼자 하기만, 바꾸면 다음 게임에도 그대로 2026-10-22)
-export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: { game: GameState; setGame: (g: GameState) => void; speed: Speed; onSpeed?: (v: Speed) => void; saving: boolean; onQuit: () => void; online?: OnlinePlay }) {
+export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, online }: { game: GameState; setGame: (g: GameState) => void; speed: Speed; onSpeed?: (v: Speed) => void; saving: boolean; onQuit: () => void; onNew?: () => void; online?: OnlinePlay }) {
   const [sheet, setSheet] = useState<SheetKind>(null)
   const [rolling, setRolling] = useState(false)
   const [menu, setMenu] = useState(false)
@@ -289,6 +296,10 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
   const [pendingDown, setPendingDown] = useState(false) // 선택 창을 잠깐 내렸는지
   // 위쪽 정보 칸 접기 (폰에서 판을 넓게). 이 기기에 기억
   const [hudMini, setHudMini] = useState(() => { try { return localStorage.getItem('dgl:hudMini') === '1' } catch { return false } })
+  // 게임 팁: 내 상황에 맞는 것을 15초마다 바꿔 보여 줌 (설정에서 끄기, 2026-10-31 사용자)
+  const [showTips, setShowTips] = useState(tipsOn)
+  const [tipTick, setTipTick] = useState(() => Math.floor(Math.random() * 100))
+  useEffect(() => { if (!showTips) return; const t = setInterval(() => setTipTick((n) => n + 1), 15000); return () => clearInterval(t) }, [showTips])
   const toggleHud = () => { const v = !hudMini; setHudMini(v); try { localStorage.setItem('dgl:hudMini', v ? '1' : '0') } catch { /* 무시 */ } }
   const [sound, setSound] = useState(soundPrefs())
   const [carMode, setCarMode] = useState(false)
@@ -358,6 +369,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
 
   // ── 칸 사건 팝업: 걷기가 끝난 뒤 보여 주고 2.6초 뒤 저절로 꺼짐 ──
   const [popShow, setPopShow] = useState<GameState['popup']>(null)
+  const [rpsReveal, setRpsReveal] = useState<Record<number, number> | null>(null) // 가위바위보 손 공개 중 (아래에서 씀)
   const [suspense, setSuspense] = useState(false) // AI 미니게임 '도전 중…'
   const lastPopId = useRef(game.popup?.id ?? 0)
   useEffect(() => {
@@ -369,17 +381,20 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
     setSuspense(aiMini)
     if (!aiMini) sfx(game.popup.tone === 'bad' ? 'bad' : game.popup.art === 'money' ? 'coin' : 'pop')
   }, [game.popup, game.players])
-  const popVisible = !!popShow && !walking && diceShow === null
+  // 가위바위보를 고르거나 손을 보여 주는 동안에는 사건 창을 미뤄 둠 (가려서, 2026-10-31 사용자)
+  const rpsOn = game.pending?.type === 'rps' || !!rpsReveal
+  const popVisible = !!popShow && !walking && diceShow === null && !rpsOn
+  const popBlocks = popShow !== null && !rpsOn // 미뤄 둔 창은 가위바위보 진행을 막지 않음
   useEffect(() => {
     if (!popVisible || !suspense || !popShow) return
     const t = setTimeout(() => { setSuspense(false); sfx(popShow.tone === 'bad' ? 'bad' : 'pop') }, 1500)
     return () => clearTimeout(t)
   }, [popVisible, suspense, popShow])
-  // 내 사건은 천천히 보도록 눌러서 닫을 때까지 (2026-10-22 친구 피드백). 다른 사람·AI 것은 저절로
+  // 내 사건은 천천히 보도록 길게 (2026-10-22 친구 피드백 → 10-31 사용자: 눌러서 닫기 대신 5초 뒤 저절로). 다른 사람·AI 것은 짧게
   const popMine = !!popShow && isMine(popShow.playerId) && game.players[popShow.playerId].human
   useEffect(() => {
-    if (!popVisible || suspense || popMine) return
-    const ms = popShow && game.players[popShow.playerId].human ? 2600 : 1500 // AI 차례는 짧게
+    if (!popVisible || suspense) return
+    const ms = popMine ? MY_POP_MS : popShow && game.players[popShow.playerId].human ? 2600 : 1500 // AI 차례는 짧게
     const t = setTimeout(() => setPopShow(null), ms)
     return () => clearTimeout(t)
   }, [popVisible, popShow, game.players, suspense, popMine])
@@ -409,12 +424,12 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
     prevCur.current = curIdx
   }, [curIdx])
   useEffect(() => {
-    if (hold === null || walking || diceShow !== null || popShow !== null) return
+    if (hold === null || walking || diceShow !== null || popBlocks) return
     const t = setTimeout(() => setHold(null), 1200)
     return () => clearTimeout(t)
-  }, [hold, walking, diceShow, popShow])
+  }, [hold, walking, diceShow, popBlocks])
 
-  const busy = rolling || awaitDice || remoteRoll || diceShow !== null || walking || popShow !== null || hold !== null || summaryOpen || wheel !== null || wheelWaiting
+  const busy = rolling || awaitDice || remoteRoll || diceShow !== null || walking || popBlocks || hold !== null || summaryOpen || wheel !== null || wheelWaiting
   const p = cur(game)
   const shown = walking ? game.players[game.pathPlayer] : hold !== null ? game.players[hold] : p
   // 룰렛을 기다리거나 돌리는 동안은 정보 칸도 그 전 모습 그대로 (학자금 대출이 먼저 보여 합격을 미리 알 수 있었음, 2026-10-22)
@@ -516,7 +531,6 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
   // 동시에 하는 가위바위보: 아직 안 고른 사람 중 이 기기 사람 (2026-10-29)
   const rpsData = game.pending?.type === 'rps' ? (game.pending.data as { sim?: boolean; queue?: number[] } | undefined) : undefined
   const rpsMine = rpsData?.sim ? rpsData.queue?.find((i) => isMine(i)) : undefined
-  const [rpsReveal, setRpsReveal] = useState<Record<number, number> | null>(null)
   useEffect(() => {
     if (!rps?.picks) return
     setRpsReveal(rps.picks)
@@ -560,10 +574,10 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
     if (last.size) setAiQueue((q) => [...q, ...last])
   }, [game.logCount, game.log, game.players])
   useEffect(() => {
-    if (!aiQueue.length || walking || diceShow !== null || popShow !== null) return
+    if (!aiQueue.length || walking || diceShow !== null || popBlocks) return
     aiQueue.forEach(([pid, e]) => showEmote(pid, e))
     setAiQueue([])
-  }, [aiQueue, walking, diceShow, popShow, showEmote])
+  }, [aiQueue, walking, diceShow, popBlocks, showEmote])
   // AI: 차례가 오면 기쁘거나 우울할 때 표정 (자주 뜨지 않게 반만)
   useEffect(() => {
     const q = game.players[game.current]
@@ -602,12 +616,12 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
   // 판정 주사위(능력치 + 주사위·수능·커리어): 고르면 바로 굴러가고 '멈추기!'로 멈춤 (2026-10-21 사용자)
   const checkPending = game.pending?.type === 'diceCheck' && isMine(game.pending.playerId) ? game.pending : null
   useEffect(() => {
-    if (!checkPending || spinning || walking || diceShow !== null || popShow !== null || hold !== null) return
+    if (!checkPending || spinning || walking || diceShow !== null || popBlocks || hold !== null) return
     sfx('dice')
     setRolling(true)
     setSpinning(true)
     online?.spin?.(checkPending.playerId)
-  }, [checkPending, walking, diceShow, popShow, hold]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [checkPending, walking, diceShow, popBlocks, hold]) // eslint-disable-line react-hooks/exhaustive-deps
   const doRoll = () => {
     if (spinning) {
       setSpinning(false)
@@ -667,6 +681,11 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
         </div>
         {hudP.loans.length > 0 && <LoanLine p={hudP} />}
         <div className="hud-sub muted">{playerLine(game, hudP)} · <b className="hud-stats">지력 {hudP.stats.int} · 체력 {hudP.stats.str} · 매력 {hudP.stats.cha}</b></div>
+        {showTips && !hudMini && (() => {
+          const me = game.players.find((q) => q.human && isMine(q.id)) ?? hudP
+          const list = tipsFor(game, me)
+          return list.length ? <div className="hud-tip" key={tipTick % list.length}>💡 {list[tipTick % list.length]}</div> : null
+        })()}
         <button className="hud-fold" aria-label={hudMini ? '정보 펼치기' : '정보 접기'} aria-expanded={!hudMini} onClick={toggleHud}>{hudMini ? '▼' : '▲'}</button>
       </header>
 
@@ -780,7 +799,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
       {popVisible && popShow && (
         suspense
           ? <EventPopup art={popShow.art} title={popShow.text.match(/^\[(.+?)\]/)?.[1] ?? popShow.title} text="도전 중…" tone="info" who={game.players[popShow.playerId].name} onClose={() => setSuspense(false)} />
-          : <EventPopup art={popShow.art} title={popShow.title} text={popShow.text} tone={popShow.tone} who={game.players[popShow.playerId].name} hint={popMine} onClose={() => setPopShow(null)} />
+          : <EventPopup art={popShow.art} title={popShow.title} text={popShow.text} tone={popShow.tone} who={game.players[popShow.playerId].name} hint={popMine ? MY_POP_MS : 0} onClose={() => setPopShow(null)} />
       )}
 
       <Suspense fallback={null}>
@@ -822,7 +841,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
           onLoan={(a) => run(['takeLoan', a])} onRepay={(a, i) => run(['repayLoans', a, i])}
           onFriendLoan={(id, a, r, t) => { setSheet(null); run(['requestFriendLoan', id, a, r, t]) }}
           onRepayFriend={(i) => run(['repayFriendLoan', i])}
-          onDeposit={(a) => run(['deposit', a])} onWithdraw={(a) => run(['withdraw', a])}
+          onDeposit={(a, t) => run(['deposit', a, t])} onWithdraw={() => run(['withdraw', undefined])}
           onGiveTeam={(id, a) => run(['giveTeam', id, a])}
           onClose={() => setSheet(null)}
         />
@@ -876,6 +895,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
             <div className="sound-row">
               <button className={sound.sfx ? 'on' : ''} aria-pressed={sound.sfx} onClick={() => { setSoundPrefs({ sfx: !sound.sfx }); setSound(soundPrefs()); sfx('click') }}>🔊 효과음 {sound.sfx ? '켜짐' : '꺼짐'}</button>
               <button className={sound.bgm ? 'on' : ''} aria-pressed={sound.bgm} onClick={() => { unlockAudio(); setSoundPrefs({ bgm: !sound.bgm }); setSound(soundPrefs()) }}>🎵 배경음 {sound.bgm ? '켜짐' : '꺼짐'}</button>
+              <button className={showTips ? 'on' : ''} aria-pressed={showTips} onClick={() => { setTipsOn(!showTips); setShowTips(!showTips); sfx('click') }}>💡 게임 팁 {showTips ? '켜짐' : '꺼짐'}</button>
             </div>
             {onSpeed && game.players.some((q) => !q.human) && (
               <div className="speed-row">
@@ -900,7 +920,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, online }: 
         </div>
       )}
 
-      {game.phase === 'gameover' && !busy && <GameOver s={game} onRestart={onQuit} />}
+      {game.phase === 'gameover' && !busy && <GameOver s={game} onMenu={onQuit} onNew={onNew} />}
     </div>
   )
 }

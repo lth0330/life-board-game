@@ -3,7 +3,7 @@ import { findEvent, specialValue } from './special'
 import {
   aiDiceItem, aiInvestDecision, aiBizOpp, aiFinishMini, aiWantsCar, passChance, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, canBankLoan, loanLimit, loanTotal, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, rngOf, salaryOf, scoreOf, stageOf, startSabotage, takeLoan, toggleInsurance,
-  tradeStock, playChance, moodLevel, scaleOf, withdraw,
+  tradeStock, playChance, moodLevel, scaleOf, withdraw, lotteryPrice,
 } from './game'
 import type { GameState, Pending, Personality, Player } from './types'
 
@@ -233,7 +233,7 @@ export function aiPreRoll(s: GameState) {
   if (!isAdultStage(s) || !canAct(s)) return
   if (p.lottery.addicted && p.money > 600 && (per !== 'gambler' || rng.chance(0.3))) cureAddiction(s)
   const lotteryChance = { gambler: 0.85, investor: 0.15, elite: 0.05, family: 0.08, safe: 0.02 }[per]
-  if (p.money > 50 && rng.chance(lotteryChance)) buyLottery(s)
+  if (p.money > lotteryPrice(s) * 5 && rng.chance(lotteryChance)) buyLottery(s)
   // 보험
   const wantIns = per === 'safe' ? 1 : per === 'family' ? 0.7 : 0.3
   if (p.money > 300) {
@@ -269,7 +269,7 @@ export function aiPreRoll(s: GameState) {
   // AI는 남는 돈을 적금에 넣어 둠 → 기한이 다가온 빚은 적금에서 꺼내서 갚음
   if (near.length && p.savings) {
     const want = near.reduce((a, l) => a + l.amount, 0) + reserve - p.money
-    if (want > 0) withdraw(s, want)
+    if (want > 0) withdraw(s)
   }
   if (p.loans.length && p.money > loanTotal(p) + salaryOf(p) * 3) repayLoans(s)
   else if (soonest <= 1 && p.money > 0) repayLoans(s) // 다음 차례에 강제 청산: 경매(3번 연체)보다 급하니 있는 만큼

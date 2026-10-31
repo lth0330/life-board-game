@@ -19,7 +19,7 @@ export type Op =
   | ['repayLoans', number | undefined, number?]
   | ['requestFriendLoan', number, number, number, number]
   | ['repayFriendLoan', number]
-  | ['deposit', number]
+  | ['deposit', number, number?] // 금액, 기간(5·10)
   | ['withdraw', number | undefined]
   | ['giveTeam', number, number]
 
@@ -41,8 +41,8 @@ export function applyOp(s: GameState, op: Op) {
     case 'repayLoans': return repayLoans(s, op[1], op[2])
     case 'requestFriendLoan': return requestFriendLoan(s, op[1], op[2], op[3], op[4])
     case 'repayFriendLoan': return repayFriendLoan(s, op[1])
-    case 'deposit': return deposit(s, op[1])
-    case 'withdraw': return withdraw(s, op[1])
+    case 'deposit': return deposit(s, op[1], op[2])
+    case 'withdraw': return withdraw(s)
     case 'giveTeam': return giveTeammate(s, op[1], op[2])
   }
 }

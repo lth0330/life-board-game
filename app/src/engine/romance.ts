@@ -1,7 +1,8 @@
 // 연애와 결혼 (2026-10-29 game.ts에서 나눔)
 import { josa } from './josa'
-import { CARS, DICE_ITEMS, HOUSES, HOUSE_RULES, MAX_DICE_ITEMS, PRESTIGE_JOBS, SECTORS, SPOUSE_NAMES, TRAITS } from './data'
+import { CAR_RESALE, CARS, DICE_ITEMS, HOUSES, HOUSE_RULES, MAX_DICE_ITEMS, PRESTIGE_JOBS, SECTORS, SPOUSE_NAMES, TRAITS } from './data'
 import type { ChoiceOption, DiceItem, GameState, Player, Sector, Suitor } from './types'
+import { breakSavings } from './money'
 import {
   adoptPet, canBankLoan, carChargesAt, carCost, carResale, couponOff, giveChance, hasMortgage, HOUSE_HAPPY, houseCost, housePriceOf, houseValue,
   LOAN_RATE, LOAN_TURNS, loanLimit, log, mortgagePlan, randomChance, rngOf, say, spend, stageOf, tileOf, won,
@@ -170,7 +171,8 @@ export function openShop(s: GameState, p: Player, visit: ShopVisit = { big: fals
   if (!visit.big) HOUSES.forEach((h, i) => {
     if (i <= p.house) return
     const cost = houseCost(s, p, i)
-    const sell = p.house ? ` · 지금 집 팔고 ${won(cost)}만 더` : ''
+    // 지금 집은 시세 그대로(100%) 쳐서 빼 줌 (2026-10-31 사용자: 계산이 안 보였음)
+    const sell = p.house ? ` · 지금 ${HOUSES[p.house].name}을 시세 그대로(100%) ${won(houseValue(s, p))}에 팔아서 빼면 ${won(cost)}만 내요` : ''
     opts.push({ id: `house${i}`, label: `${h.name} 사기`, desc: `시세 ${won(housePriceOf(s, i))}${coupon < 1 ? ` (쿠폰 쓰면 -${won(couponOff(housePriceOf(s, i), 1000))})` : ''}${sell} · 매 턴 관리비 ${won(housePriceOf(s, i) * HOUSE_RULES.upkeepRate)}`, disabled: p.money < cost })
     if (p.money < cost && !hasMortgage(p) && stageOf(s).id !== 'old') {
       const m = mortgagePlan(s, p, i)
@@ -180,7 +182,7 @@ export function openShop(s: GameState, p: Player, visit: ShopVisit = { big: fals
   if (!visit.big && stageOf(s).id !== 'old') CARS.forEach((c, i) => {
     if (i <= p.car) return
     const cost = carCost(p, i)
-    const trade = p.car ? ` · 지금 차 ${won(carResale(p))}에 팔고 ${won(cost)}만 더` : ''
+    const trade = p.car ? ` · 지금 차를 지금 가치의 ${Math.round(CAR_RESALE * 100)}%인 ${won(carResale(p))}에 팔아서 빼면 ${won(cost)}만 내요` : ''
     opts.push({ id: `car${i}`, label: `${c.name} 사기`, desc: `${won(c.price)}${coupon < 1 ? ` (쿠폰 쓰면 -${won(couponOff(c.price, 500))})` : ''}${trade} · 주사위 ±1 이번 단계 ${c.charges[0]}번, 다음 단계부터 1번씩 늘어나요 · 노년엔 못 사요`, disabled: p.money < cost })
   })
   if (!p.agency && canDate(s, p)) {
@@ -209,7 +211,7 @@ export function openShop(s: GameState, p: Player, visit: ShopVisit = { big: fals
 export function triggerPoint(s: GameState, p: Player, kind: 'shop' | 'marriage') {
   if (kind === 'shop') {
     // AI: 적금에 넣어 둔 돈은 상점에서 꺼내 씀
-    if (!p.human && p.savings) { p.money += p.savings; log(s, p.id, `적금에서 ${won(p.savings)} 꺼냈다`, 'info'); p.savings = 0 }
+    if (!p.human && p.savings && p.money < 2000) breakSavings(s, p) // 쓸 돈이 모자랄 때만 깸 (수수료가 생겨서)
     openShop(s, p)
     return
   }

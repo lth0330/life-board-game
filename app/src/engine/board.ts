@@ -88,7 +88,7 @@ export const STAGE_DEFS: StageDef[] = [
         { road: 'country', label: '시골 길', desc: '매 턴 행복 +2, 행복 칸이 많아요' },
       ],
     },
-    event: { at: 10, rejoin: 16, len: 8, name: '카지노', minis: ['oddEven', 'highLow', 'slot'], desc: '마지막 역전 기회! 가진 돈의 10~50%를 걸어요 (운세가 좋을수록 유리하고, 도박중독에 주의해요)' },
+    event: { at: 10, rejoin: 16, len: 8, name: '카지노', minis: ['oddEven', 'highLow', 'slot'], desc: '마지막 역전 기회! 가진 돈의 10~50%를 걸어요 (실력에 운세가 더해져요. 도박중독에 주의해요)' },
   },
 ]
 
@@ -126,7 +126,8 @@ export function buildStage(d: StageDef, rng: Rng): Stage {
     if (dep === d.length - 1) kind = d.rolls ? 'rest' : 'goal'
     const t: Tile = { kind, next: [], d: dep, lane: 0, road: 'main' }
     if (d.stops[dep]) { t.kind = 'stop'; t.stop = d.stops[dep] }
-    if (d.points[dep]) t.point = d.points[dep]
+    // 상점·결혼식장은 따로 건물 칸 (2026-10-31 사용자: 결혼식장에 닿았는데 위기 칸이었음). 지나가도 들르고 남은 칸은 계속 감
+    if (d.points[dep]) { t.point = d.points[dep]; if (t.kind !== 'stop') t.kind = 'point' }
     mainIdx[dep] = tiles.push(t) - 1
   }
   const mainKeys = Object.keys(mainIdx).map(Number).sort((a, b) => a - b)
