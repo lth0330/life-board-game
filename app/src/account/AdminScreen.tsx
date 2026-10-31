@@ -92,7 +92,7 @@ export default function AdminScreen({ onBack }: { onBack: () => void }) {
         <div className="sheet-backdrop">
           <div className="sheet mini center">
             <h2 className="jua">계정 삭제</h2>
-            <p><b>{ask.nick}</b> ({ask.id}) 계정을 지울까요?<br />옷차림과 혼자 하던 게임도 같이 지워지고 되돌릴 수 없어요.</p>
+            <p><b>{ask.nick}</b> ({ask.id}) 계정을 지울까요?<br />옷차림과 저장된 게임도 같이 지워지고 되돌릴 수 없어요.</p>
             <div className="row">
               <button className="grow danger" disabled={busy} onClick={() => void remove(ask)}>지우기</button>
               <button className="grow" onClick={() => setAsk(null)}>취소</button>

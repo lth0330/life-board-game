@@ -90,7 +90,7 @@ export function TitleScreen({ notice, gameNotice, onAuth, onGuest, onAdmin }: { 
       <button className="wide secondary" onClick={() => onAuth('join')}>회원가입</button>
       <button className="wide secondary" onClick={onGuest}>로그인 없이 하기 (저장 안 됨)</button>
       <button className="wide ghost" onClick={() => setManual(true)}>게임 설명서</button>
-      <p className="muted center">한 계정으로 혼자 하기 저장과 온라인을 같이 써요. 다른 기기에서도 이어 할 수 있어요.</p>
+      <p className="muted center">한 계정으로 게임 저장과 온라인을 같이 써요. 다른 기기에서도 이어 할 수 있어요.</p>
       {manual && <Manual onClose={() => setManual(false)} />}
     </Frame>
   )
@@ -127,7 +127,7 @@ export function MenuScreen({ profile, slot, gameNotice, onContinue, onNew, onOnl
           <div className="row"><button className="grow" onClick={onNew}>새로 하기</button><button className="grow" onClick={() => setConfirm(false)}>취소</button></div>
         </div>
       ) : (
-        <button className={`wide ${st ? 'secondary' : 'big'}`} onClick={() => (st ? setConfirm(true) : onNew())}>혼자 플레이</button>
+        <button className={`wide ${st ? 'secondary' : 'big'}`} onClick={() => (st ? setConfirm(true) : onNew())}>한 기기로 하기</button>
       )}
       <button className="wide secondary" onClick={onOnline}>🌐 온라인으로 하기</button>
       {profile && <button className="wide secondary" onClick={onDress}>캐릭터 꾸미기</button>}
@@ -174,7 +174,7 @@ export function SetupScreen({ defaultName, outfit: initialOutfit, onStart, onBac
   return (
     <Frame onBack={onBack}>
       <div className="setup-head">
-        <h1 className="jua">혼자 플레이</h1>
+        <h1 className="jua">한 기기로 하기</h1>
         <button className="ghost-btn" onClick={() => setManual(true)}>설명서</button>
       </div>
       <div className="setup-me">

@@ -10,5 +10,5 @@ export function playerLine(s: GameState, p: Player) {
   return jobText
 }
 
-// 테마 맵 고르기: 혼자 플레이 설정·방 대기실 (2026-10-29). ''은 기본 판
+// 테마 맵 고르기: 한 기기로 하기 설정·방 대기실 (2026-10-29). ''은 기본 판
 export const THEMES: [MapTheme | '', string][] = [['', '기본'], ['spring', '🌸 봄'], ['summer', '☀️ 여름'], ['autumn', '🍂 가을'], ['winter', '❄️ 겨울']]
