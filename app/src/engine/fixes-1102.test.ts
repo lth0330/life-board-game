@@ -47,3 +47,18 @@ it('나중에 쓰기를 고르면 카드가 남는다', () => {
   expect(p.reunion).toBe(true)
   expect(x.affinity).toBe(30)
 })
+
+it('직업 미니게임: 결과에 따라 돈 칸 보너스가 0.5·1.5·2배', async () => {
+  const { startMini, finishMini, JOB_GAME } = await import('./game')
+  const s = youngGame()
+  const p = s.players[0]
+  p.jobId = 'office'
+  expect(JOB_GAME.office).toBe('jStamp')
+  for (const [grade, mult] of [[0, 0.5], [1, 1.5], [2, 2]] as const) {
+    const before = p.money
+    startMini(s, p, 'jStamp', undefined, undefined, 300)
+    expect(s.mini?.pay).toBe(300)
+    finishMini(s, grade)
+    expect(p.money - before).toBe(300 * mult)
+  }
+})

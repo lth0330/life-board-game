@@ -8,6 +8,7 @@ import { DEFAULT_OUTFIT, type Outfit } from '../engine/outfit'
 import { Cup, DieFace, MiniIcon, PlayingCard } from '../art/MiniArt'
 import type { MiniView } from './miniView'
 import { ThemeArt, type ThemeArtKind } from '../art/Scenery'
+import { JOB_GAME_UI, JOB_HOW, JOB_ICON } from './JobGames'
 
 // 미니게임 화면. 결과: 0 실패, 1 성공, 2 대성공 (대결 timing은 0~100점)
 // level 0 쉬움 ~ 2 어려움 (능력치가 높을수록 쉬움)
@@ -58,8 +59,8 @@ const HOW: Record<string, string> = {
 }
 
 const LEVEL_NAME = ['쉬움', '보통', '어려움']
-const rand = (n: number) => Math.floor(Math.random() * n)
-const shuffle = <T,>(a: T[]) => [...a].sort(() => Math.random() - 0.5)
+export const rand = (n: number) => Math.floor(Math.random() * n)
+export const shuffle = <T,>(a: T[]) => [...a].sort(() => Math.random() - 0.5)
 
 // 미니게임 주제별 배경·그림 (이벤트 길과 같은 그림)
 const MINI_THEME: Record<string, string> = {
@@ -164,15 +165,18 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
       case 'slot': return <Slot level={mini.level} onDone={done} />
       case 'snap': return <Snap level={mini.level} onDone={done} report={report} />
       case 'pack': return <Pack level={mini.level} onDone={done} report={report} />
-      default: return <Pack level={mini.level} onDone={done} />
+      default: {
+        const Job = JOB_GAME_UI[mini.game]
+        return Job ? <Job level={mini.level} onDone={done} /> : <Pack level={mini.level} onDone={done} />
+      }
     }
   })()
   return (
     <div className="sheet-backdrop mini-backdrop">
       <div className={`mini-wrap${watch ? ' has-watch' : ''}`}>
       {watch}
-      <div className={`sheet mini theme-${MINI_THEME[mini.game] ?? 'duel'}`}>
-        <div className="mini-art">{isDuel ? <EventArt type="afterRoll" /> : ['fall', 'snow', 'bloom', 'sun'].includes(MINI_THEME[mini.game]) ? <ThemeArt kind={MINI_THEME[mini.game] as ThemeArtKind} /> : <Landmark name={THEME_LANDMARK[MINI_THEME[mini.game]] ?? ''} />}</div>
+      <div className={`sheet mini theme-${MINI_THEME[mini.game] ?? (JOB_ICON[mini.game] ? 'job' : 'duel')}`}>
+        <div className="mini-art">{JOB_ICON[mini.game] ? <div className="job-art"><span>{JOB_ICON[mini.game]}</span><b className="jua">오늘의 업무</b></div> : isDuel ? <EventArt type="afterRoll" /> : ['fall', 'snow', 'bloom', 'sun'].includes(MINI_THEME[mini.game]) ? <ThemeArt kind={MINI_THEME[mini.game] as ThemeArtKind} /> : <Landmark name={THEME_LANDMARK[MINI_THEME[mini.game]] ?? ''} />}</div>
         <div className="mini-head">
           <h2 className="jua">{MINI_NAMES[mini.game]}</h2>
           <span className="mini-level">난이도 {LEVEL_NAME[mini.level]}</span>
@@ -193,7 +197,7 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
         )}
         {mode === 'help' && (
           <div className="mini-help">
-            <p>{HOW[mini.game] ?? ''}</p>
+            <p>{HOW[mini.game] ?? JOB_HOW[mini.game] ?? ''}</p>
             <p className="note">💪 {guide.stat}</p>
             <div className="note">🎁 보상<ul className="reward-list">{guide.reward.split(/ \/ | · /).map((x) => <li key={x}>{x}</li>)}</ul></div>
             <button className="wide" onClick={() => setMode('intro')}>돌아가기</button>
@@ -223,7 +227,7 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
 // 바늘을 가운데에 멈추기. 쉬울수록 판정 범위가 넓고 바늘이 느림
 // 노트북·컴퓨터(마우스)면 키보드로도 (2026-10-21 사용자: 마우스로 연타하기 힘듦). 폰은 그대로 버튼
 const finePointer = () => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: fine)').matches
-function useKeys(map: Record<string, () => void>, up?: Record<string, () => void>) {
+export function useKeys(map: Record<string, () => void>, up?: Record<string, () => void>) {
   const ref = useRef(map)
   ref.current = map
   const upRef = useRef(up)
@@ -246,7 +250,7 @@ function useKeys(map: Record<string, () => void>, up?: Record<string, () => void
   }, [])
 }
 // 키보드 안내 한 줄 (마우스 기기에서만)
-const KeyHint = ({ children }: { children: ReactNode }) => (finePointer() ? <p className="muted center">⌨️ 키보드로: {children}</p> : null)
+export const KeyHint = ({ children }: { children: ReactNode }) => (finePointer() ? <p className="muted center">⌨️ 키보드로: {children}</p> : null)
 
 function Timing({ level, rounds, duel, onDone, report }: { level: number; rounds: number; duel: boolean; onDone: (v: number) => void; report?: Report }) {
   const zone = [25, 17, 10][level]

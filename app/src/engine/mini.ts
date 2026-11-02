@@ -17,6 +17,9 @@ const MINI_STAT: Record<MiniId, StatKey | 'fortune' | null> = {
   oddEven: 'fortune', highLow: 'fortune', slot: 'fortune',
   snap: 'str', pack: 'int', photo: 'int',
   leaves: 'str', snowball: 'str', flower: 'cha', melon: 'str', butterfly: 'str', watergun: 'str',
+  // 직업 미니게임은 그 직업의 주 능력치 (data.ts JOBS key)
+  jBox: 'str', jTactic: 'str', jSuspect: 'str', jFire: 'str', jCpr: 'int', jLab: 'int', jBurger: 'cha', jStamp: 'int',
+  jTicket: 'int', jGrade: 'cha', jBug: 'int', jObjection: 'int', jIdol: 'cha', jLines: 'cha', jComment: 'cha', jDeal: 'int',
 }
 export const MINI_NAMES: Record<MiniId | DuelId, string> = {
   race: '달리기', tug: '줄다리기', throw: '공 던지기',
@@ -26,7 +29,16 @@ export const MINI_NAMES: Record<MiniId | DuelId, string> = {
   snap: '사진 찍기', pack: '짐 싸기', photo: '여행 코스 기억',
   leaves: '낙엽 잡기', snowball: '눈싸움', flower: '꽃 심기', melon: '수박 깨기', butterfly: '나비 잡기', watergun: '물총 싸움',
   dice: '주사위 대결', rps: '가위바위보', timing: '타이밍 멈추기',
+  jBox: '복싱', jTactic: '작전판', jSuspect: '범인 찾기', jFire: '불 끄기', jCpr: '심폐소생술', jLab: '색 실험', jBurger: '주문 만들기', jStamp: '결재 도장',
+  jTicket: '번호표', jGrade: '채점', jBug: '버그 잡기', jObjection: '이의 있음!', jIdol: '하이라이트 파트', jLines: '대사 외우기', jComment: '댓글 관리', jDeal: '협상',
 }
+// 직업 → 오늘의 업무 미니게임 (2026-11-02 사용자 B안: 직업마다 하나)
+export const JOB_GAME: Record<string, MiniId> = {
+  athlete: 'jBox', coach: 'jTactic', police: 'jSuspect', fire: 'jFire', doctor: 'jCpr', scientist: 'jLab', chef: 'jBurger', office: 'jStamp',
+  civil: 'jTicket', teacher: 'jGrade', dev: 'jBug', lawyer: 'jObjection', idol: 'jIdol', actor: 'jLines', youtuber: 'jComment', ceo: 'jDeal',
+}
+export const JOB_GAMES = Object.values(JOB_GAME)
+export const JOB_MINI_CHANCE = 1 / 3 // 청년·중년 돈 칸 중
 export const CASINO: MiniId[] = ['oddEven', 'highLow', 'slot']
 export const BRAIN_GAMES: MiniId[] = ['memory', 'pairs', 'quickmath']
 
@@ -46,7 +58,7 @@ export const FEST_GAMES: MiniId[] = ['firstImpression', 'rhythm', 'confess', 'da
 // 축제 거리(청년): 칸마다 누구와 할지 고름. 예전에 만난 사람 또는 새 사람(랜덤). 만난 사람이 없으면 새 사람 (2026-10-21 사용자)
 const festPartners = (p: Player) => [...p.suitors].filter((x) => x.affinity < 100).sort((a, b) => b.affinity - a.affinity).slice(0, 4)
 
-export function startMini(s: GameState, p: Player, game: MiniId, target?: string, as?: MiniId) {
+export function startMini(s: GameState, p: Player, game: MiniId, target?: string, as?: MiniId, pay?: number) {
   const level = miniLevel(p, game)
   const casino = CASINO.includes(game)
   const fest = FEST_GAMES.includes(game) && stageOf(s).id === 'young' && !p.spouse
@@ -87,13 +99,13 @@ export function startMini(s: GameState, p: Player, game: MiniId, target?: string
     p.lottery.chance = Math.min(50, p.lottery.chance + 5)
   }
   if (p.human) {
-    s.mini = { game, playerId: p.id, level, stake, target, ...(as ? { as } : {}) }
+    s.mini = { game, playerId: p.id, level, stake, target, ...(as ? { as } : {}), ...(pay !== undefined ? { pay } : {}) }
     return
   }
   // AI: 능력치에 비례한 확률로 결과
   const grade = aiGrade(rngOf(s), level)
   log(s, p.id, `[${MINI_NAMES[game]}] ${['실패', '성공', '대성공'][grade]}`, grade ? 'good' : 'bad')
-  miniReward(s, p, as ?? game, grade, stake, target, game)
+  miniReward(s, p, as ?? game, grade, stake, target, game, pay)
 }
 
 // 사람이 미니게임을 마치면 화면에서 부름. grade: 0 실패, 1 성공, 2 대성공 / 대결 timing이면 점수(0~100)
@@ -141,7 +153,7 @@ export function finishMini(s: GameState, value: number, who?: number) {
   }
   const miniStart = s.logCount
   if (m.duel) resolveDuel(s, m.game as DuelId, m.duel.ids, { ...m.duel.results, [p.id]: value })
-  else miniReward(s, p, m.as ?? (m.game as MiniId), Math.max(0, Math.min(2, Math.round(value))), m.stake, m.target, m.game as MiniId)
+  else miniReward(s, p, m.as ?? (m.game as MiniId), Math.max(0, Math.min(2, Math.round(value))), m.stake, m.target, m.game as MiniId, m.pay)
   showPop(s, p, miniStart, 'medal', m.duel ? '대결 결과' : '미니게임 결과')
   resume(s)
 }
@@ -318,13 +330,24 @@ export function miniGuide(s: GameState, game: MiniId | DuelId, duel: boolean, co
   else if (['firstImpression', 'rhythm', 'confess', 'dance'].includes(game) && stageOf(s).id === 'student') reward = '대성공 매력 +1·행복 +2 / 성공 매력 +1 / 실패 행복 -1'
   else if (['firstImpression', 'rhythm', 'confess', 'dance'].includes(game)) reward = '대성공 매력 +1·호감도 +30 (없으면 새 사람) / 성공 호감도 +15 / 실패 행복 -2'
   else if (CASINO.includes(game as MiniId)) reward = '대박 판돈의 2배를 더 받음 / 조금 따면 절반 / 지면 판돈을 잃어요'
+  else if (JOB_GAMES.includes(game as MiniId)) return { stat, reward: `원래 보너스${s.mini?.pay ? ` ${won(s.mini.pay)}` : ''}의 · 대성공 2배·행복 +2 / 성공 1.5배 / 실패 절반` }
   else reward = '대성공 행복 +8 / 성공 +4 / 실패 +1'
   return { stat, reward: reward + chance }
 }
 
 // game: 보상 종류(칸의 게임), played: 실제로 한 게임 (테마 게임이면 다름)
-function miniReward(s: GameState, p: Player, game: MiniId, grade: number, stake?: number, target?: string, played: MiniId = game) {
+function miniReward(s: GameState, p: Player, game: MiniId, grade: number, stake?: number, target?: string, played: MiniId = game, pay?: number) {
   const name = MINI_NAMES[played]
+  if (JOB_GAMES.includes(game)) {
+    // 오늘의 업무: 돈 칸 보너스가 결과에 따라 (실패해도 일은 했으니 절반)
+    const base = pay ?? scaleOf(s) * 3
+    const amt = Math.round(base * [0.5, 1.5, 2][grade])
+    p.money += amt
+    if (grade === 2) p.happy += 2
+    const job = workJob(s, p)
+    log(s, p.id, `${job ? `[${job.name}] ` : ''}오늘의 업무 ${name} ${['실수가 있었지만 일은 끝냈다', '성공!', '대성공!'][grade]} +${won(amt)}${grade === 2 ? ', 행복 +2' : ''}`, grade ? 'good' : 'info')
+    return
+  }
   if (grade === 2 && !p.chance && rngOf(s).chance(0.25)) giveChance(s, p, randomChance(rngOf(s)))
   const statUp = (k: StatKey, n: number) => { p.stats[k] = clampStat(p.stats[k] + n) }
   if (['race', 'tug', 'throw'].includes(game)) {

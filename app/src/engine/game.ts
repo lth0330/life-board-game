@@ -14,7 +14,7 @@ import type {
   ChanceCard, ChoiceOption, DiceItem, GameState, InsuranceKind, JobDef, MapTheme, MiniId, Personality, Player, SabotageCard, Sector, Settings, Stage,
   StageId, StatKey, Suitor, Tile,
 } from './types'
-import { affinityGain, BRAIN_GAMES, CASINO, casinoStake, FEST_GAMES, meet, resolveRps, rpsPending, startContest, startMini } from './mini'
+import { affinityGain, BRAIN_GAMES, CASINO, JOB_GAME, JOB_MINI_CHANCE, casinoStake, FEST_GAMES, meet, resolveRps, rpsPending, startContest, startMini } from './mini'
 import {
   agencyTurn, type Attr, bigPrice, canDate, canReunion, chancePrice, stars, dateTile, findSuitor, makeSuitor, openShop, shopBuy, type ShopVisit, suitorDesc, triggerPoint,
 } from './romance'
@@ -1044,6 +1044,13 @@ function land(s: GameState, restLeft = 0) {
   let popTitle = POP_TITLE[kind]
   switch (kind) {
     case 'money': {
+      // 직업 미니게임 (2026-11-02 사용자): 청년·중년에 직업이 있으면 3번에 1번쯤 '오늘의 업무'로. 보너스는 결과에 따라
+      const wj = isAdultStage(s) && stageOf(s).id !== 'old' && road !== 'city' ? workJob(s, p) : null
+      if (wj && JOB_GAME[wj.id] && rng.chance(JOB_MINI_CHANCE)) {
+        const pay = Math.round(sc * rng.int(2, 5) * (road === 'startup' ? 2.5 : road === 'work' ? 1.5 : 1) * ADULT_BONUS_MULT)
+        startMini(s, p, JOB_GAME[wj.id], undefined, undefined, pay)
+        break
+      }
       const mult = road === 'startup' ? 2.5 : road === 'work' ? 1.5 : road === 'city' ? (rng.chance(0.5) ? 2 : -1) : 1
       const amt = Math.round(sc * rng.int(2, 5) * mult * (isAdultStage(s) ? ADULT_BONUS_MULT : 1))
       p.money += amt
