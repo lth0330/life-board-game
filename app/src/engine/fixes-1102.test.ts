@@ -98,3 +98,20 @@ it('가방: 카드·주사위 아이템을 합쳐 3칸, 꽉 차면 버릴 것을
   fixOldBag(old)
   expect(old.bag).toEqual(['coupon', 'love', 'reunion'])
 })
+
+it('💌 카드는 상점에 한 번 들를 때 1장만 산다 (11-03)', () => {
+  const s = youngGame()
+  const p = s.players[0]
+  p.money = 5000
+  const x = makeSuitor(s, p)
+  x.affinity = 30
+  p.suitors.push(x)
+  openShop(s, p)
+  choose(s, 'reunion')
+  expect(p.bag).toEqual(['reunion'])
+  const pd = s.pending as { type: string; options: { id: string }[] } | null
+  expect(pd?.type).toBe('shop')
+  expect(pd!.options.some((o) => o.id === 'reunion')).toBe(false) // 같은 방문에서는 더 못 삼
+  openShop(s, p) // 다음에 들르면 다시 살 수 있음
+  expect((s.pending as { options: { id: string }[] }).options.some((o) => o.id === 'reunion')).toBe(true)
+})

@@ -176,7 +176,7 @@ export function shopBuy(s: GameState, p: Player, optionId: string, useCoupon: bo
 
 // 상점: 한 번 들르면 여러 번 살 수 있음. 집·차는 둘 중 하나만, 다른 물건은 원하는 만큼 (2026-10-21 사용자)
 // 노년 상점 물건(여행·선물·기부)은 없앰 (2026-10-21 사용자)
-export type ShopVisit = { big: boolean; n: number }
+export type ShopVisit = { big: boolean; n: number; reunion?: boolean } // reunion: 이번에 💌 카드를 샀나 (한 번 들를 때 1장만, 2026-11-03 사용자)
 export function openShop(s: GameState, p: Player, visit: ShopVisit = { big: false, n: 0 }) {
   const coupon = has(p, 'coupon') ? 0.7 : 1
   const full = bagFull(p)
@@ -204,7 +204,7 @@ export function openShop(s: GameState, p: Player, visit: ShopVisit = { big: fals
     opts.push({ id: 'agency1', label: '소개팅 회사 VIP 회원', desc: '매 턴 100만, 연애 시작 300만, 원하는 속성을 고르고 ★3 이상이 잘 나와요' })
   }
   if (!p.pet?.alive) opts.push({ id: 'pet', label: '반려동물 데려오기', desc: `${won(50)} · 매 턴 행복 +1, 사료값이 들어요`, disabled: p.money < 50 })
-  if (canReunion(s, p)) opts.push({ id: 'reunion', label: '💌 다시 만나기 카드 사기', desc: `${won(chancePrice(s))} · 만난 적 있는 사람과 다시 데이트해 호감도를 올려요 · 원할 때 써요 · 결혼하거나 중년 결혼식장을 지나면 없어지고 반값을 돌려받아요${fullNote}`, disabled: p.money < chancePrice(s) })
+  if (canReunion(s, p) && !visit.reunion) opts.push({ id: 'reunion', label: '💌 다시 만나기 카드 사기', desc: `${won(chancePrice(s))} · 상점에 들를 때마다 1장만 · 만난 적 있는 사람과 다시 데이트해 호감도를 올려요(데이트 칸보다 10% 덜) · 원할 때 써요 · 결혼하거나 중년 결혼식장을 지나면 없어지고 반값을 돌려받아요${fullNote}`, disabled: p.money < chancePrice(s) })
   opts.push({ id: 'chance', label: '찬스 카드 사기', desc: `${won(chancePrice(s))} · 다시 굴리기·방해 막기·행운 부적·할인 쿠폰 중 하나${fullNote}`, disabled: p.money < chancePrice(s) })
   for (const k of Object.keys(DICE_ITEMS) as DiceItem[]) {
     const d = DICE_ITEMS[k]

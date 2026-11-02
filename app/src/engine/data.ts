@@ -72,7 +72,7 @@ export const INSURANCE = {
   car: { name: '자동차보험', premium: 3 },
 } as const
 
-export const CHANCE_NAMES = { reroll: '다시 굴리기', block: '방해 막기', charm: '행운 부적', coupon: '할인 쿠폰 (집·차 30%, 최대 집 1,000만·차 500만)' } as const
+export const CHANCE_NAMES = { reroll: '다시 굴리기', block: '방해 막기', charm: '행운 부적', coupon: '할인 쿠폰' } as const // 자세한 건 설명 줄에 (2026-11-03: 이름이 길어 창이 어지러웠음)
 export const SABOTAGE_NAMES = { rumor: '소문 퍼뜨리기', stockRumor: '주가 루머', love: '연애 방해', lawsuit: '소송 걸기' } as const
 
 export const LOTTERY_PRICE = 10

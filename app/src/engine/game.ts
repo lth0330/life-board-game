@@ -1344,7 +1344,7 @@ function drawCard(s: GameState, p: Player) {
       if (safe) { p.happy += 1; log(s, p.id, '회사들이 구조조정… 공무원이라 무사했다 (행복 +1)', 'good'); return }
       if (ceo) { badEvent(s, p, { text: '경기가 나빠져 거래처 주문이 줄었다', loss: sc * 2, happyLoss: 2 }); return } // 사업가는 월급이 없어서
       const job = jobOf(p)
-      if (job && !job.boom && job.id !== 'civil' && p.jobRank > 0 && p.fortune <= 2) { p.jobRank--; log(s, p.id, `구조조정으로 ${job.ranks[p.jobRank]}(으)로 밀려났다`, 'bad') }
+      if (job && !job.boom && job.id !== 'civil' && p.jobRank > 0 && p.fortune <= 2) { p.jobRank--; log(s, p.id, `구조조정으로 ${josa(job.ranks[p.jobRank], '으로/로')} 밀려났다`, 'bad') }
       else badEvent(s, p, { text: '회사 구조조정으로 월급이 깎였다', loss: sc * 2, happyLoss: 2 })
     })
   }
@@ -1642,7 +1642,7 @@ export function setJob(s: GameState, p: Player, id: string | null) {
   p.jobTurns = 0
   const j = jobOf(p)
   if (j) {
-    log(s, p.id, `${j.name}${j.boom ? '' : ` ${j.ranks[p.jobRank]}`}(으)로 일을 시작했다`, 'good')
+    log(s, p.id, `${josa(`${j.name}${j.boom ? '' : ` ${j.ranks[p.jobRank]}`}`, '으로/로')} 일을 시작했다`, 'good')
     if (j.id === 'scientist') s.pending = sectorPending(p, '어떤 분야를 연구할까요?', ['생명', '화학'])
     if (j.id === 'idol') { s.stockPrice.엔터 = Math.round(s.stockPrice.엔터 * 1.1); log(s, null, `${p.name} 데뷔! 엔터주 +10%`, 'info'); say(s, p, 'debut') }
   } else log(s, p.id, '백수로 지내기로 했다', 'info')
@@ -1737,7 +1737,7 @@ export function choose(s: GameState, optionId: string) {
       if (old === undefined) { openShop(s, p, d.visit); break }
       p.bag.splice(i, 1)
       log(s, p.id, `${josa(bagLabel(old), '을/를')} 버렸다`, 'info')
-      const next = { big: d.visit.big, n: d.visit.n + 1 }
+      const next = { big: d.visit.big, n: d.visit.n + 1, reunion: d.visit.reunion || d.item === 'reunion' }
       shopBuy(s, p, d.item, false, next)
       if (!s.pending) openShop(s, p, next)
       break
@@ -1769,7 +1769,7 @@ export function choose(s: GameState, optionId: string) {
       if (optionId === 'actor' || optionId === 'youtuber') {
         setJob(s, p, optionId)
         p.jobRank = Math.max(0, rank - 1) // 아이돌 등급에서 한 단계 아래 (톱스타 → 2단계, 신인·연습생 → 1단계)
-        log(s, p.id, `${jobOf(p)!.name}(으)로 전직! ${jobOf(p)!.ranks[p.jobRank]}부터 시작`, 'good')
+        log(s, p.id, `${josa(jobOf(p)!.name, '으로/로')} 전직! ${jobOf(p)!.ranks[p.jobRank]}부터 시작`, 'good')
         s.banner = { title: `${jobOf(p)!.name} 전직!`, text: `${p.name}: ${jobOf(p)!.ranks[p.jobRank]}`, tone: 'good' }
       } else if (optionId === 'biz') {
         startCompany(s, p, BUSINESSES.idol)
@@ -1835,7 +1835,7 @@ export function choose(s: GameState, optionId: string) {
         }
         break
       }
-      const next = { big: visit.big || big, n: visit.n + 1 }
+      const next = { big: visit.big || big, n: visit.n + 1, reunion: visit.reunion || optionId === 'reunion' }
       shopBuy(s, p, optionId, has(p, 'coupon'), next)
       if (!s.pending) openShop(s, p, next) // 소개팅 회사 속성 고르기 창이 뜨면 그 뒤에 다시 상점
       break
@@ -1844,7 +1844,7 @@ export function choose(s: GameState, optionId: string) {
       const d = pd.data as { item: string; visit: ShopVisit }
       if (optionId === 'back') { openShop(s, p, d.visit); break }
       shopBuy(s, p, d.item, optionId === 'use')
-      openShop(s, p, { big: true, n: d.visit.n + 1 })
+      openShop(s, p, { big: true, n: d.visit.n + 1, reunion: d.visit.reunion })
       break
     }
     case 'special': {
@@ -2075,7 +2075,7 @@ export function choose(s: GameState, optionId: string) {
       const x = findSuitor(p, optionId)
       if (!x) break
       take(p, 'reunion')
-      const add = affinityGain(s, p, x)
+      const add = Math.max(5, affinityGain(s, p, x) - 10) // 데이트 칸보다 10%p 덜 (2026-11-03 사용자: 한 번에 결혼 가능선을 넘어서)
       x.affinity = Math.min(100, x.affinity + add)
       p.happy += 1
       log(s, p.id, `다시 만나기 카드: ${josa(x.name, '와/과')} 다시 만났다! 호감도 ${x.affinity}% (+${add}), 행복 +1`, 'good')
