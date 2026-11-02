@@ -417,7 +417,7 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
 .manual-tile { display: grid; grid-template-columns: 40px 44px 1fr; align-items: center; gap: 8px; font-size: 14px; }
 .manual-tile > span:first-child { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
 .mt-money { background: #2F8F5B; } .mt-grow { background: #2E6FD8; } .mt-happy { background: #F2C230; } .mt-risk { background: #C2452D; }
-.mt-card { background: #6F45BD; } .mt-stop { background: #2A2118; } .mt-date { background: #F3A3C0; } .mt-mini { background: #E8742C; } .mt-rest { background: #E9DFC8; }
+.mt-card { background: #6F45BD; } .mt-stop { background: #2A2118; } .mt-date { background: #F3A3C0; } .mt-mini { background: #E8742C; } .mt-work { background: #3D5A80; } .mt-rest { background: #E9DFC8; }
 .row button.grow { min-height: 44px; border-radius: 12px; border: 2px solid var(--ink); background: #fff; font-family: 'Jua', sans-serif; }
 
 /* ───── 보드 그림 ───── */

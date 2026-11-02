@@ -62,7 +62,9 @@ describe('AI끼리 판에서 새 시스템이 실제로 일어나는가', () => 
     }
     console.log('60판 240명의 마지막 상태:', final)
     console.log('60판 동안 일어난 횟수 (기록 200줄 기준):', counts)
-    for (const k of ['갈림길', '이벤트 길 미니게임', '같은 칸 만남', '결혼']) expect(counts[k] ?? 0, k).toBeGreaterThan(0)
+    for (const k of ['갈림길', '이벤트 길 미니게임', '같은 칸 만남']) expect(counts[k] ?? 0, k).toBeGreaterThan(0)
+    // 결혼은 청년·중년에 일어나 마지막 기록 200줄에 잘 안 남음 → 마지막 상태로 셈 (2026-11-02)
+    expect((final['끝까지 결혼 유지'] ?? 0) + (final['이혼 경험'] ?? 0), '결혼').toBeGreaterThan(0)
   }, 30000) // AI 60판이라 다른 테스트와 같이 돌면 5초를 넘길 수 있음
 })
 

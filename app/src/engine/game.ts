@@ -14,7 +14,7 @@ import type {
   ChanceCard, ChoiceOption, DiceItem, GameState, InsuranceKind, JobDef, MapTheme, MiniId, Personality, Player, SabotageCard, Sector, Settings, Stage,
   StageId, StatKey, Suitor, Tile,
 } from './types'
-import { affinityGain, BRAIN_GAMES, CASINO, JOB_GAME, JOB_MINI_CHANCE, casinoStake, FEST_GAMES, meet, resolveRps, rpsPending, startContest, startMini } from './mini'
+import { affinityGain, BRAIN_GAMES, CASINO, JOB_GAME, casinoStake, FEST_GAMES, meet, resolveRps, rpsPending, startContest, startMini } from './mini'
 import {
   agencyTurn, type Attr, bigPrice, canDate, canReunion, chancePrice, stars, dateTile, findSuitor, makeSuitor, openShop, shopBuy, type ShopVisit, suitorDesc, triggerPoint,
 } from './romance'
@@ -724,7 +724,7 @@ export function roll(s: GameState, bonus = 0, useCar = false, item: DiceItem | n
 function aheadValue(s: GameState, p: Player, k: number) {
   const st = stageOf(s)
   const t = st.tiles[walkAhead(st, p.pos, k, p.forkChoice)].kind
-  return t === 'risk' ? -3 : t === 'money' || t === 'mini' || t === 'good' ? 2 : t === 'card' || t === 'happy' || t === 'grow' || t === 'date' ? 1 : 0
+  return t === 'risk' ? -3 : t === 'money' || t === 'mini' || t === 'good' || t === 'work' ? 2 : t === 'card' || t === 'happy' || t === 'grow' || t === 'date' ? 1 : 0
 }
 
 function aiAfterRoll(s: GameState, p: Player, n: number, carOn: boolean): string {
@@ -1008,8 +1008,8 @@ const themePool = (theme: MapTheme): Partial<Record<StageId, SpecialEvent[]>> =>
 
 const NEWS_BIG = /복권 \d등|퇴직금|은퇴|메달|축하|다시 만나기/
 const NEWS_SMALL = /부부 싸움|다퉜다|집안일|명품 쇼핑|빚 독촉/
-const POP_ART: Record<string, string> = { special: 'card', dilemma: 'card', money: 'money', risk: 'warn', card: 'card', happy: 'rest', date: 'heart', mini: 'medal' }
-const POP_TITLE: Record<string, string> = { special: '특별 이벤트', dilemma: '양심 선택', money: '돈 칸', risk: '위기 칸', card: '랜덤이벤트', happy: '행복 칸', date: '연애 칸', mini: '미니게임' }
+const POP_ART: Record<string, string> = { work: 'money', special: 'card', dilemma: 'card', money: 'money', risk: 'warn', card: 'card', happy: 'rest', date: 'heart', mini: 'medal' }
+const POP_TITLE: Record<string, string> = { work: '직업 칸', special: '특별 이벤트', dilemma: '양심 선택', money: '돈 칸', risk: '위기 칸', card: '랜덤이벤트', happy: '행복 칸', date: '연애 칸', mini: '미니게임' }
 
 // 사건 팝업: start 이후 남은 기록(내 것 + 모두에게 일어난 것)을 그림과 함께. 고를 게 있으면 선택 창이 대신 뜸
 export function showPop(s: GameState, p: Player, start: number, art: string, title: string) {
@@ -1044,17 +1044,21 @@ function land(s: GameState, restLeft = 0) {
   let popTitle = POP_TITLE[kind]
   switch (kind) {
     case 'money': {
-      // 직업 미니게임 (2026-11-02 사용자): 청년·중년에 직업이 있으면 3번에 1번쯤 '오늘의 업무'로. 보너스는 결과에 따라
-      const wj = isAdultStage(s) && stageOf(s).id !== 'old' && road !== 'city' ? workJob(s, p) : null
-      if (wj && JOB_GAME[wj.id] && rng.chance(JOB_MINI_CHANCE)) {
-        const pay = Math.round(sc * rng.int(2, 5) * (road === 'startup' ? 2.5 : road === 'work' ? 1.5 : 1) * ADULT_BONUS_MULT)
-        startMini(s, p, JOB_GAME[wj.id], undefined, undefined, pay)
-        break
-      }
       const mult = road === 'startup' ? 2.5 : road === 'work' ? 1.5 : road === 'city' ? (rng.chance(0.5) ? 2 : -1) : 1
       const amt = Math.round(sc * rng.int(2, 5) * mult * (isAdultStage(s) ? ADULT_BONUS_MULT : 1))
       p.money += amt
       log(s, p.id, amt >= 0 ? `${isAdultStage(s) ? '보너스' : '용돈'} +${won(amt)}` : `투자 손실 ${won(amt)}`, amt >= 0 ? 'good' : 'bad')
+      break
+    }
+    case 'work': {
+      // 💼 직업 칸 (2026-11-02 사용자): 직업이 있으면 늘 그 직업 미니게임 '오늘의 업무'. 보너스는 결과에 따라 0.5·1.5·2배
+      // 백수(직업 없음)는 단기 알바로 보너스의 절반 (사용자 A안)
+      const pay = Math.round(sc * rng.int(2, 5) * ADULT_BONUS_MULT)
+      const wj = workJob(s, p)
+      if (wj && JOB_GAME[wj.id]) { startMini(s, p, JOB_GAME[wj.id], undefined, undefined, pay); break }
+      const half = Math.round(pay / 2)
+      p.money += half
+      log(s, p.id, `단기 알바 +${won(half)} (직업이 있으면 직업 미니게임을 해요)`, 'good')
       break
     }
     case 'grow': {

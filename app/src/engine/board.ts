@@ -55,7 +55,7 @@ export const STAGE_DEFS: StageDef[] = [
   },
   {
     id: 'young', name: '청년', ages: [20, 39], rolls: 10, length: 50,
-    weights: [['money', 22], ['card', 18], ['date', 32], ['risk', 14], ['happy', 9], ['grow', 8]],
+    weights: [['money', 14], ['work', 8], ['card', 18], ['date', 32], ['risk', 14], ['happy', 9], ['grow', 8]], // 💼 직업 칸은 돈 칸에서 떼어 옴 (2026-11-02)
     // 대학생이 3차례 늦게 출발해도 둘째 결혼식장(20)에 대부분 닿도록 앞쪽에 모음 (docs/13-review.md)
     // 직업 칸 = 출발 칸 (바로 취업은 제자리에서 고름, 대학 졸업생은 여기로 합류. 2026-10-17 사용자)
     stops: { 0: 'job' }, points: { 5: 'shop', 10: 'marriage', 18: 'shop', 20: 'marriage' },
@@ -64,7 +64,7 @@ export const STAGE_DEFS: StageDef[] = [
   },
   {
     id: 'middle', name: '중년', ages: [40, 59], rolls: 8, length: 40,
-    weights: [['money', 25], ['risk', 25], ['happy', 20], ['card', 20], ['grow', 10], ['date', 20]],
+    weights: [['money', 16], ['work', 9], ['risk', 25], ['happy', 20], ['card', 20], ['grow', 10], ['date', 20]],
     // 12: 승진 심사 (능력치 조건만 맞으면 무조건 한 단계 승진, 2026-10-17 사용자)
     // 20 취업 박람회는 2026-10-21 없앰 (창업은 인생 2막 갈림길에서 누구나)
     stops: { 12: 'promotion', 15: 'middleBranch' }, points: { 13: 'marriage', 17: 'shop' }, dateUntil: 13,
@@ -108,7 +108,7 @@ const ROAD_WEIGHTS: Partial<Record<RoadId, [TileKind, number][]>> = {
   college: [['grow', 60], ['card', 25], ['risk', 15]],
   work: [['money', 70], ['card', 15], ['risk', 15]],
   startup: [['money', 45], ['risk', 40], ['card', 15]],
-  company: [['money', 40], ['happy', 30], ['card', 20], ['risk', 10]],
+  company: [['money', 25], ['work', 15], ['happy', 30], ['card', 20], ['risk', 10]], // 하던 일 계속 길: 직업 칸이 조금 더
   city: [['money', 50], ['risk', 30], ['card', 20]],
   country: [['happy', 80], ['card', 20]], // 노년은 능력치가 안 바뀌게 성장 칸 없음 (2026-10-17 사용자)
 }

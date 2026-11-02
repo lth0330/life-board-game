@@ -62,3 +62,14 @@ it('직업 미니게임: 결과에 따라 돈 칸 보너스가 0.5·1.5·2배', 
     expect(p.money - before).toBe(300 * mult)
   }
 })
+
+it('💼 직업 칸은 청년·중년 판에만 있다', () => {
+  for (let seed = 1; seed <= 5; seed++) {
+    const s = createGame({ humanName: '나', humans: 1, aiCount: 1, settings: { startAdult: false, difficulty: 'normal' }, seed })
+    for (const st of s.stages) {
+      const n = st.tiles.filter((t) => t.kind === 'work').length
+      if (st.id === 'young' || st.id === 'middle') expect(n, `${seed} ${st.id}`).toBeGreaterThan(0)
+      else expect(n, st.id).toBe(0)
+    }
+  }
+})

@@ -38,7 +38,6 @@ export const JOB_GAME: Record<string, MiniId> = {
   civil: 'jTicket', teacher: 'jGrade', dev: 'jBug', lawyer: 'jObjection', idol: 'jIdol', actor: 'jLines', youtuber: 'jComment', ceo: 'jDeal',
 }
 export const JOB_GAMES = Object.values(JOB_GAME)
-export const JOB_MINI_CHANCE = 1 / 3 // 청년·중년 돈 칸 중
 export const CASINO: MiniId[] = ['oddEven', 'highLow', 'slot']
 export const BRAIN_GAMES: MiniId[] = ['memory', 'pairs', 'quickmath']
 

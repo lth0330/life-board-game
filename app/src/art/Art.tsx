@@ -27,6 +27,8 @@ const ICONS: Record<string, ReactElement> = {
   date: <g><path d="M24 40S7 30 7 18a8.5 8.5 0 0 1 17-2 8.5 8.5 0 0 1 17 2c0 12-17 22-17 22z" fill="#FF7AA2" {...L} strokeWidth={2.6} />{hi('M13 15q2-3 6-3')}</g>,
   // 게임기
   mini: <g><rect x="5" y="14" width="38" height="22" rx="11" fill="#fff" {...L} /><path d="M15 20v10M10 25h10" stroke="#E8742C" strokeWidth="3.4" strokeLinecap="round" /><circle cx="31" cy="22.5" r="2.8" fill="#E8742C" {...L} strokeWidth={1.4} /><circle cx="36" cy="27.5" r="2.8" fill="#4CB0E0" {...L} strokeWidth={1.4} /></g>,
+  // 서류 가방 (직업 칸)
+  work: <g><rect x="7" y="16" width="34" height="23" rx="4" fill="#7A5232" {...L} /><path d="M18 16v-4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4" {...L} fill="none" strokeWidth={2.6} /><path d="M7 26h34" {...L} fill="none" /><rect x="20" y="23" width="8" height="6" rx="1.5" fill="#F7CD45" {...L} strokeWidth={1.8} />{hi('M11 20v4')}</g>,
   // 벤치
   rest: <g><rect x="7" y="16" width="34" height="7" rx="2.5" fill="#B47A48" {...L} /><rect x="7" y="26" width="34" height="6" rx="2.5" fill="#C98F5B" {...L} /><path d="M12 32v9M36 32v9" {...L} fill="none" strokeWidth={3.4} /></g>,
   // 쇼핑백 (상점 칸)

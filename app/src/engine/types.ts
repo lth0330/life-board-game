@@ -2,7 +2,7 @@ import type { Outfit } from './outfit'
 
 export type StageId = 'child' | 'student' | 'young' | 'middle' | 'old'
 export type StatKey = 'int' | 'str' | 'cha'
-export type TileKind = 'good' | 'money' | 'grow' | 'happy' | 'risk' | 'card' | 'stop' | 'date' | 'mini' | 'rest' | 'goal' | 'campus' | 'uni' | 'point'
+export type TileKind = 'good' | 'money' | 'grow' | 'happy' | 'risk' | 'card' | 'stop' | 'date' | 'mini' | 'rest' | 'goal' | 'campus' | 'uni' | 'point' | 'work' // work = 💼 직업 칸 (2026-11-02)
 export type UniEvent = 'study' | 'club' | 'love' | 'parttime' | 'exam' | 'party' | 'scholar'
 export type StopEvent = 'club' | 'job' | 'middleBranch' | 'promotion'
 // 갈라지는 길의 테마 (칸 효과가 그 길답게 바뀜)
