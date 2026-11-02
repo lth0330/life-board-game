@@ -24,7 +24,7 @@ it('다시 만나기 카드: 만난 사람이 있어야 팔고, 쓰면 호감도
   p.suitors.push(x)
   openShop(s, p)
   choose(s, 'reunion')
-  expect(p.reunion).toBe(true)
+  expect(p.bag).toContain('reunion')
   s.pending = null
   s.phase = 'roll'
   applyOp(s, ['playReunion'])
@@ -32,7 +32,7 @@ it('다시 만나기 카드: 만난 사람이 있어야 팔고, 쓰면 호감도
   expect(pd?.type).toBe('reunion')
   choose(s, pd!.options[0].id)
   expect(x.affinity).toBeGreaterThan(30)
-  expect(p.reunion).toBe(false)
+  expect(p.bag).not.toContain('reunion')
 })
 
 it('나중에 쓰기를 고르면 카드가 남는다', () => {
@@ -41,10 +41,10 @@ it('나중에 쓰기를 고르면 카드가 남는다', () => {
   const x = makeSuitor(s, p)
   x.affinity = 30
   p.suitors.push(x)
-  p.reunion = true
+  p.bag = ['reunion']
   applyOp(s, ['playReunion'])
   choose(s, 'later')
-  expect(p.reunion).toBe(true)
+  expect(p.bag).toContain('reunion')
   expect(x.affinity).toBe(30)
 })
 
@@ -72,4 +72,29 @@ it('💼 업무 칸은 청년·중년 판에만 있다', () => {
       else expect(n, st.id).toBe(0)
     }
   }
+})
+
+it('가방: 카드·주사위 아이템을 합쳐 3칸, 꽉 차면 버릴 것을 고름', async () => {
+  const { giveChance, openShop, fixOldBag } = await import('./game')
+  const s = youngGame()
+  const p = s.players[0]
+  p.money = 5000
+  p.bag = ['even', 'rumor', 'twin']
+  giveChance(s, p, 'charm')
+  expect(s.pending?.type).toBe('bagFull')
+  choose(s, 'drop1') // 소문 퍼뜨리기를 버림
+  expect(p.bag).toEqual(['even', 'twin', 'charm'])
+  // 상점: 사기 전에 버릴 것을 고르고, 산 뒤에 버리고 넣음
+  s.pending = null; s.phase = 'roll'
+  openShop(s, p)
+  choose(s, 'dice_odd')
+  expect((s.pending as { type: string } | null)?.type).toBe('shopDiscard')
+  const before = p.money
+  choose(s, 'drop0')
+  expect(p.bag).toEqual(['twin', 'charm', 'odd'])
+  expect(before - p.money).toBe(60)
+  // 예전 저장: 따로 있던 카드·아이템을 가방으로
+  const old = { ...p, bag: undefined, chance: 'coupon', sabotage: 'love', reunion: true, diceItems: ['even'] } as unknown as typeof p
+  fixOldBag(old)
+  expect(old.bag).toEqual(['coupon', 'love', 'reunion'])
 })

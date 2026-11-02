@@ -1,10 +1,10 @@
 // 연애와 결혼 (2026-10-29 game.ts에서 나눔)
 import { josa } from './josa'
-import { CAR_RESALE, CARS, DICE_ITEMS, HOUSES, HOUSE_RULES, MAX_DICE_ITEMS, PRESTIGE_JOBS, SECTORS, SPOUSE_NAMES, TRAITS } from './data'
+import { BAG_MAX, CAR_RESALE, CARS, DICE_ITEMS, HOUSES, HOUSE_RULES, PRESTIGE_JOBS, SECTORS, SPOUSE_NAMES, TRAITS } from './data'
 import type { ChoiceOption, DiceItem, GameState, Player, Sector, Suitor } from './types'
 import { breakSavings } from './money'
 import {
-  adoptPet, canBankLoan, carChargesAt, carCost, carResale, couponOff, giveChance, hasMortgage, HOUSE_HAPPY, houseCost, housePriceOf, houseValue,
+  adoptPet, bagFull, bagOf, canBankLoan, has, put, take, carChargesAt, carCost, carResale, couponOff, giveChance, hasMortgage, HOUSE_HAPPY, houseCost, housePriceOf, houseValue,
   LOAN_RATE, LOAN_TURNS, loanLimit, log, lotteryMult, mortgagePlan, randomChance, rngOf, say, spend, stageOf, tileOf, won,
 } from './game'
 
@@ -110,11 +110,14 @@ export function bigPrice(s: GameState, p: Player, id: string, coupon: boolean) {
 }
 
 // after: 다 사고 다시 열 상점 (소개팅 회사처럼 창이 하나 더 뜨면 그 뒤에 엶)
+// 가방에 들어가는 물건인가 (꽉 찼으면 사기 전에 버릴 것을 고름)
+export const isBagBuy = (id: string) => id === 'chance' || id === 'reunion' || id.startsWith('dice_')
+
 export function shopBuy(s: GameState, p: Player, optionId: string, useCoupon: boolean, after?: ShopVisit) {
   const rng = rngOf(s)
   p.record.shopBuys++
   const big = /^(house|mortgage|car)\d/.test(optionId)
-  if (big && useCoupon) { p.chance = null; log(s, p.id, '할인 쿠폰을 썼다', 'info') }
+  if (big && useCoupon) { take(p, 'coupon'); log(s, p.id, '할인 쿠폰을 썼다', 'info') }
   if (optionId.startsWith('mortgage')) {
     const i = +optionId.slice(8) as 0 | 1 | 2 | 3
     const m = mortgagePlan(s, p, i, useCoupon)
@@ -157,17 +160,16 @@ export function shopBuy(s: GameState, p: Player, optionId: string, useCoupon: bo
     giveChance(s, p, randomChance(rng))
   } else if (optionId === 'reunion') {
     spend(p, chancePrice(s))
-    p.reunion = true
+    put(p, 'reunion')
     log(s, p.id, '다시 만나기 카드를 샀다 (던지기 전에 💌 버튼으로 써요)', 'info')
   } else if (optionId === 'pet') {
     spend(p, 50)
     adoptPet(s, p, '상점에서 반려동물을 데려왔다')
   } else if (optionId.startsWith('dice_')) {
     const k = optionId.slice(5) as DiceItem
-    if (p.diceItems.length < MAX_DICE_ITEMS) {
+    if (put(p, k)) {
       spend(p, DICE_ITEMS[k].price)
-      p.diceItems.push(k)
-      log(s, p.id, `${josa(DICE_ITEMS[k].name, '을/를')} 샀다 (가진 주사위 아이템 ${p.diceItems.length}개)`, 'info')
+      log(s, p.id, `${josa(DICE_ITEMS[k].name, '을/를')} 샀다 (가방 ${bagOf(p).length}/${BAG_MAX})`, 'info')
     }
   }
 }
@@ -176,7 +178,9 @@ export function shopBuy(s: GameState, p: Player, optionId: string, useCoupon: bo
 // 노년 상점 물건(여행·선물·기부)은 없앰 (2026-10-21 사용자)
 export type ShopVisit = { big: boolean; n: number }
 export function openShop(s: GameState, p: Player, visit: ShopVisit = { big: false, n: 0 }) {
-  const coupon = p.chance === 'coupon' ? 0.7 : 1
+  const coupon = has(p, 'coupon') ? 0.7 : 1
+  const full = bagFull(p)
+  const fullNote = full ? ` · 가방이 꽉 찼어요 (사면 하나를 버려요)` : ''
   const opts: ChoiceOption[] = []
   if (!visit.big) HOUSES.forEach((h, i) => {
     if (i <= p.house) return
@@ -200,12 +204,11 @@ export function openShop(s: GameState, p: Player, visit: ShopVisit = { big: fals
     opts.push({ id: 'agency1', label: '소개팅 회사 VIP 회원', desc: '매 턴 100만, 연애 시작 300만, 원하는 속성을 고르고 ★3 이상이 잘 나와요' })
   }
   if (!p.pet?.alive) opts.push({ id: 'pet', label: '반려동물 데려오기', desc: `${won(50)} · 매 턴 행복 +1, 사료값이 들어요`, disabled: p.money < 50 })
-  if (!p.reunion && canReunion(s, p)) opts.push({ id: 'reunion', label: '💌 다시 만나기 카드 사기', desc: `${won(chancePrice(s))} · 만난 적 있는 사람과 다시 데이트해 호감도를 올려요 · 원할 때 써요 · 결혼하거나 중년 결혼식장을 지나면 없어지고 반값을 돌려받아요`, disabled: p.money < chancePrice(s) })
-  opts.push({ id: 'chance', label: '찬스 카드 사기', desc: `${won(chancePrice(s))}${p.chance ? ' · 이미 1장 있어요' : ''}`, disabled: p.money < chancePrice(s) || !!p.chance })
-  const full = p.diceItems.length >= MAX_DICE_ITEMS
+  if (canReunion(s, p)) opts.push({ id: 'reunion', label: '💌 다시 만나기 카드 사기', desc: `${won(chancePrice(s))} · 만난 적 있는 사람과 다시 데이트해 호감도를 올려요 · 원할 때 써요 · 결혼하거나 중년 결혼식장을 지나면 없어지고 반값을 돌려받아요${fullNote}`, disabled: p.money < chancePrice(s) })
+  opts.push({ id: 'chance', label: '찬스 카드 사기', desc: `${won(chancePrice(s))} · 다시 굴리기·방해 막기·행운 부적·할인 쿠폰 중 하나${fullNote}`, disabled: p.money < chancePrice(s) })
   for (const k of Object.keys(DICE_ITEMS) as DiceItem[]) {
     const d = DICE_ITEMS[k]
-    opts.push({ id: `dice_${k}`, label: `${d.name} 사기`, desc: `${won(d.price)} · ${d.desc} · 1번 쓰면 끝${full ? ` (이미 ${MAX_DICE_ITEMS}개)` : ''}`, disabled: full || p.money < d.price })
+    opts.push({ id: `dice_${k}`, label: `${d.name} 사기`, desc: `${won(d.price)} · ${d.desc} · 1번 쓰면 끝${fullNote}`, disabled: p.money < d.price })
   }
   // 돈이 모자라면 여기서 바로 은행 대출 (2026-10-21 사용자). 일반 대출은 한 번에 하나만
   if (canBankLoan(s, p)) for (const a of [500, 1000, 3000]) {

@@ -17,7 +17,7 @@ describe('상점 (2026-10-21)', () => {
     const s = adult()
     const p = cur(s)
     p.money = 10000
-    p.chance = null
+    p.bag = []
     shop(s)
     choose(s, 'car1')
     expect(p.car).toBe(1)
@@ -36,13 +36,13 @@ describe('상점 (2026-10-21)', () => {
     const s = adult()
     const p = cur(s)
     p.money = 10000
-    p.chance = 'coupon'
+    p.bag = ['coupon']
     shop(s)
     choose(s, 'car1')
     expect(s.pending?.type).toBe('shopCoupon')
     choose(s, 'keep')
     expect(p.car).toBe(1)
-    expect(p.chance).toBe('coupon')
+    expect(p.bag).toEqual(['coupon'])
     expect(p.money).toBe(10000 - 300)
   })
 })

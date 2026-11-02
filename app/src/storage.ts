@@ -1,3 +1,4 @@
+import { fixOldGame } from './engine/bag'
 // 저장. 2026-10-17부터 계정(AWS)이 진짜 저장소이고, 이 기기에는 빠른 예비용으로 같이 둠.
 // 계정 쪽 읽기·쓰기는 account/api.ts (AWS 코드가 커서 로그인할 때만 내려받음)
 import type { GameState } from './engine/types'
@@ -37,7 +38,7 @@ export function rememberAccount(loginId: string | null) {
 }
 
 export const makeSlot = (state: GameState): SaveSlot => ({ version: SAVE_VERSION, savedAt: Date.now(), state })
-const valid = (s: SaveSlot | null | undefined): SaveSlot | null => (s && s.version === SAVE_VERSION && s.state ? s : null)
+const valid = (s: SaveSlot | null | undefined): SaveSlot | null => (s && s.version === SAVE_VERSION && s.state ? (fixOldGame(s.state), s) : null) // 예전 저장도 가방으로 (2026-11-02)
 
 export const loadLocalGame = (loginId: string): SaveSlot | null => valid(read<SaveSlot | null>(saveKey(loginId), null))
 export function saveLocalGame(loginId: string, slot: SaveSlot) { write(saveKey(loginId), slot) }

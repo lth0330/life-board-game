@@ -35,6 +35,8 @@ export type Difficulty = 'normal' | 'hard' // 쉬움은 없앰 (2026-10-23 사�
 export type Sector = '생명' | 'IT' | '화학' | '의료' | '엔터'
 export type InsuranceKind = 'health' | 'property' | 'car'
 export type ChanceCard = 'reroll' | 'block' | 'charm' | 'coupon'
+// 가방에 드는 것 (2026-11-02): 찬스·방해 카드, 💌 다시 만나기, 주사위 아이템. 이름이 서로 안 겹쳐서 그대로 씀
+export type BagItem = ChanceCard | 'rumor' | 'stockRumor' | 'love' | 'lawsuit' | 'reunion' | DiceItem
 export type SabotageCard = 'rumor' | 'stockRumor' | 'love' | 'lawsuit'
 export type CarTier = 0 | 1 | 2 | 3 // 없음, 스쿠터, 일반차, 고급차
 export type HouseTier = 0 | 1 | 2 | 3
@@ -192,12 +194,9 @@ export interface Player {
   children: number
   adopted: number
   kids: Kid[]
-  diceItems: DiceItem[] // 상점에서 산 주사위 아이템 (1회용, 최대 2개)
+  bag: BagItem[] // 가방: 카드·주사위 아이템 모두 합쳐 3개까지 (2026-11-02 사용자, engine/bag.ts)
   pet: { alive: boolean; turnsLeft: number } | null
   retire: 'city' | 'country' | null
-  chance: ChanceCard | null
-  reunion?: boolean // 다시 만나기 카드 (2026-11-02 사용자). 찬스 카드와 따로 1장
-  sabotage: SabotageCard | null
   fortuneMod: number // 다음 운세 뽑기 보정 (대결 승패)
   agency: { vip: boolean; attr: 'looks' | 'wealth' | 'fame' | 'kindness' | null } | null
   borrowedFrom: number[] // 이미 돈을 빌린 상대 (상대마다 1번)

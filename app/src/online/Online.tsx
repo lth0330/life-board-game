@@ -1,3 +1,4 @@
+import { fixOldGame } from '../engine/bag'
 // 온라인 화면: 온라인 메뉴(방 만들기·코드로 들어가기·꾸미기) → 대기실. 로그인은 처음 화면에서 (account/)
 // 게임: 방장 기기가 엔진을 돌리고 바뀔 때마다 방에 올림, 손님 기기는 받은 상태를 보여 주고 누른 것만 방장에게 보냄
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -274,7 +275,7 @@ function Lobby({ me, outfit, roomId, onLeave, renderPlay }: { me: Me; outfit: Ou
 // ───────── 게임 ─────────
 function OnlineGame({ me, room, isHost, renderPlay, onLeave }: { me: Me; room: Room; isHost: boolean; renderPlay: RenderPlay; onLeave: () => void }) {
   // 방 상태는 바뀔 때만 다시 읽음 (게임 상태가 커서 화면을 그릴 때마다 읽지 않게)
-  const lobby = useMemo(() => parse<LobbyState>(room.state, { settings: { startAdult: false, difficulty: 'normal' } }), [room.state])
+  const lobby = useMemo(() => { const l = parse<LobbyState>(room.state, { settings: { startAdult: false, difficulty: 'normal' } }); fixOldGame(l.game); return l }, [room.state]) // 예전 방 상태도 가방으로
   const owners = lobby.owners ?? []
   const mine = owners.map((u, i) => (u === me.userId ? i : -1)).filter((i) => i >= 0)
 

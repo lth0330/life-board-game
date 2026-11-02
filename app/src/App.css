@@ -239,7 +239,13 @@ button.wide.secondary { background: #fff; color: var(--ink); border: 2px solid v
 .card.chance { border-color: var(--good); }
 .card.sabotage { border-color: var(--bad); }
 .card.reunion { border-color: #E07AA0; }
-.cards .card { padding: 10px; } .cards .card b { font-size: 16px; } .cards .card p { font-size: 13px; margin: 0; }
+/* 가방 3칸 (2026-11-02): 위아래로 */
+.cards.bag { grid-template-columns: 1fr; }
+.cards.bag .card { padding: 10px 12px; gap: 4px; }
+.cards.bag .card b { font-size: 17px; } .cards.bag .card p { font-size: 13px; margin: 0; }
+.cards.bag .card button { align-self: flex-start; }
+.card.bag-chance { border-color: var(--good); } .card.bag-sabotage { border-color: var(--bad); } .card.bag-reunion { border-color: #E07AA0; } .card.bag-dice { border-color: #3B82C4; }
+.card.bag-empty { border-color: #c9bfae; min-height: 56px; justify-content: center; align-items: center; }
 .card b { font-size: 20px; font-weight: normal; }
 .card button { min-height: 44px; border-radius: 10px; border: none; background: var(--ink); color: var(--paper); font-family: 'Jua', sans-serif; }
 

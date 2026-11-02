@@ -4,7 +4,7 @@ import {
   buyLottery, choose, contestReady, rpsPick, cur, cureAddiction, finishMini, playChance, playReunion, repayFriendLoan, repayLoans, requestFriendLoan, roll, seekJob,
   startSabotage, takeLoan, toggleInsurance, tradeStock, deposit, withdraw, giveTeammate,
 } from './game'
-import type { DiceItem, GameState, InsuranceKind, Sector } from './types'
+import type { DiceItem, GameState, InsuranceKind, SabotageCard, Sector } from './types'
 
 export type Op =
   | ['roll', number, boolean, DiceItem | null]
@@ -12,7 +12,7 @@ export type Op =
   | ['finishMini', number, number?] // 대회는 누가 끝냈는지도
   | ['contestReady', number]
   | ['rpsPick', number, number] // 가위바위보 동시에: 누가, 무엇을
-  | ['buyLottery'] | ['cureAddiction'] | ['seekJob'] | ['playChance'] | ['playReunion'] | ['startSabotage']
+  | ['buyLottery'] | ['cureAddiction'] | ['seekJob'] | ['playChance'] | ['playReunion'] | ['startSabotage', SabotageCard?]
   | ['tradeStock', Sector, number]
   | ['toggleInsurance', InsuranceKind]
   | ['takeLoan', number]
@@ -35,7 +35,7 @@ export function applyOp(s: GameState, op: Op) {
     case 'seekJob': return seekJob(s)
     case 'playChance': return playChance(s)
     case 'playReunion': return playReunion(s)
-    case 'startSabotage': return startSabotage(s)
+    case 'startSabotage': return startSabotage(s, op[1])
     case 'tradeStock': return tradeStock(s, op[1], op[2])
     case 'toggleInsurance': return toggleInsurance(s, op[1])
     case 'takeLoan': return takeLoan(s, op[1])

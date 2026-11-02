@@ -3,7 +3,7 @@ import { findEvent, specialValue } from './special'
 import {
   aiDiceItem, aiInvestDecision, aiBizOpp, aiFinishMini, aiWantsCar, passChance, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, canBankLoan, loanLimit, loanTotal, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, rngOf, salaryOf, scoreOf, stageOf, startSabotage, takeLoan, toggleInsurance,
-  tradeStock, playChance, playReunion, findSuitor, scaleOf, withdraw, lotteryPrice,
+  tradeStock, playChance, playReunion, findSuitor, has, sabotagesIn, bagFull, bagOf, bagKind, canReunion, isBagBuy, scaleOf, withdraw, lotteryPrice,
 } from './game'
 import type { GameState, Pending, Personality, Player } from './types'
 
@@ -133,6 +133,7 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
       }
       if (id.startsWith('house')) { const i = +id.slice(5); return p.money - houseCost(s, p, i) >= loanTotal(p) ? 3 + i : 0 } // 빚 갚을 돈은 남기고 살 수 있으면 삼
       if (id.startsWith('car')) { const i = +id.slice(3); return p.money - loanTotal(p) > carCost(p, i) * 2 ? 2.5 + i * 0.5 : 0 }
+      if (isBagBuy(id) && bagFull(p)) return 0 // 가방이 꽉 차면 안 삼
       if (id === 'chance') return 0.5
       if (id === 'reunion') return p.suitors.some((x) => x.affinity >= 25 && x.affinity < 50) ? (per === 'family' ? 2.2 : 1.2) : 0 // 결혼 지점(호감 50%) 앞에서 조금 모자랄 때
       if (id === 'pet') return per === 'family' ? 2.4 : 0.8
@@ -148,6 +149,12 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
         return per === 'family' ? (vip ? 1.5 : 2.6) : per === 'elite' ? (vip && p.money > 3000 ? 2.8 : 1.2) : vip ? 0.5 : 1.1
       }
       return 0
+    }
+    case 'bagFull': {
+      // 가장 덜 쓸모 있는 것을 버림 (새것 포함)
+      const item = (pd.data as { item: import('./types').BagItem }).item
+      const x = id === 'new' ? item : bagOf(p)[+id.slice(4)]
+      return x === undefined ? 0 : 10 - bagWorth(s, p, x)
     }
     case 'reunion': {
       if (id === 'later') return 0
@@ -180,7 +187,6 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
     case 'invest': return id === 'yes' ? (p.fortune >= 3 ? 3 : per === 'gambler' ? 2 : 0.5) : 1
     case 'overtime': return id === 'yes' ? (per === 'investor' || per === 'elite' ? 2 : 1) : per === 'family' ? 2 : 1
     case 'taxEvade': return id === 'yes' ? (per === 'gambler' ? 3 : p.fortune >= 4 ? 2 : 0.2) : 1
-    case 'cardSwap': return id === 'new' ? rng.next() : 0.5
     case 'agencyAttr': {
       const want = { family: 'kindness', elite: 'fame', investor: 'wealth', gambler: 'looks', safe: 'kindness' }[per]
       return id === want ? 2 : 0.5
@@ -230,9 +236,9 @@ export function aiPreRoll(s: GameState) {
   const p = cur(s)
   const rng = rngOf(s)
   const per = p.personality
-  if (p.chance === 'charm' && p.fortune <= 1) playChance(s)
-  if (p.reunion && canAct(s)) { playReunion(s); if (s.pending) choose(s, aiChoose(s)) }
-  if (p.sabotage && isAdultStage(s) && rng.chance(per === 'gambler' ? 0.6 : s.settings.difficulty === 'hard' ? 0.4 : 0.15)) {
+  if (has(p, 'charm') && p.fortune <= 1) playChance(s)
+  if (has(p, 'reunion') && canAct(s)) { playReunion(s); if (s.pending) choose(s, aiChoose(s)) }
+  if (sabotagesIn(p).length && isAdultStage(s) && rng.chance(per === 'gambler' ? 0.6 : s.settings.difficulty === 'hard' ? 0.4 : 0.15)) {
     startSabotage(s)
     if (s.pending) choose(s, aiChoose(s))
   }
@@ -310,4 +316,14 @@ export function aiStep(s: GameState) {
   const q = cur(s)
   const item = aiDiceItem(s, q)
   roll(s, 0, !item && aiWantsCar(s, q), item)
+}
+
+// 가방 물건의 쓸모 (AI가 꽉 찼을 때 무엇을 버릴지)
+function bagWorth(s: GameState, p: Player, x: import('./types').BagItem): number {
+  switch (bagKind(x)) {
+    case 'reunion': return canReunion(s, p) ? 4 : 0
+    case 'sabotage': return p.personality === 'gambler' ? 3 : 1.5
+    case 'dice': return x === 'twin' ? 3 : x === 'even' ? 2 : 1.5
+    default: return x === 'coupon' ? (stageOf(s).id === 'old' ? 0.5 : 3) : 2
+  }
 }

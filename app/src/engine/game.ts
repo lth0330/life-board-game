@@ -1,9 +1,10 @@
+import { bagFull, bagKind, bagLabel, bagName, bagOf, diceIn, fixOldBag, has, put, sabotagesIn, take } from './bag'
 import { josa } from './josa'
 import { BIZ_OPP, findBizEvent } from './bizEvents'
 import { buildStages, isEnd, maxDepth, walkAhead } from './board'
 import {
-  AI_NAMES, BIZ, BUSINESSES, CAFE, CARS, CHANCE_NAMES, DICE_ITEMS, FORTUNES, HOUSES, CAR_RESALE, HOUSE_RULES, INSURANCE, JOBS, KIDS, LOTTERY_MULT, LOTTERY_PRICE, MEDALS, PENSION,
-  ADULT_BONUS_MULT, PERF_BONUS, SCORE_PER_POINT, PERSONALITIES, PLAYER_COLORS, PRESTIGE_JOBS, SABOTAGE_NAMES, SECTORS, STAGE_SCALE,
+  AI_NAMES, BIZ, BUSINESSES, CAFE, CARS, DICE_ITEMS, FORTUNES, HOUSES, CAR_RESALE, HOUSE_RULES, INSURANCE, JOBS, KIDS, LOTTERY_MULT, LOTTERY_PRICE, MEDALS, PENSION,
+  ADULT_BONUS_MULT, BAG_MAX, PERF_BONUS, SCORE_PER_POINT, PERSONALITIES, PLAYER_COLORS, PRESTIGE_JOBS, SABOTAGE_NAMES, SECTORS, STAGE_SCALE,
   STAT_NAMES, TAX_RATE, JOB_PROS_CONS,
 } from './data'
 import { DEFAULT_OUTFIT, randomOutfit, type Outfit } from './outfit'
@@ -11,12 +12,12 @@ import { makeRng, type Rng } from './rng'
 import { DILEMMAS, eventText, eventTitle, findEvent, optionLabel, SPECIALS, specialDesc, THEME_EVENTS, type SpecialEvent, type SpecialOption } from './special'
 import { speechLine, type SpeechKey } from './speech'
 import type {
-  ChanceCard, ChoiceOption, DiceItem, GameState, InsuranceKind, JobDef, MapTheme, MiniId, Personality, Player, SabotageCard, Sector, Settings, Stage,
+  BagItem, ChanceCard, ChoiceOption, DiceItem, GameState, InsuranceKind, JobDef, MapTheme, MiniId, Personality, Player, SabotageCard, Sector, Settings, Stage,
   StageId, StatKey, Suitor, Tile,
 } from './types'
 import { affinityGain, BRAIN_GAMES, CASINO, JOB_GAME, casinoStake, FEST_GAMES, meet, resolveRps, rpsPending, startContest, startMini } from './mini'
 import {
-  agencyTurn, type Attr, bigPrice, canDate, canReunion, chancePrice, stars, dateTile, findSuitor, makeSuitor, openShop, shopBuy, type ShopVisit, suitorDesc, triggerPoint,
+  agencyTurn, type Attr, bigPrice, canDate, canReunion, chancePrice, stars, dateTile, findSuitor, makeSuitor, isBagBuy, openShop, shopBuy, type ShopVisit, suitorDesc, triggerPoint,
 } from './romance'
 import { addKid, eduPending, familyTick, isMinor, kidUpkeep } from './kids'
 import {
@@ -27,6 +28,7 @@ import { breakSavings, friendLoanTick, lawsuit, makeFriendLoan, savingsTick } fr
 export * from './biz'
 export * from './kids'
 export * from './mini'
+export * from './bag'
 export * from './money'
 export * from './romance'
 
@@ -97,12 +99,12 @@ export function assetsOf(s: GameState, p: Player) {
 export const couponOff = (price: number, cap: number) => Math.min(Math.round(price * 0.3), cap)
 // 차를 바꿀 때: 지금 차를 지금 가치의 80%에 팔고 모자란 만큼만 냄
 export const carResale = (p: Player) => Math.round(p.carValue * CAR_RESALE)
-export const carCost = (p: Player, tier: number, coupon = p.chance === 'coupon') =>
+export const carCost = (p: Player, tier: number, coupon = has(p, 'coupon')) =>
   Math.max(0, CARS[tier].price - (coupon ? couponOff(CARS[tier].price, 500) : 0) - carResale(p))
 export const housePriceOf = (s: GameState, tier: number) => Math.round(HOUSES[tier].price * s.housePrice / 100)
 export const houseValue = (s: GameState, p: Player) => housePriceOf(s, p.house)
 // 집을 바꿀 때: 지금 집을 시세대로 팔고 모자란 만큼만 냄
-export function houseCost(s: GameState, p: Player, tier: number, coupon = p.chance === 'coupon') {
+export function houseCost(s: GameState, p: Player, tier: number, coupon = has(p, 'coupon')) {
   return Math.max(0, housePriceOf(s, tier) - (coupon ? couponOff(housePriceOf(s, tier), 1000) : 0) - houseValue(s, p))
 }
 export { SCORE_PER_POINT }
@@ -203,8 +205,8 @@ function newPlayer(id: number, name: string, human: boolean, personality: Person
     car: 0, carCharges: 0, carValue: 0, stockCost: { 생명: 0, IT: 0, 화학: 0, 의료: 0, 엔터: 0 }, jobTenure: 0, biz: null, bizKeep: null, medals: [], exAthlete: null, celebrated: [], record: { shopBuys: 0, spent: 0, lotteryWon: 0, deeds: 0, duelWins: 0, stockGain: 0, shopSpent: 0 }, house: 0, loans: [], creditBad: 0,
     lottery: { ticket: false, chance: 10, addicted: false },
     stocks: { 생명: 0, IT: 0, 화학: 0, 의료: 0, 엔터: 0 },
-    suitors: [], spouse: null, divorced: false, children: 0, adopted: 0, kids: [], diceItems: [], pet: null, retire: null,
-    chance: null, sabotage: null, fortuneMod: 0, agency: null, borrowedFrom: [], forkChoice: null,
+    suitors: [], spouse: null, divorced: false, children: 0, adopted: 0, kids: [], bag: [], pet: null, retire: null,
+    fortuneMod: 0, agency: null, borrowedFrom: [], forkChoice: null,
     outfit: DEFAULT_OUTFIT, sector: null, collegeDecided: false, campusTurns: 0,
   }
 }
@@ -316,13 +318,13 @@ function beginTurn(s: GameState) {
   s.meetCheck = false
   s.phase = 'roll'
   tickFortune(s, p)
-  if ((p.chance as string) === 'shortcut') p.chance = 'reroll' // 예전 저장에 남은 지름길 카드 (2026-10-23 없앰)
+  fixOldBag(p) // 예전 저장: 카드·주사위 아이템을 가방으로
   if (p.agency && !canDate(s, p) && stageOf(s).id === 'middle') {
     p.agency = null
     log(s, p.id, '중년 결혼식장을 지나 소개팅 회사가 자동 해지됐다', 'info')
   }
-  if (p.reunion && !canDate(s, p)) {
-    p.reunion = false
+  while (has(p, 'reunion') && !canDate(s, p)) {
+    take(p, 'reunion')
     const back = Math.round(chancePrice(s) / 2)
     p.money += back
     log(s, p.id, `${p.spouse ? '결혼해서' : '결혼식장을 지나'} 다시 만나기 카드가 없어졌다. 반값 +${won(back)} 돌려받음`, 'good')
@@ -557,7 +559,7 @@ function mortgageTick(s: GameState, p: Player) {
 }
 
 // 주택담보대출로 집 살 때 필요한 계약금·빌릴 돈·매 턴 갚을 돈
-export function mortgagePlan(s: GameState, p: Player, tier: number, coupon = p.chance === 'coupon') {
+export function mortgagePlan(s: GameState, p: Player, tier: number, coupon = has(p, 'coupon')) {
   const cost = houseCost(s, p, tier, coupon)
   const down = Math.round(cost * HOUSE_RULES.downRate)
   const borrow = cost - down
@@ -675,7 +677,7 @@ export function roll(s: GameState, bonus = 0, useCar = false, item: DiceItem | n
     p.stats[k] = clampStat(p.stats[k] + 1)
     p.money += scaleOf(s)
     log(s, p.id, `휴식 칸에서 쉬었다: ${STAT_NAMES[k]} +1, +${won(scaleOf(s))}`, 'good')
-    if (rng.chance(0.25) && !p.chance) giveChance(s, p, randomChance(rng))
+    if (rng.chance(0.25) && !bagFull(p)) giveChance(s, p, randomChance(rng)) // 가방이 꽉 찼으면 안 줌 (차례가 끝나는 중이라 묻지 않게)
     showPop(s, p, restStart, 'rest', '휴식 칸')
     endTurn(s)
     return
@@ -683,8 +685,8 @@ export function roll(s: GameState, bonus = 0, useCar = false, item: DiceItem | n
   const again = s.reroll // 찬스 카드로 다시 굴리는 중: 아이템은 이미 썼고 자동차는 안 씀
   s.reroll = null
   if (again) { bonus = again.bonus; useCar = false }
-  const used = again ? again.item : item && p.diceItems.includes(item) ? item : null
-  if (used && !again) p.diceItems.splice(p.diceItems.indexOf(used), 1)
+  const used = again ? again.item : item && has(p, item) ? item : null
+  if (used && !again) take(p, used)
   const d = throwDice(s, used)
   s.dice = { value: d.a, second: d.b, id: (s.dice?.id ?? 0) + 1 }
   s.lastRoll = d.value + bonus
@@ -695,7 +697,7 @@ export function roll(s: GameState, bonus = 0, useCar = false, item: DiceItem | n
     p.carCharges--
     log(s, p.id, `${CARS[p.car].name} 능력 사용 (남은 ${p.carCharges}번)`, 'info')
   }
-  if (carOn || p.chance === 'reroll') {
+  if (carOn || has(p, 'reroll')) {
     if (p.human) {
       const n = s.lastRoll
       const opts: ChoiceOption[] = carOn
@@ -705,7 +707,7 @@ export function roll(s: GameState, bonus = 0, useCar = false, item: DiceItem | n
             { id: 'plus', label: `+1 → ${n + 1}칸` },
           ].filter((o) => !o.disabled)
         : [{ id: 'keep', label: `그대로 ${n}칸` }]
-      if (p.chance === 'reroll') opts.push({ id: 'reroll', label: '다시 굴리기 (찬스 카드)' })
+      if (has(p, 'reroll')) opts.push({ id: 'reroll', label: '다시 굴리기 (찬스 카드)' })
       s.pending = {
         type: 'afterRoll', playerId: p.id, title: `주사위 ${n}`,
         text: carOn ? `${CARS[p.car].name} 능력: 몇 칸 갈까요?` : '이대로 갈까요?', options: opts,
@@ -736,22 +738,23 @@ function aiAfterRoll(s: GameState, p: Player, n: number, carOn: boolean): string
     const bonus = (k: number) => (st.id === 'old' ? k * 0.5 : 0) // 노년은 골까지 경주
     return cands.reduce((a, c) => (value(c[1]) + bonus(c[1]) > value(a[1]) + bonus(a[1]) ? c : a))[0]
   }
-  if (p.chance === 'reroll' && kindAt(n) === 'risk') return 'reroll'
+  if (has(p, 'reroll') && kindAt(n) === 'risk') return 'reroll'
   return 'keep'
 }
 
 // AI가 던지기 전에 주사위 아이템을 쓸지 (쓰면 자동차는 못 씀)
 export function aiDiceItem(s: GameState, p: Player): DiceItem | null {
-  if (!p.diceItems.length) return null
+  const dice = diceIn(p)
+  if (!dice.length) return null
   const st = stageOf(s)
   if (isEnd(tileOf(s, p))) return null
   const avg = (ks: number[]) => ks.reduce((a, k) => a + aheadValue(s, p, k), 0) / ks.length
   const normal = avg([1, 2, 3, 4, 5, 6])
   for (const item of ['even', 'odd'] as const) {
-    if (p.diceItems.includes(item) && avg(item === 'even' ? [2, 4, 6] : [1, 3, 5]) >= normal + 0.7) return item
+    if (dice.includes(item) && avg(item === 'even' ? [2, 4, 6] : [1, 3, 5]) >= normal + 0.7) return item
   }
-  if (p.diceItems.includes('twin') && (st.id === 'old' || (st.rolls && p.rollsLeft <= 2) || rngOf(s).chance(0.2))) return 'twin'
-  if (st.id === 'old' && p.diceItems.includes('even')) return 'even' // 골 경주: 평균 4칸
+  if (dice.includes('twin') && (st.id === 'old' || (st.rolls && p.rollsLeft <= 2) || rngOf(s).chance(0.2))) return 'twin'
+  if (st.id === 'old' && dice.includes('even')) return 'even' // 골 경주: 평균 4칸
   return null
 }
 
@@ -769,7 +772,7 @@ function applyAfterRoll(s: GameState, p: Player, choice: string, item: DiceItem 
   if (choice === 'plus') { n += 1; log(s, p.id, `${josa(CARS[p.car].name, '으로/로')} 1칸 더 갔다`, 'info') }
   if (choice === 'reroll' && p.human) {
     // 사람은 직접 다시 굴림 (2026-10-17 사용자)
-    p.chance = null
+    take(p, 'reroll')
     s.reroll = { item, bonus }
     s.pending = null
     s.phase = 'roll'
@@ -777,7 +780,7 @@ function applyAfterRoll(s: GameState, p: Player, choice: string, item: DiceItem 
     return
   }
   if (choice === 'reroll') {
-    p.chance = null
+    take(p, 'reroll')
     const d = throwDice(s, item) // 주사위 아이템을 썼으면 같은 방식으로 다시
     n = d.value + bonus
     s.dice = { value: d.a, second: d.b, id: (s.dice?.id ?? 0) + 1 }
@@ -1157,31 +1160,20 @@ function riskTile(s: GameState, p: Player, mult: number) {
   badEvent(s, p, rng.pick(opts))
 }
 
-export function giveChance(s: GameState, p: Player, card: ChanceCard) {
-  if (p.chance && p.chance !== card) {
-    s.pending = {
-      type: 'cardSwap', playerId: p.id, title: '찬스 카드는 1장만', text: '어느 카드를 가질까요?',
-      options: [{ id: 'old', label: `가진 카드: ${CHANCE_NAMES[p.chance]}` }, { id: 'new', label: `새 카드: ${CHANCE_NAMES[card]}` }],
-      data: { kind: 'chance', card },
-    }
-    return
+// 가방에 넣기. 꽉 찼으면 버릴 것을 물어봄 (2026-11-02 사용자 A안: 가진 3개 + 새것 중 하나를 버림)
+export function giveItem(s: GameState, p: Player, item: BagItem) {
+  if (put(p, item)) { log(s, p.id, `${bagLabel(item)} 획득`, bagKind(item) === 'sabotage' ? 'info' : 'good'); return }
+  s.pending = {
+    type: 'bagFull', playerId: p.id, title: '가방이 꽉 찼어요', text: `${josa(bagLabel(item), '을/를')} 얻었어요. 가방은 ${BAG_MAX}칸이에요. 무엇을 버릴까요?`,
+    options: [
+      ...bagOf(p).map((x, i) => ({ id: `drop${i}`, label: `🗑️ ${bagLabel(x)} 버리기`, desc: '버리고 새것을 가방에 넣어요' })),
+      { id: 'new', label: `🗑️ 새것(${bagName(item)}) 버리기`, desc: '가방은 그대로' },
+    ],
+    data: { item },
   }
-  p.chance = card
-  log(s, p.id, `찬스 카드 획득: ${CHANCE_NAMES[card]}`, 'good')
 }
-
-function giveSabotage(s: GameState, p: Player, card: SabotageCard) {
-  if (p.sabotage && p.sabotage !== card) {
-    s.pending = {
-      type: 'cardSwap', playerId: p.id, title: '방해 카드는 1장만', text: '어느 카드를 가질까요?',
-      options: [{ id: 'old', label: `가진 카드: ${SABOTAGE_NAMES[p.sabotage]}` }, { id: 'new', label: `새 카드: ${SABOTAGE_NAMES[card]}` }],
-      data: { kind: 'sabotage', card },
-    }
-    return
-  }
-  p.sabotage = card
-  log(s, p.id, `방해 카드 획득: ${SABOTAGE_NAMES[card]}`, 'info')
-}
+export const giveChance = (s: GameState, p: Player, card: ChanceCard) => giveItem(s, p, card)
+const giveSabotage = (s: GameState, p: Player, card: SabotageCard) => giveItem(s, p, card)
 
 export const randomChance = (rng: Rng) => rng.pick(['reroll', 'block', 'charm', 'coupon'] as ChanceCard[]) // 지름길(+2)은 없앰 (2026-10-23 사용자)
 
@@ -1724,12 +1716,30 @@ export function choose(s: GameState, optionId: string) {
       s.lastRoll = 0 // 이번 차례는 대학 생활로 끝 (주사위 1번 쓴 것으로 침)
       break
     }
-    case 'cardSwap': {
-      const d = pd.data as { kind: string; card: string }
-      if (optionId === 'new') {
-        if (d.kind === 'chance') p.chance = d.card as ChanceCard
-        else p.sabotage = d.card as SabotageCard
-      }
+    case 'bagFull': {
+      const d = pd.data as { item: BagItem }
+      if (optionId === 'new') { log(s, p.id, `${josa(bagLabel(d.item), '은/는')} 버렸다`, 'info'); break }
+      const i = +optionId.slice(4)
+      const old = bagOf(p)[i]
+      if (old === undefined) break
+      p.bag.splice(i, 1)
+      p.bag.push(d.item)
+      log(s, p.id, `${josa(bagLabel(old), '을/를')} 버리고 ${josa(bagLabel(d.item), '을/를')} 가방에 넣었다`, 'info')
+      break
+    }
+    case 'cardSwap': break // 예전 저장 (2026-11-02 가방으로 바꿈)
+    case 'shopDiscard': {
+      // 가방이 꽉 찬 채 상점에서 살 때: 버릴 것을 먼저 고르고, 산 뒤에 버리고 넣음 (2026-11-02 사용자)
+      const d = pd.data as { item: string; visit: ShopVisit }
+      if (optionId === 'back') { openShop(s, p, d.visit); break }
+      const i = +optionId.slice(4)
+      const old = bagOf(p)[i]
+      if (old === undefined) { openShop(s, p, d.visit); break }
+      p.bag.splice(i, 1)
+      log(s, p.id, `${josa(bagLabel(old), '을/를')} 버렸다`, 'info')
+      const next = { big: d.visit.big, n: d.visit.n + 1 }
+      shopBuy(s, p, d.item, false, next)
+      if (!s.pending) openShop(s, p, next)
       break
     }
     case 'club': {
@@ -1804,7 +1814,15 @@ export function choose(s: GameState, optionId: string) {
       }
       const big = /^(house|mortgage|car)\d/.test(optionId)
       // 할인 쿠폰이 있으면 집·차를 살 때 쓸지 물어봄 (2026-10-21 사용자). AI는 늘 씀
-      if (big && p.chance === 'coupon' && p.human) {
+      if (!big && isBagBuy(optionId) && bagFull(p)) {
+        s.pending = {
+          type: 'shopDiscard', playerId: p.id, title: '가방이 꽉 찼어요', text: `가방은 ${BAG_MAX}칸이에요. 사려면 무엇을 버릴까요? (산 뒤에 버리고 새것을 넣어요)`,
+          options: [...bagOf(p).map((x, i) => ({ id: `drop${i}`, label: `🗑️ ${bagLabel(x)} 버리기` })), { id: 'back', label: '안 살래요 (상점으로)' }],
+          data: { item: optionId, visit },
+        }
+        break
+      }
+      if (big && has(p, 'coupon') && p.human) {
         const [withC, without] = [true, false].map((c) => bigPrice(s, p, optionId, c))
         s.pending = {
           type: 'shopCoupon', playerId: p.id, title: '할인 쿠폰', text: '할인 쿠폰을 쓸까요? 쓰면 카드는 없어져요.',
@@ -1818,7 +1836,7 @@ export function choose(s: GameState, optionId: string) {
         break
       }
       const next = { big: visit.big || big, n: visit.n + 1 }
-      shopBuy(s, p, optionId, p.chance === 'coupon', next)
+      shopBuy(s, p, optionId, has(p, 'coupon'), next)
       if (!s.pending) openShop(s, p, next) // 소개팅 회사 속성 고르기 창이 뜨면 그 뒤에 다시 상점
       break
     }
@@ -2056,7 +2074,7 @@ export function choose(s: GameState, optionId: string) {
       if (optionId === 'later') break
       const x = findSuitor(p, optionId)
       if (!x) break
-      p.reunion = false
+      take(p, 'reunion')
       const add = affinityGain(s, p, x)
       x.affinity = Math.min(100, x.affinity + add)
       p.happy += 1
@@ -2065,7 +2083,7 @@ export function choose(s: GameState, optionId: string) {
     }
     case 'sabotageTarget': {
       const target = s.players[+optionId]
-      if (target) applySabotage(s, p, target)
+      if (target) applySabotage(s, p, target, (pd.data as { card?: SabotageCard } | undefined)?.card)
       break
     }
     case 'wallet': {
@@ -2118,7 +2136,7 @@ export function choose(s: GameState, optionId: string) {
   }
 }
 // 결과 창을 따로 안 띄우는 선택 (갈림길·상점처럼 다음 화면이 바로 이어지는 것)
-const NO_RESULT_POP = new Set(['fork', 'shop', 'shopCoupon', 'agencyAttr', 'afterRoll', 'retake', 'casinoStake', 'festTarget', 'sabotageTarget', 'cardSwap'])
+const NO_RESULT_POP = new Set(['fork', 'shop', 'shopCoupon', 'agencyAttr', 'afterRoll', 'retake', 'casinoStake', 'festTarget', 'sabotageTarget', 'cardSwap', 'bagFull', 'shopDiscard'])
 const TYPE_POP_ART: Record<string, string> = { reunion: 'heart', wallet: 'money', happyPick: 'rest', date: 'heart', marriage: 'heart', growPick: 'grow', job: 'money', invest: 'money' }
 
 // ───────── 차례 전에 하는 행동 (재테크·카드) ─────────
@@ -2204,9 +2222,9 @@ export function toggleInsurance(s: GameState, kind: InsuranceKind) {
 
 export function playChance(s: GameState) {
   const p = cur(s)
-  if (!canAct(s) || !p.chance) return
-  if (p.chance === 'charm') {
-    p.chance = null
+  if (!canAct(s) || !has(p, 'charm')) return
+  {
+    take(p, 'charm')
     p.charmTurns = 3
     syncFortune(p)
     log(s, p.id, `행운 부적! 3턴 동안 운세 한 단계↑ (지금 ${fortuneName(p.fortune)})`, 'good')
@@ -2216,7 +2234,7 @@ export function playChance(s: GameState) {
 // 다시 만나기 카드 쓰기: 만난 적 있는 사람을 골라 데이트 (2026-11-02 사용자)
 export function playReunion(s: GameState) {
   const p = cur(s)
-  if (!canAct(s) || !p.reunion || !canReunion(s, p)) return
+  if (!canAct(s) || !has(p, 'reunion') || !canReunion(s, p)) return
   s.pending = {
     type: 'reunion', playerId: p.id, title: '💌 다시 만나기', text: '누구를 다시 만날까요? 데이트 칸처럼 호감도가 올라요.',
     options: [
@@ -2227,11 +2245,13 @@ export function playReunion(s: GameState) {
   s.phase = 'decision'
 }
 
-export function startSabotage(s: GameState) {
+export function startSabotage(s: GameState, which?: SabotageCard) {
   const p = cur(s)
-  if (!canAct(s) || !p.sabotage) return
+  const card = which && has(p, which) ? which : sabotagesIn(p)[0]
+  if (!canAct(s) || !card) return
   s.pending = {
-    type: 'sabotageTarget', playerId: p.id, title: SABOTAGE_NAMES[p.sabotage], text: '누구에게 쓸까요? 상대 운세가 나보다 좋을수록 역풍이 불 수 있어요.',
+    data: { card },
+    type: 'sabotageTarget', playerId: p.id, title: SABOTAGE_NAMES[card], text: '누구에게 쓸까요? 상대 운세가 나보다 좋을수록 역풍이 불 수 있어요.',
     options: s.players.filter((q) => q.id !== p.id && !sameTeam(s, p, q)).map((q) => ({ id: String(q.id), label: q.name, desc: `운세 ${fortuneName(q.fortune)} · 역풍 ${q.fortune > p.fortune ? Math.round((BACKFIRE[q.fortune] ?? 0) * 100) : 0}%` })),
   }
   s.phase = 'decision'
@@ -2239,15 +2259,15 @@ export function startSabotage(s: GameState) {
 
 // 역풍 확률: 상대 운세가 내 운세보다 높을 때만, 상대 운세(대흉~대길)에 따라 (2026-10-21 사용자: 쓰는 사람 운세는 안 내려감)
 export const BACKFIRE = [0, 0, 0.1, 0.25, 0.4]
-function applySabotage(s: GameState, p: Player, target: Player) {
+function applySabotage(s: GameState, p: Player, target: Player, which?: SabotageCard) {
   const rng = rngOf(s)
-  const card = p.sabotage
+  const card = which && has(p, which) ? which : sabotagesIn(p)[0]
   if (!card) return
-  p.sabotage = null
+  take(p, card)
   log(s, p.id, `${target.name}에게 ${SABOTAGE_NAMES[card]}!`, 'info')
   say(s, p, 'sabotageUse')
-  if (target.chance === 'block') {
-    target.chance = null
+  if (has(target, 'block')) {
+    take(target, 'block')
     log(s, target.id, '방해 막기 카드로 막았다!', 'good')
     return
   }

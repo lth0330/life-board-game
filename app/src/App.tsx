@@ -4,7 +4,7 @@ import { Character, type Expr } from './art/Character'
 import { aiStep } from './engine/ai'
 import { CARS, DICE_ITEMS, MINI_PRACTICE_LIMIT } from './engine/data'
 import {
-  ageOf, turnIncome, loanTotal, canAct, canUseCar, createGame, cur, fortuneName, miniGuide, canSeekJob, canReunion, stageOf, contestName, miniLevel, contestReady,
+  ageOf, turnIncome, loanTotal, canAct, canUseCar, createGame, cur, fortuneName, miniGuide, canSeekJob, canReunion, has, diceIn, bagOf, stageOf, contestName, miniLevel, contestReady,
 } from './engine/game'
 import { applyOp, type Op } from './engine/ops'
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
@@ -646,9 +646,9 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
     online?.spin?.(p.id)
   }
   const showCar = myTurn && canUseCar(p) && !onCampus
-  const heldItems = myTurn && !onCampus ? [...new Set(p.diceItems)] : []
+  const heldItems = myTurn && !onCampus ? [...new Set(diceIn(p))] : []
   const showSeek = myTurn && canSeekJob(game, p)
-  const showReunion = myTurn && !!p.reunion && canReunion(game, p)
+  const showReunion = myTurn && has(p, 'reunion') && canReunion(game, p)
   const sheetP = !myTurn && online ? game.players[online.mine[0]] : p // 온라인은 내 차례가 아닐 때 내 재테크·카드를 보여 줌
   const stageBanner = banner && !busy && banner.title.endsWith('단계')
 
@@ -723,14 +723,14 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
           )}
           {heldItems.map((k) => (
             <button key={k} className={`car-toggle ${itemMode === k ? 'on' : ''}`} aria-pressed={itemMode === k} onClick={() => { setItemMode(itemMode === k ? null : k); setCarMode(false) }}>
-              {DICE_ITEMS[k].name} {itemMode === k ? '사용함' : '쓰기'}{p.diceItems.filter((x) => x === k).length > 1 ? ' · 2개' : ''}
+              {DICE_ITEMS[k].name} {itemMode === k ? '사용함' : '쓰기'}{diceIn(p).filter((x) => x === k).length > 1 ? ` · ${diceIn(p).filter((x) => x === k).length}개` : ''}
             </button>
           ))}
         </div>
       )}
 
       <div className="controls">
-        <button className="mid" onClick={() => setSheet('cards')}>카드{(p.chance || p.sabotage) ? <em>{(p.chance ? 1 : 0) + (p.sabotage ? 1 : 0)}</em> : null}</button>
+        <button className="mid" onClick={() => setSheet('cards')}>가방{bagOf(p).length ? <em>{bagOf(p).length}</em> : null}</button>
         <button className={`dice-btn${spinning ? ' spinning' : ''}`} disabled={!myTurn && !spinning} onClick={doRoll}>
           {spinning ? <span>멈추기!</span> : onCampus ? <span>대학<br />생활</span> : <span>주사위<br />던지기</span>}
         </button>
@@ -858,7 +858,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
         <CardsSheet p={sheetP} canUse={myTurn} canMeet={canReunion(game, sheetP)}
           onUseChance={() => { setSheet(null); run(['playChance']) }}
           onReunion={() => { setSheet(null); run(['playReunion']) }}
-          onSabotage={() => { setSheet(null); run(['startSabotage']) }}
+          onSabotage={(c) => { setSheet(null); run(['startSabotage', c]) }}
           onClose={() => setSheet(null)} />
       )}
       {sheet === 'people' && <PeopleSheet s={game} onClose={() => setSheet(null)} />}

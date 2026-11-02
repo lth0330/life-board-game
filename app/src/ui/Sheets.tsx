@@ -2,13 +2,13 @@ import { josa } from '../engine/josa'
 import { useState, type ReactNode } from 'react'
 import { Character } from '../art/Character'
 import { Trophy } from '../art/More'
-import { CARS, CHANCE_NAMES, DICE_ITEMS, HOUSE_RULES, HOUSES, INSURANCE, JOB_PROS_CONS, JOBS, KIDS, MEDALS, SABOTAGE_NAMES, SAVINGS_FEE, SAVINGS_PLANS, SECTORS } from '../engine/data'
+import { BAG_MAX, CARS, DICE_ITEMS, HOUSE_RULES, HOUSES, INSURANCE, JOB_PROS_CONS, JOBS, KIDS, MEDALS, SAVINGS_FEE, SAVINGS_PLANS, SECTORS } from '../engine/data'
 import {
   ageOf, AWARD_POINTS, awardsOf, canBankLoan, canBorrowFrom, loanCap, LOAN_RATE, LOAN_TURNS, fortuneName, friendDebt, houseValue, isAdultStage, jobOf, kidAllowance, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
   stageOf, stars, stocksValue, teamTotals, TEAM_COLORS, TEAM_NAMES, sameTeam,
-  myStakes, lotteryMult, lotteryPrice, LOTTERY_PRIZES,
+  myStakes, lotteryMult, lotteryPrice, LOTTERY_PRIZES, bagOf, bagKind, bagName, bagLabel, BAG_KIND_NAME,
 } from '../engine/game'
-import type { GameState, InsuranceKind, Player, Sector } from '../engine/types'
+import type { DiceItem, GameState, InsuranceKind, Player, SabotageCard, Sector } from '../engine/types'
 import { playerLine, won } from './format'
 
 
@@ -244,38 +244,36 @@ export function FinanceSheet(f: FinanceProps) {
   )
 }
 
+// 가방 (2026-11-02 사용자): 찬스·방해·💌 카드와 주사위 아이템을 합쳐 3칸
+const BAG_HELP: Record<string, string> = {
+  reroll: '주사위를 던진 뒤 다시 굴릴지 물어봐요.', block: '방해를 받으면 저절로 막아요.', coupon: '상점에서 집·차를 살 때 30% 할인. 쓸지 물어봐요.', charm: '3턴 동안 운세가 한 단계 올라가요.',
+  rumor: '상대 행복을 깎아요.', stockRumor: '상대가 가장 많이 가진 주식값을 떨어뜨려요.', love: '상대가 가장 좋아하는 사람의 호감도를 깎아요.', lawsuit: '상대와 법적 공방을 벌여요.',
+  reunion: '만난 사람과 다시 데이트해 호감도↑. 결혼하거나 중년 결혼식장을 지나면 반값을 돌려받고 없어져요.',
+}
 export function CardsSheet({ p, canUse, canMeet, onUseChance, onSabotage, onReunion, onClose }: {
-  p: Player; canUse: boolean; canMeet: boolean; onUseChance: () => void; onSabotage: () => void; onReunion: () => void; onClose: () => void
+  p: Player; canUse: boolean; canMeet: boolean; onUseChance: () => void; onSabotage: (card: SabotageCard) => void; onReunion: () => void; onClose: () => void
 }) {
-  const active = p.chance === 'charm'
+  const bag = bagOf(p)
   return (
-    <Sheet title="내 카드" onClose={onClose}>
-      <div className="cards">
-        <div className="card chance">
-          <span className="muted">찬스 카드</span>
-          <b className="jua">{p.chance ? CHANCE_NAMES[p.chance] : '없음'}</b>
-          <p className="muted">
-            {p.chance === 'reroll' && '주사위를 던진 뒤 다시 굴릴지 물어봐요.'}
-            {p.chance === 'block' && '방해를 받으면 자동으로 막아요.'}
-            {p.chance === 'coupon' && '상점에서 집·차를 살 때 30% 할인. 쓸지 물어봐요.'}
-            {p.chance === 'charm' && '3턴 동안 운세가 한 단계 올라가요.'}
-          </p>
-          {active && <button disabled={!canUse} onClick={onUseChance}>지금 쓰기</button>}
-        </div>
-        <div className="card sabotage">
-          <span className="muted">방해 카드</span>
-          <b className="jua">{p.sabotage ? SABOTAGE_NAMES[p.sabotage] : '없음'}</b>
-          <p className="muted">상대 운세가 좋을수록 역풍이 불기 쉬워요.</p>
-          {p.sabotage && <button disabled={!canUse} onClick={onSabotage}>상대 고르기</button>}
-        </div>
-        <div className="card reunion">
-          <span className="muted">💌 다시 만나기</span>
-          <b className="jua">{p.reunion ? '있음' : '없음'}</b>
-          <p className="muted">만난 사람과 다시 데이트해 호감도↑. 결혼하거나 중년 결혼식장을 지나면 반값을 돌려받고 없어져요.</p>
-          {p.reunion && <button disabled={!canUse || !canMeet} onClick={onReunion}>사람 고르기</button>}
-        </div>
+    <Sheet title={`내 가방 ${bag.length}/${BAG_MAX}`} onClose={onClose}>
+      <div className="cards bag">
+        {Array.from({ length: BAG_MAX }, (_, i) => {
+          const x = bag[i]
+          if (x === undefined) return <div key={i} className="card bag-empty"><span className="muted">빈 칸</span></div>
+          const kind = bagKind(x)
+          return (
+            <div key={i} className={`card bag-${kind}`}>
+              <span className="muted">{BAG_KIND_NAME[kind]}</span>
+              <b className="jua">{kind === 'reunion' ? '다시 만나기' : bagName(x)}</b>
+              <p className="muted">{kind === 'dice' ? `${DICE_ITEMS[x as DiceItem].desc}. 던지기 전 버튼으로 써요.` : BAG_HELP[x]}{kind === 'sabotage' ? ' 상대 운세가 좋을수록 역풍이 불기 쉬워요.' : ''}</p>
+              {x === 'charm' && <button disabled={!canUse} onClick={onUseChance}>지금 쓰기</button>}
+              {kind === 'sabotage' && <button disabled={!canUse} onClick={() => onSabotage(x as SabotageCard)}>상대 고르기</button>}
+              {kind === 'reunion' && <button disabled={!canUse || !canMeet} onClick={onReunion}>사람 고르기</button>}
+            </div>
+          )
+        })}
       </div>
-      <p className="note">카드는 종류마다 한 장씩만 가질 수 있어요. 찬스 카드는 랜덤이벤트 칸·미니게임 대성공·휴식 칸·상점, 방해 카드는 청년부터 랜덤이벤트 칸, 💌 다시 만나기 카드는 상점에서 얻어요.</p>
+      <p className="note">카드와 주사위 아이템을 합쳐 {BAG_MAX}개까지 가질 수 있어요(같은 것도 여러 개). 꽉 찼을 때 새로 얻거나 사면 하나를 버려요. 찬스 카드는 랜덤이벤트 칸·미니게임 대성공·휴식 칸·상점, 방해 카드는 청년부터 랜덤이벤트 칸, 💌 카드와 주사위 아이템은 상점에서 얻어요.</p>
     </Sheet>
   )
 }
@@ -291,7 +289,7 @@ export function PeopleSheet({ s, onClose }: { s: GameState; onClose: () => void 
           if (p.spouse) tags.push(`배우자 ${p.spouse.name} ${stars(p.spouse.grade)}${p.spouse.revealed ? ` (${p.spouse.trait})` : ''}`)
           for (const k of p.kids) tags.push(`${k.adopted ? '입양 자녀' : '자녀'} ${k.result === null ? `(교육 ${KIDS.eduNames[k.edu ?? 0]})` : `· ${KIDS.resultNames[k.result]}`}`)
           if (kidAllowance(p)) tags.push(`자녀 용돈 ${won(kidAllowance(p))}`)
-          for (const k of p.diceItems) tags.push(DICE_ITEMS[k].name)
+          for (const k of bagOf(p)) tags.push(bagName(k))
           if (p.medals.length) tags.push(`메달 ${p.medals.map((m) => MEDALS[m].name).join('·')}`)
           if (p.pet?.alive) tags.push('반려동물')
           if (p.house) tags.push(`${HOUSES[p.house].name} (시세 ${won(houseValue(s, p))})`)
@@ -510,14 +508,11 @@ export function MyInfoSheet({ s, p, onClose }: { s: GameState; p: Player; onClos
         <div className="info-row"><b>💳 빚</b> <span>{debt || fDebt ? [debt ? `대출 ${won(debt)}` : '', fDebt ? `친구 ${won(fDebt)}` : ''].filter(Boolean).join(' · ') : '없음'}</span></div>
       </div>
 
-      <h3 className="jua">카드·아이템</h3>
+      <h3 className="jua">가방·메달</h3>
       <div className="tags">
-        {p.chance && <span>찬스: {CHANCE_NAMES[p.chance]}</span>}
-        {p.sabotage && <span>방해: {SABOTAGE_NAMES[p.sabotage]}</span>}
-        {p.reunion && <span>💌 다시 만나기</span>}
-        {p.diceItems.map((k, i) => <span key={i}>{DICE_ITEMS[k].name}</span>)}
+        {bagOf(p).map((k, i) => <span key={i}>{bagLabel(k)}</span>)}
         {p.medals.length > 0 && <span>메달 {p.medals.map((m) => MEDALS[m].name).join('·')}</span>}
-        {!p.chance && !p.sabotage && !p.diceItems.length && !p.medals.length && <span className="muted">없음</span>}
+        {!bagOf(p).length && !p.medals.length && <span className="muted">없음</span>}
       </div>
     </Sheet>
   )

@@ -3,7 +3,7 @@ import { aiStep } from './ai'
 import { SECTORS } from './data'
 import {
   buyLottery, canAct, choose, createGame, cur, finishMini, repayFriendLoan, requestFriendLoan, roll, scoreOf,
-  startSabotage, takeLoan, toggleInsurance, tradeStock, playChance,
+  startSabotage, takeLoan, toggleInsurance, tradeStock, playChance, diceIn,
 } from './game'
 import type { GameState } from './types'
 
@@ -38,7 +38,7 @@ function humanPlay(seed: number, startAdult: boolean, humans: number) {
       else if (x < 0.19) s.friendLoans.forEach((l, i) => { if (l.borrowerId === p.id) repayFriendLoan(s, i) })
       else if (x < 0.2) startSabotage(s)
       else if (x < 0.21) playChance(s)
-      if (canAct(s)) roll(s, 0, rand() < 0.5, p.diceItems.length && rand() < 0.5 ? p.diceItems[0] : null)
+      if (canAct(s)) roll(s, 0, rand() < 0.5, diceIn(p).length && rand() < 0.5 ? diceIn(p)[0] : null)
     } else {
       aiStep(s)
     }

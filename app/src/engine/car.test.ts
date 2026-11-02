@@ -9,7 +9,7 @@ function readyWithCar(seed: number): GameState {
   const p = cur(s)
   p.car = 2
   p.carCharges = 2
-  p.chance = null
+  p.bag = []
   return s
 }
 

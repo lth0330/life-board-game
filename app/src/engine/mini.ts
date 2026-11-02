@@ -4,7 +4,7 @@ import { STAT_NAMES, JOB_AFFINITY } from './data'
 import type { Rng } from './rng'
 import type { DuelId, GameState, MiniId, Player, StageId, StatKey, Suitor } from './types'
 import {
-  choose, clampStat, cur, findSuitor, fortuneName, giveChance, HOUSE_AFFINITY, log, makeSuitor, nextStage,
+  bagFull, choose, clampStat, cur, findSuitor, fortuneName, giveChance, HOUSE_AFFINITY, log, makeSuitor, nextStage,
   randomChance, resume, rngOf, say, scaleOf, showPop, stageOf, stars, STATS, suitorDesc, THEME_GAME, THEME_MINI_CHANCE, won, workJob,
 } from './game'
 
@@ -348,7 +348,7 @@ function miniReward(s: GameState, p: Player, game: MiniId, grade: number, stake?
     log(s, p.id, `${job ? `[${job.name}] ` : ''}오늘의 업무 ${name} ${['실수가 있었지만 일은 끝냈다', '성공!', '대성공!'][grade]} +${won(amt)}${grade === 2 ? ', 행복 +2' : ''}`, grade ? 'good' : 'info')
     return
   }
-  if (grade === 2 && !p.chance && rngOf(s).chance(0.25)) giveChance(s, p, randomChance(rngOf(s)))
+  if (grade === 2 && !bagFull(p) && rngOf(s).chance(0.25)) giveChance(s, p, randomChance(rngOf(s))) // 가방이 꽉 찼으면 안 줌
   const statUp = (k: StatKey, n: number) => { p.stats[k] = clampStat(p.stats[k] + n) }
   if (['race', 'tug', 'throw'].includes(game)) {
     if (grade === 2) { statUp('str', 1); p.happy += 3; log(s, p.id, `${name} 1등! 체력 +1, 행복 +3`, 'good') }

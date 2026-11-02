@@ -19,7 +19,7 @@ function readyHuman(seed: number): GameState {
   const p = cur(s)
   p.car = 2
   p.carCharges = 2
-  p.chance = null
+  p.bag = []
   return s
 }
 
@@ -29,10 +29,10 @@ describe('주사위 아이템', () => {
     for (let seed = 1; seed < 300; seed++) {
       for (const item of ['twin', 'even', 'odd'] as const) {
         const s = readyHuman(seed)
-        cur(s).diceItems = [item]
+        cur(s).bag = [item]
         roll(s, 0, false, item)
         seen[item].add(s.dice!.value + (s.dice!.second ?? 0)) // 차례가 끝나면 lastRoll은 지워지므로 주사위 기록으로
-        expect(cur(s).diceItems.length, item).toBe(0)
+        expect(cur(s).bag.length, item).toBe(0)
       }
     }
     expect([...seen.twin].every((v) => v >= 2 && v <= 12)).toBe(true)
@@ -44,7 +44,7 @@ describe('주사위 아이템', () => {
   it('주사위 아이템을 쓰면 자동차 ±1은 쓰이지 않는다', () => {
     const s = readyHuman(5)
     const me = cur(s) // 칸에 따라 차례가 넘어갈 수 있으므로 굴린 사람을 잡아 둠
-    me.diceItems = ['even']
+    me.bag = ['even']
     roll(s, 0, true, 'even')
     expect(me.carCharges).toBe(2)
     expect(s.pending?.type).not.toBe('afterRoll')

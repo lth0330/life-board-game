@@ -103,7 +103,7 @@ export const DICE_ITEMS = {
   even: { name: '짝수 주사위', price: 100, desc: '2·4·6만 나와요' },
   odd: { name: '홀수 주사위', price: 60, desc: '1·3·5만 나와요' },
 } as const
-export const MAX_DICE_ITEMS = 2
+export const BAG_MAX = 3 // 가방 칸 수: 찬스·방해·💌 카드와 주사위 아이템을 합쳐서 (2026-11-02 사용자)
 
 // 집 (2026-10-15 밸런스)
 export const HOUSE_RULES = {
