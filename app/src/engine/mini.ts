@@ -207,7 +207,8 @@ export function startContest(s: GameState): boolean {
   if (!games) return false
   const rng = rngOf(s)
   const theme = s.settings.theme
-  const game = theme && rng.chance(THEME_MINI_CHANCE) ? THEME_GAME[theme] : rng.pick(games) // 테마 맵이면 테마 게임도 가끔
+  // 테마 맵이면 테마 게임도 가끔. 학생 두뇌 대회는 빼요 (2026-11-02 사용자: 두뇌 올림피아드와 같게)
+  const game = theme && st.id !== 'student' && rng.chance(THEME_MINI_CHANCE) ? THEME_GAME[theme] : rng.pick(games)
   const results: Record<number, number> = {}
   for (const q of s.players) if (!q.human) results[q.id] = aiGrade(rng, miniLevel(q, game))
   log(s, null, `${st.name} 단계 끝! ${contestName(s, game)}: ${MINI_NAMES[game]}`, 'info')
@@ -329,7 +330,7 @@ export function miniGuide(s: GameState, game: MiniId | DuelId, duel: boolean, co
   else if (['firstImpression', 'rhythm', 'confess', 'dance'].includes(game) && stageOf(s).id === 'student') reward = '대성공 매력 +1·행복 +2 / 성공 매력 +1 / 실패 행복 -1'
   else if (['firstImpression', 'rhythm', 'confess', 'dance'].includes(game)) reward = '대성공 매력 +1·호감도 +30 (없으면 새 사람) / 성공 호감도 +15 / 실패 행복 -2'
   else if (CASINO.includes(game as MiniId)) reward = '대박 판돈의 2배를 더 받음 / 조금 따면 절반 / 지면 판돈을 잃어요'
-  else if (JOB_GAMES.includes(game as MiniId)) return { stat, reward: `원래 보너스${s.mini?.pay ? ` ${won(s.mini.pay)}` : ''}의 · 대성공 2배·행복 +2 / 성공 1.5배 / 실패 절반` }
+  else if (JOB_GAMES.includes(game as MiniId)) return { stat, reward: `${s.mini?.pay ? `보너스 ${won(s.mini.pay)} 기준 / ` : ''}대성공 보너스 2배·행복 +2 / 성공 1.5배 / 실패해도 절반` }
   else reward = '대성공 행복 +8 / 성공 +4 / 실패 +1'
   return { stat, reward: reward + chance }
 }
@@ -338,7 +339,7 @@ export function miniGuide(s: GameState, game: MiniId | DuelId, duel: boolean, co
 function miniReward(s: GameState, p: Player, game: MiniId, grade: number, stake?: number, target?: string, played: MiniId = game, pay?: number) {
   const name = MINI_NAMES[played]
   if (JOB_GAMES.includes(game)) {
-    // 오늘의 업무: 돈 칸 보너스가 결과에 따라 (실패해도 일은 했으니 절반)
+    // 오늘의 업무: 업무 칸 보너스가 결과에 따라 (실패해도 일은 했으니 절반)
     const base = pay ?? scaleOf(s) * 3
     const amt = Math.round(base * [0.5, 1.5, 2][grade])
     p.money += amt

@@ -244,8 +244,8 @@ export function FinanceSheet(f: FinanceProps) {
   )
 }
 
-export function CardsSheet({ p, canUse, onUseChance, onSabotage, onClose }: {
-  p: Player; canUse: boolean; onUseChance: () => void; onSabotage: () => void; onClose: () => void
+export function CardsSheet({ p, canUse, canMeet, onUseChance, onSabotage, onReunion, onClose }: {
+  p: Player; canUse: boolean; canMeet: boolean; onUseChance: () => void; onSabotage: () => void; onReunion: () => void; onClose: () => void
 }) {
   const active = p.chance === 'charm'
   return (
@@ -268,8 +268,14 @@ export function CardsSheet({ p, canUse, onUseChance, onSabotage, onClose }: {
           <p className="muted">상대 운세가 좋을수록 역풍이 불기 쉬워요.</p>
           {p.sabotage && <button disabled={!canUse} onClick={onSabotage}>상대 고르기</button>}
         </div>
+        <div className="card reunion">
+          <span className="muted">💌 다시 만나기</span>
+          <b className="jua">{p.reunion ? '있음' : '없음'}</b>
+          <p className="muted">만난 사람과 다시 데이트해 호감도↑. 결혼하거나 중년 결혼식장을 지나면 반값을 돌려받고 없어져요.</p>
+          {p.reunion && <button disabled={!canUse || !canMeet} onClick={onReunion}>사람 고르기</button>}
+        </div>
       </div>
-      <p className="note">찬스·방해 카드는 한 장씩만 가질 수 있어요. 찬스 카드는 랜덤이벤트 칸·미니게임 대성공·휴식 칸·상점, 방해 카드는 청년부터 랜덤이벤트 칸에서 얻어요.</p>
+      <p className="note">카드는 종류마다 한 장씩만 가질 수 있어요. 찬스 카드는 랜덤이벤트 칸·미니게임 대성공·휴식 칸·상점, 방해 카드는 청년부터 랜덤이벤트 칸, 💌 다시 만나기 카드는 상점에서 얻어요.</p>
     </Sheet>
   )
 }
@@ -508,6 +514,7 @@ export function MyInfoSheet({ s, p, onClose }: { s: GameState; p: Player; onClos
       <div className="tags">
         {p.chance && <span>찬스: {CHANCE_NAMES[p.chance]}</span>}
         {p.sabotage && <span>방해: {SABOTAGE_NAMES[p.sabotage]}</span>}
+        {p.reunion && <span>💌 다시 만나기</span>}
         {p.diceItems.map((k, i) => <span key={i}>{DICE_ITEMS[k].name}</span>)}
         {p.medals.length > 0 && <span>메달 {p.medals.map((m) => MEDALS[m].name).join('·')}</span>}
         {!p.chance && !p.sabotage && !p.diceItems.length && !p.medals.length && <span className="muted">없음</span>}

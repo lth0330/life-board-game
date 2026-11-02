@@ -48,7 +48,7 @@ it('나중에 쓰기를 고르면 카드가 남는다', () => {
   expect(x.affinity).toBe(30)
 })
 
-it('직업 미니게임: 결과에 따라 돈 칸 보너스가 0.5·1.5·2배', async () => {
+it('직업 미니게임: 결과에 따라 업무 칸 보너스가 0.5·1.5·2배', async () => {
   const { startMini, finishMini, JOB_GAME } = await import('./game')
   const s = youngGame()
   const p = s.players[0]
@@ -63,7 +63,7 @@ it('직업 미니게임: 결과에 따라 돈 칸 보너스가 0.5·1.5·2배', 
   }
 })
 
-it('💼 직업 칸은 청년·중년 판에만 있다', () => {
+it('💼 업무 칸은 청년·중년 판에만 있다', () => {
   for (let seed = 1; seed <= 5; seed++) {
     const s = createGame({ humanName: '나', humans: 1, aiCount: 1, settings: { startAdult: false, difficulty: 'normal' }, seed })
     for (const st of s.stages) {

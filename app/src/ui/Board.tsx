@@ -21,7 +21,7 @@ const TILE_STYLE: Record<string, { label: string; bg: string; fg: string }> = {
   stop: { label: '정지', bg: '#2A2118', fg: '#FFF7E8' },
   date: { label: '연애', bg: '#F3A3C0', fg: '#3A1020' },
   mini: { label: '게임', bg: '#E8742C', fg: '#fff' },
-  work: { label: '직업', bg: '#3D5A80', fg: '#fff' },
+  work: { label: '업무', bg: '#3D5A80', fg: '#fff' }, // 💼 업무 칸 (직업 고르는 정지 칸 '직업'과 다름)
   rest: { label: '휴식', bg: '#E9DFC8', fg: '#2A2118' },
   goal: { label: '골', bg: '#FFD45C', fg: '#2A2118' },
   campus: { label: '대학교', bg: '#8A4FA8', fg: '#fff' },

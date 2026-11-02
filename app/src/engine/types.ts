@@ -2,7 +2,7 @@ import type { Outfit } from './outfit'
 
 export type StageId = 'child' | 'student' | 'young' | 'middle' | 'old'
 export type StatKey = 'int' | 'str' | 'cha'
-export type TileKind = 'good' | 'money' | 'grow' | 'happy' | 'risk' | 'card' | 'stop' | 'date' | 'mini' | 'rest' | 'goal' | 'campus' | 'uni' | 'point' | 'work' // work = 💼 직업 칸 (2026-11-02)
+export type TileKind = 'good' | 'money' | 'grow' | 'happy' | 'risk' | 'card' | 'stop' | 'date' | 'mini' | 'rest' | 'goal' | 'campus' | 'uni' | 'point' | 'work' // work = 💼 업무 칸 (2026-11-02)
 export type UniEvent = 'study' | 'club' | 'love' | 'parttime' | 'exam' | 'party' | 'scholar'
 export type StopEvent = 'club' | 'job' | 'middleBranch' | 'promotion'
 // 갈라지는 길의 테마 (칸 효과가 그 길답게 바뀜)
@@ -15,7 +15,7 @@ export type MiniId =
   | 'oddEven' | 'highLow' | 'slot'
   | 'snap' | 'pack' | 'photo'
   | 'leaves' | 'snowball' | 'flower' | 'melon' | 'butterfly' | 'watergun' // 테마 맵 전용 (2026-10-29): 가을 낙엽 잡기·겨울 눈싸움·봄 꽃 심기·여름 수박 깨기. 나비 잡기·물총 싸움은 예전 저장용
-  // 직업 미니게임 (2026-11-02 사용자): 청년·중년 돈 칸에서 가끔 '오늘의 업무'. 직업마다 하나
+  // 직업 미니게임 '오늘의 업무' (2026-11-02 사용자): 청년·중년 💼 업무 칸에서. 직업마다 하나
   | 'jBox' | 'jTactic' | 'jSuspect' | 'jFire' | 'jCpr' | 'jLab' | 'jBurger' | 'jStamp' | 'jTicket' | 'jGrade' | 'jBug' | 'jObjection' | 'jIdol' | 'jLines' | 'jComment' | 'jDeal'
 export type DuelId = 'dice' | 'rps' | 'timing'
 export type DiceItem = 'twin' | 'even' | 'odd'
@@ -120,7 +120,7 @@ export interface MiniState {
   playerId: number // 지금 미니게임을 하는 사람
   level: number // 0 쉬움 ~ 2 어려움 (능력치가 높을수록 쉬움)
   stake?: number // 카지노 판돈
-  pay?: number // 직업 미니게임: 원래 돈 칸 보너스 (결과에 따라 0.5·1.5·2배)
+  pay?: number // 직업 미니게임: 업무 칸 보너스 (결과에 따라 0.5·1.5·2배)
   target?: string // 축제 거리에서 고른 상대 ('old:이름:등급' 또는 'new')
   as?: MiniId // 테마 게임이 원래 칸 게임 대신 나왔을 때: 보상은 원래 게임대로
   // 같은 칸 대결(타이밍). 2026-10-29부터 contest와 같이 모두 동시에 (results는 contest 쪽, 점수 0~100). queue는 예전 저장용

@@ -20,6 +20,8 @@ export const TIPS: Tip[] = [
   { text: '적금은 만기까지 두면 이자가 커요', when: (s) => working(s) },
   { text: '보험이 있으면 사고가 나도 돈을 돌려받아요', when: (s) => adult(s) },
   { text: '휴식 칸에 닿았을 때 주사위가 남으면 남은 칸만큼 보너스를 받아요', when: (s) => s.stageIdx <= 3 },
+  { text: '💼 업무 칸에 서면 내 직업 미니게임을 해요. 잘하면 보너스가 2배예요', when: (s, p) => working(s) && !!p.jobId },
+  { text: '상점 💌 다시 만나기 카드로 만난 사람과 더 가까워질 수 있어요', when: (s, p) => working(s) && !p.spouse && p.suitors.length > 0 && !p.reunion },
   { text: '노년 카지노는 역전 기회지만 운세가 나쁘면 위험해요', when: (s) => s.stageIdx === 4 },
 ]
 

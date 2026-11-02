@@ -55,7 +55,7 @@ export const STAGE_DEFS: StageDef[] = [
   },
   {
     id: 'young', name: '청년', ages: [20, 39], rolls: 10, length: 50,
-    weights: [['money', 14], ['work', 8], ['card', 18], ['date', 32], ['risk', 14], ['happy', 9], ['grow', 8]], // 💼 직업 칸은 돈 칸에서 떼어 옴 (2026-11-02)
+    weights: [['money', 14], ['work', 8], ['card', 18], ['date', 32], ['risk', 14], ['happy', 9], ['grow', 8]], // 💼 업무 칸은 돈 칸에서 떼어 옴 (2026-11-02)
     // 대학생이 3차례 늦게 출발해도 둘째 결혼식장(20)에 대부분 닿도록 앞쪽에 모음 (docs/13-review.md)
     // 직업 칸 = 출발 칸 (바로 취업은 제자리에서 고름, 대학 졸업생은 여기로 합류. 2026-10-17 사용자)
     stops: { 0: 'job' }, points: { 5: 'shop', 10: 'marriage', 18: 'shop', 20: 'marriage' },

@@ -855,8 +855,9 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
         />
       )}
       {sheet === 'cards' && (
-        <CardsSheet p={sheetP} canUse={myTurn}
+        <CardsSheet p={sheetP} canUse={myTurn} canMeet={canReunion(game, sheetP)}
           onUseChance={() => { setSheet(null); run(['playChance']) }}
+          onReunion={() => { setSheet(null); run(['playReunion']) }}
           onSabotage={() => { setSheet(null); run(['startSabotage']) }}
           onClose={() => setSheet(null)} />
       )}

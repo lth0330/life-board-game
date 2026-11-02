@@ -234,10 +234,12 @@ button.wide.secondary { background: #fff; color: var(--ink); border: 2px solid v
 .row .grow { flex: 1 1 140px; }
 .row button { min-height: 44px; min-width: 52px; border-radius: 10px; border: 2px solid var(--ink); background: #fff; padding: 0 10px; }
 
-.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } /* 찬스·방해·다시 만나기 (2026-11-02) */
 .card { border-radius: 16px; padding: 12px; background: #fff; border: 3px dashed; display: flex; flex-direction: column; gap: 6px; }
 .card.chance { border-color: var(--good); }
 .card.sabotage { border-color: var(--bad); }
+.card.reunion { border-color: #E07AA0; }
+.cards .card { padding: 10px; } .cards .card b { font-size: 16px; } .cards .card p { font-size: 13px; margin: 0; }
 .card b { font-size: 20px; font-weight: normal; }
 .card button { min-height: 44px; border-radius: 10px; border: none; background: var(--ink); color: var(--paper); font-family: 'Jua', sans-serif; }
 
