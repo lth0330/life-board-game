@@ -11,7 +11,7 @@ export type ForkId = 'academy' | 'college' | 'startup' | 'retire' | 'event'
 export type MiniId =
   | 'race' | 'tug' | 'throw'
   | 'memory' | 'pairs' | 'quickmath'
-  | 'firstImpression' | 'rhythm' | 'confess' | 'dance'
+  | 'firstImpression' | 'rhythm' | 'confess' | 'dance' // firstImpression = 하트 받기 (2026-11-02 첫인상 고르기에서 바꿈, 이름표는 저장 때문에 그대로)
   | 'oddEven' | 'highLow' | 'slot'
   | 'snap' | 'pack' | 'photo'
   | 'leaves' | 'snowball' | 'flower' | 'melon' | 'butterfly' | 'watergun' // 테마 맵 전용 (2026-10-29): 가을 낙엽 잡기·겨울 눈싸움·봄 꽃 심기·여름 수박 깨기. 나비 잡기·물총 싸움은 예전 저장용
@@ -135,7 +135,7 @@ export interface Biz {
 
 export interface Player {
   id: number
-  happyHist?: number[] // 최근 내 차례 시작 때 행복 (기분 = 지금 행복 - 5턴 전 행복)
+  happyHist?: number[] // 예전 저장용 (기분은 2026-11-02 없앰)
   name: string
   human: boolean
   personality: Personality
@@ -167,6 +167,7 @@ export interface Player {
   carCharges: number
   carStage?: number // 차를 산 단계 (능력 횟수는 산 단계부터 단계마다 +1)
   lastLog?: number // 내 차례가 끝났을 때의 기록 번호 (다음 차례에 그사이 일어난 일을 보여 줌)
+  news?: { art: string; text: string; tone: 'good' | 'bad' | 'info' } | null // 지난 차례 뒤 일어난 큰 일. 이번 차례가 끝날 때 창으로 (2026-11-02 사용자)
   record: { shopBuys: number; spent: number; lotteryWon: number; deeds: number; duelWins: number; stockGain: number; shopSpent: number; bizShare?: number } // 결산 상 계산용. bizShare: 동업으로 받은 돈
   celebrated: number[] // 이미 치른 육순(60)·칠순(70)
   jobTenure: number // 지금 직업에서 일한 턴 (퇴직금 계산)
@@ -192,6 +193,7 @@ export interface Player {
   pet: { alive: boolean; turnsLeft: number } | null
   retire: 'city' | 'country' | null
   chance: ChanceCard | null
+  reunion?: boolean // 다시 만나기 카드 (2026-11-02 사용자). 찬스 카드와 따로 1장
   sabotage: SabotageCard | null
   fortuneMod: number // 다음 운세 뽑기 보정 (대결 승패)
   agency: { vip: boolean; attr: 'looks' | 'wealth' | 'fame' | 'kindness' | null } | null
@@ -261,6 +263,7 @@ export interface GameState {
   log: LogEntry[]
   logCount: number // 지금까지 남긴 기록 수 (팝업에 이번 칸 기록만 모으려고)
   popup: { id: number; art: string; title: string; text: string; tone: 'good' | 'bad' | 'info'; playerId: number } | null // 칸 사건 팝업
+  news?: { id: number; art: string; title: string; text: string; tone: 'good' | 'bad' | 'info'; playerId: number } | null // '지난 차례 뒤 일어난 일' 창 (칸 사건 창 뒤에 뜸)
   stockPrev: Record<Sector, number>
   summary?: string | null
   roulette?: { id: number; title: string; chance: number; ok: boolean; playerId: number } | null // 룰렛 연출 (대학 합격·감독 도전) // 중간 정산을 보여 줄 단계 이름 (청년·중년이 끝날 때) // 지난 바퀴 주가 (오르내림 표시)

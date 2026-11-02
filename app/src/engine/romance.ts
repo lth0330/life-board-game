@@ -47,6 +47,9 @@ export function makeSuitor(s: GameState, p: Player, opts: { attr?: Attr | null; 
   }
 }
 
+// 다시 만나기 카드: 만난 적 있는 사람이 있고 아직 결혼할 수 있을 때만 의미가 있음 (청년 + 중년 결혼식장 전)
+export const canReunion = (s: GameState, p: Player) => canDate(s, p) && p.suitors.some((x) => x.affinity < 100)
+
 export const stars = (n: number) => '★'.repeat(n)
 export const suitorDesc = (x: Suitor) => `${stars(x.grade)} · 외모 ${x.looks} 재력 ${x.wealth} 명성 ${x.fame} 성격 ${x.kindness} · ${x.sector}`
 
@@ -152,6 +155,10 @@ export function shopBuy(s: GameState, p: Player, optionId: string, useCoupon: bo
   } else if (optionId === 'chance') {
     spend(p, chancePrice(s))
     giveChance(s, p, randomChance(rng))
+  } else if (optionId === 'reunion') {
+    spend(p, chancePrice(s))
+    p.reunion = true
+    log(s, p.id, '다시 만나기 카드를 샀다 (던지기 전에 💌 버튼으로 써요)', 'info')
   } else if (optionId === 'pet') {
     spend(p, 50)
     adoptPet(s, p, '상점에서 반려동물을 데려왔다')
@@ -193,6 +200,7 @@ export function openShop(s: GameState, p: Player, visit: ShopVisit = { big: fals
     opts.push({ id: 'agency1', label: '소개팅 회사 VIP 회원', desc: '매 턴 100만, 연애 시작 300만, 원하는 속성을 고르고 ★3 이상이 잘 나와요' })
   }
   if (!p.pet?.alive) opts.push({ id: 'pet', label: '반려동물 데려오기', desc: `${won(50)} · 매 턴 행복 +1, 사료값이 들어요`, disabled: p.money < 50 })
+  if (!p.reunion && canReunion(s, p)) opts.push({ id: 'reunion', label: '💌 다시 만나기 카드 사기', desc: `${won(chancePrice(s))} · 만난 적 있는 사람과 다시 데이트해 호감도를 올려요 · 원할 때 써요 · 결혼하거나 중년 결혼식장을 지나면 없어지고 반값을 돌려받아요`, disabled: p.money < chancePrice(s) })
   opts.push({ id: 'chance', label: '찬스 카드 사기', desc: `${won(chancePrice(s))}${p.chance ? ' · 이미 1장 있어요' : ''}`, disabled: p.money < chancePrice(s) || !!p.chance })
   const full = p.diceItems.length >= MAX_DICE_ITEMS
   for (const k of Object.keys(DICE_ITEMS) as DiceItem[]) {

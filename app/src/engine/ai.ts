@@ -3,7 +3,7 @@ import { findEvent, specialValue } from './special'
 import {
   aiDiceItem, aiInvestDecision, aiBizOpp, aiFinishMini, aiWantsCar, passChance, buyLottery, canAct, canBorrowFrom, choose, cur, bankDebt, carCost, cureAddiction, houseCost, mortgagePlan, isAdultStage, canBankLoan, loanLimit, loanTotal, repayFriendLoan,
   repayLoans, requestFriendLoan, roll, rngOf, salaryOf, scoreOf, stageOf, startSabotage, takeLoan, toggleInsurance,
-  tradeStock, playChance, moodLevel, scaleOf, withdraw, lotteryPrice,
+  tradeStock, playChance, playReunion, findSuitor, scaleOf, withdraw, lotteryPrice,
 } from './game'
 import type { GameState, Pending, Personality, Player } from './types'
 
@@ -86,14 +86,13 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
       if (!o) return 0
       // 운세: 가족형·안전형은 더 챙기고, 도박꾼형·재테크형은 돈·재미 쪽으로 (2026-10-21)
       const luckTaste = { family: 2, safe: 1.5, elite: 0, investor: -2, gambler: -2.5 }[per] * (o.luck ?? 0)
-      return specialValue(o, scaleOf(s), (k) => p.stats[k]) + luckTaste + (moodLevel(p) === 0 ? (o.happy ?? 0) * 0.5 : 0) + rng.next() * 0.5 // 기분이 나쁘면 행복을 더 챙김
+      return specialValue(o, scaleOf(s), (k) => p.stats[k]) + luckTaste + rng.next() * 0.5
     }
     case 'happyPick': {
-      // 기분이 나쁘면 크게 놀고, 돈이 모자라면 일하고, 아니면 소소하게 (성격 따라 조금씩)
-      const mood = moodLevel(p)
+      // 돈이 모자라면 일하고, 여유 있으면 가끔 크게 놀고, 아니면 소소하게 (성격 따라 조금씩)
       const cost = (pd.data as { cost: number }).cost
-      if (id === 'big') return (mood === 0 ? 3 : 1) + (per === 'family' ? 1 : 0) - (p.money < cost * 4 ? 2 : 0) + rng.next()
-      if (id === 'work') return (p.money < 0 ? 3 : 0.5) + (per === 'investor' || per === 'elite' ? 1 : 0) - (mood === 0 ? 1.5 : 0) + rng.next()
+      if (id === 'big') return 1 + (per === 'family' ? 1 : 0) - (p.money < cost * 4 ? 2 : 0) + rng.next()
+      if (id === 'work') return (p.money < 0 ? 3 : 0.5) + (per === 'investor' || per === 'elite' ? 1 : 0) + rng.next()
       return 1.5 + rng.next()
     }
     case 'growPick': {
@@ -135,6 +134,7 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
       if (id.startsWith('house')) { const i = +id.slice(5); return p.money - houseCost(s, p, i) >= loanTotal(p) ? 3 + i : 0 } // 빚 갚을 돈은 남기고 살 수 있으면 삼
       if (id.startsWith('car')) { const i = +id.slice(3); return p.money - loanTotal(p) > carCost(p, i) * 2 ? 2.5 + i * 0.5 : 0 }
       if (id === 'chance') return 0.5
+      if (id === 'reunion') return p.suitors.some((x) => x.affinity >= 25 && x.affinity < 50) ? (per === 'family' ? 2.2 : 1.2) : 0 // 결혼 지점(호감 50%) 앞에서 조금 모자랄 때
       if (id === 'pet') return per === 'family' ? 2.4 : 0.8
       if (id.startsWith('dice_')) {
         const k = id.slice(5) as keyof typeof DICE_ITEMS
@@ -148,6 +148,11 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
         return per === 'family' ? (vip ? 1.5 : 2.6) : per === 'elite' ? (vip && p.money > 3000 ? 2.8 : 1.2) : vip ? 0.5 : 1.1
       }
       return 0
+    }
+    case 'reunion': {
+      if (id === 'later') return 0
+      const x = findSuitor(p, id)
+      return x ? x.grade + (x.affinity < 50 ? x.affinity / 10 : 0) : 0 // 결혼 지점(50%)에 가까운 사람 먼저
     }
     case 'date': {
       const o = pd.options.find((x) => x.id === id)
@@ -226,6 +231,7 @@ export function aiPreRoll(s: GameState) {
   const rng = rngOf(s)
   const per = p.personality
   if (p.chance === 'charm' && p.fortune <= 1) playChance(s)
+  if (p.reunion && canAct(s)) { playReunion(s); if (s.pending) choose(s, aiChoose(s)) }
   if (p.sabotage && isAdultStage(s) && rng.chance(per === 'gambler' ? 0.6 : s.settings.difficulty === 'hard' ? 0.4 : 0.15)) {
     startSabotage(s)
     if (s.pending) choose(s, aiChoose(s))

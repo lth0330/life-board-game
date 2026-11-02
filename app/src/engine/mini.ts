@@ -4,7 +4,7 @@ import { STAT_NAMES, JOB_AFFINITY } from './data'
 import type { Rng } from './rng'
 import type { DuelId, GameState, MiniId, Player, StageId, StatKey, Suitor } from './types'
 import {
-  choose, clampStat, cur, findSuitor, fortuneName, giveChance, HOUSE_AFFINITY, log, makeSuitor, MOOD_AFFINITY, moodLevel, nextStage,
+  choose, clampStat, cur, findSuitor, fortuneName, giveChance, HOUSE_AFFINITY, log, makeSuitor, nextStage,
   randomChance, resume, rngOf, say, scaleOf, showPop, stageOf, stars, STATS, suitorDesc, THEME_GAME, THEME_MINI_CHANCE, won, workJob,
 } from './game'
 
@@ -21,13 +21,14 @@ const MINI_STAT: Record<MiniId, StatKey | 'fortune' | null> = {
 export const MINI_NAMES: Record<MiniId | DuelId, string> = {
   race: '달리기', tug: '줄다리기', throw: '공 던지기',
   memory: '기억력', pairs: '같은 그림 찾기', quickmath: '빠른 계산',
-  firstImpression: '첫인상', rhythm: '무대 공연', confess: '고백 타이밍', dance: '댄스 따라 하기',
+  firstImpression: '하트 받기', rhythm: '무대 공연', confess: '고백 타이밍', dance: '댄스 따라 하기',
   oddEven: '홀짝', highLow: '카드 높낮이', slot: '슬롯머신',
   snap: '사진 찍기', pack: '짐 싸기', photo: '여행 코스 기억',
   leaves: '낙엽 잡기', snowball: '눈싸움', flower: '꽃 심기', melon: '수박 깨기', butterfly: '나비 잡기', watergun: '물총 싸움',
   dice: '주사위 대결', rps: '가위바위보', timing: '타이밍 멈추기',
 }
 export const CASINO: MiniId[] = ['oddEven', 'highLow', 'slot']
+export const BRAIN_GAMES: MiniId[] = ['memory', 'pairs', 'quickmath']
 
 // 0 쉬움, 1 보통, 2 어려움 (능력치·운세가 높을수록 쉬움)
 export function miniLevel(p: Player, game: MiniId | DuelId): number {
@@ -275,7 +276,7 @@ export function affinityGain(s: GameState, p: Player, x: Suitor) {
   const base = rngOf(s).int(lo, hi) + Math.max(0, p.stats.cha - 4)
   const job = workJob(s, p)
   const jobMult = JOB_AFFINITY[job ? job.id : 'none'] ?? 1 // 직업 특성 (아이돌 +30% … 백수 -25%)
-  return Math.round(base * MOOD_AFFINITY[moodLevel(p)] * (p.house ? HOUSE_AFFINITY : 1) * jobMult) // 기쁘면 +15%, 집 있으면 +10%
+  return Math.round(base * (p.house ? HOUSE_AFFINITY : 1) * jobMult) // 집 있으면 +10%
 }
 
 // 축제 거리: 호감도가 아니라 새 사람을 만나는 곳. 대성공이면 높은 등급이 잘 나옴

@@ -4,7 +4,7 @@ import { Character, type Expr } from './art/Character'
 import { aiStep } from './engine/ai'
 import { CARS, DICE_ITEMS, MINI_PRACTICE_LIMIT } from './engine/data'
 import {
-  ageOf, turnIncome, loanTotal, moodLevel, MOOD_FACES, MOOD_HELP, MOOD_NAMES, canAct, canUseCar, createGame, cur, fortuneName, miniGuide, canSeekJob, stageOf, contestName, miniLevel, contestReady,
+  ageOf, turnIncome, loanTotal, canAct, canUseCar, createGame, cur, fortuneName, miniGuide, canSeekJob, canReunion, stageOf, contestName, miniLevel, contestReady,
 } from './engine/game'
 import { applyOp, type Op } from './engine/ops'
 import { DEFAULT_OUTFIT, type Outfit } from './engine/outfit'
@@ -372,6 +372,21 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
   const [rpsReveal, setRpsReveal] = useState<Record<number, number> | null>(null) // 가위바위보 손 공개 중 (아래에서 씀)
   const [suspense, setSuspense] = useState(false) // AI 미니게임 '도전 중…'
   const lastPopId = useRef(game.popup?.id ?? 0)
+  // '지난 차례 뒤 일어난 일': 내 칸 사건 창이 닫힌 뒤에 보여 줌 (2026-11-02 사용자). 내 기기에서만
+  const newsQ = useRef<NonNullable<GameState['news']>[]>([])
+  const lastNewsId = useRef(game.news?.id ?? 0)
+  useEffect(() => {
+    const n = game.news
+    if (n && n.id !== lastNewsId.current) {
+      lastNewsId.current = n.id
+      if (isMine(n.playerId)) newsQ.current.push({ ...n, id: -n.id }) // 사건 창 번호와 겹치지 않게 음수
+    }
+    if (popShow || walking || diceShow !== null || !newsQ.current.length) return
+    if (game.popup && game.popup.id !== lastPopId.current) return // 칸 사건 창이 먼저 (이 효과가 사건 창 효과보다 먼저 돌아야 함)
+    const next = newsQ.current.shift()!
+    setPopShow(next)
+    sfx(next.tone === 'bad' ? 'bad' : 'pop')
+  }, [game.news, game.popup, popShow, walking, diceShow]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!game.popup || game.popup.id === lastPopId.current) return
     lastPopId.current = game.popup.id
@@ -578,14 +593,6 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
     aiQueue.forEach(([pid, e]) => showEmote(pid, e))
     setAiQueue([])
   }, [aiQueue, walking, diceShow, popBlocks, showEmote])
-  // AI: 차례가 오면 기쁘거나 우울할 때 표정 (자주 뜨지 않게 반만)
-  useEffect(() => {
-    const q = game.players[game.current]
-    if (q.human || Math.random() < 0.5) return
-    const lv = moodLevel(q)
-    if (lv === 2) showEmote(q.id, 'happy')
-    else if (lv === 0) showEmote(q.id, 'sad')
-  }, [game.current]) // eslint-disable-line react-hooks/exhaustive-deps
   // 다른 기기에서 온 표정
   const incomingId = online?.incoming?.id
   useEffect(() => {
@@ -641,6 +648,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
   const showCar = myTurn && canUseCar(p) && !onCampus
   const heldItems = myTurn && !onCampus ? [...new Set(p.diceItems)] : []
   const showSeek = myTurn && canSeekJob(game, p)
+  const showReunion = myTurn && !!p.reunion && canReunion(game, p)
   const sheetP = !myTurn && online ? game.players[online.mine[0]] : p // 온라인은 내 차례가 아닐 때 내 재테크·카드를 보여 줌
   const stageBanner = banner && !busy && banner.title.endsWith('단계')
 
@@ -677,7 +685,6 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
               {st.rolls ? ` · 남은 주사위 ${hudP.rollsLeft}/${st.rolls}` : ' · 골까지 경주'}
             </span>
           </div>
-          <span className="hud-mood">기분 <span className="mood" title={`기분 ${MOOD_NAMES[moodLevel(hudP)]}: ${MOOD_HELP[moodLevel(hudP)]}`} aria-label={`기분 ${MOOD_NAMES[moodLevel(hudP)]}`}>{MOOD_FACES[moodLevel(hudP)]}</span></span>
         </div>
         {hudP.loans.length > 0 && <LoanLine p={hudP} />}
         <div className="hud-sub muted">{playerLine(game, hudP)} · <b className="hud-stats">지력 {hudP.stats.int} · 체력 {hudP.stats.str} · 매력 {hudP.stats.cha}</b></div>
@@ -705,9 +712,10 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
 
       <LogBox game={game} chat={online?.chat} onSend={online?.sendChat} hold={wheel !== null || wheelWaiting} />
 
-      {(showCar || heldItems.length > 0 || showSeek) && (
+      {(showCar || heldItems.length > 0 || showSeek || showReunion) && (
         <div className="roll-mods">
           {showSeek && <button className="car-toggle" onClick={() => run(['seekJob'])}>💼 취업 도전</button>}
+          {showReunion && <button className="car-toggle" onClick={() => run(['playReunion'])}>💌 다시 만나기</button>}
           {showCar && (
             <button className={`car-toggle ${carMode ? 'on' : ''}`} aria-pressed={carMode} onClick={() => { setCarMode(!carMode); setItemMode(null) }}>
               {CARS[p.car].name} ±1 {carMode ? '사용함' : '쓰기'} · 남은 {p.carCharges}번

@@ -634,8 +634,6 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
   50% { transform: scaleY(0.74) scaleX(1.14) rotate(7deg) translateY(-3px); }
 }
 @media (prefers-reduced-motion: reduce) { .char.baby.walking svg { animation: none; } }
-.hud-mood { margin-left: auto; white-space: nowrap; font-size: 12px; color: var(--ink-soft); display: flex; align-items: center; gap: 2px; }
-.mood { font-size: 20px; line-height: 1; }
 /* 좁은 화면: 위쪽 정보 칸이 넘치지 않게 (2026-10-17) */
 .hud-row .order { min-width: 0; flex-wrap: nowrap; }
 .hud-row .order .muted { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
@@ -1233,3 +1231,10 @@ body { word-break: keep-all; overflow-wrap: break-word; }
 .sound-row button:nth-child(3) { grid-column: 1 / -1; }
 /* 선택 창: 고를 것이 많아도 위 설명 글이 찌그러지지 않게 (창 전체가 스크롤, 2026-10-31) */
 .sheet > * { flex-shrink: 0; }
+
+/* 하트 받기 (2026-11-02) */
+.heart-field { position: relative; height: 250px; border-radius: 14px; border: var(--line); background: linear-gradient(#ffe3ec, #fff6f0); overflow: hidden; touch-action: none; }
+.heart-lane { position: absolute; top: 0; bottom: 0; width: 20%; padding: 0; border: 0; border-right: 1px dashed rgba(42, 33, 24, 0.12); border-radius: 0; background: none; box-shadow: none; cursor: pointer; }
+.heart-drop { position: absolute; font-size: 28px; line-height: 1; transform: translateX(-50%); pointer-events: none; }
+.heart-basket { position: absolute; bottom: 4px; font-size: 40px; line-height: 1; transform: translateX(-50%); transition: left 0.08s; pointer-events: none; }
+.heart-pop { position: absolute; bottom: 48px; transform: translateX(-50%); font-weight: 700; color: var(--ink); pointer-events: none; }

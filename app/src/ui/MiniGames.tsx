@@ -39,7 +39,7 @@ const HOW: Record<string, string> = {
   photo: '잠깐 보여 주는 여행지 순서를 기억했다가 그대로 누르세요.',
   pairs: '카드를 두 장씩 뒤집어 같은 그림을 모두 찾으세요. 시간이 정해져 있어요.',
   quickmath: '덧셈 문제 5개가 나와요. 알맞은 답을 빨리 고르세요.',
-  firstImpression: '상황에 맞는 가장 좋은 말이나 행동을 고르세요.',
+  firstImpression: '위에서 하트가 떨어져요. 바구니를 좌우로 옮겨 💗 하트는 받고 💔 깨진 하트는 피하세요. 받은 하트에서 깨진 하트를 뺀 수가 목표를 넘으면 성공이에요.',
   rhythm: '음표 4개가 위에서 떨어져요. 노란 선에 닿을 때 "지금!"을 누르세요. 너무 일찍 누르면 그 음표는 놓쳐요.',
   confess: '하트가 콩닥콩닥 커졌다 작아져요. 가장 커졌을 때 "고백!"을 누르세요.',
   dance: '캐릭터가 춤 동작을 하나씩 보여 줘요. 다 본 뒤 같은 순서로 동작 버튼을 누르세요.',
@@ -60,9 +60,6 @@ const HOW: Record<string, string> = {
 const LEVEL_NAME = ['쉬움', '보통', '어려움']
 const rand = (n: number) => Math.floor(Math.random() * n)
 const shuffle = <T,>(a: T[]) => [...a].sort(() => Math.random() - 0.5)
-// 연습에서 나온 문제는 진짜 판에 다시 안 나오게 (퀴즈류). 이 미니게임 창이 열려 있는 동안만 기억
-type Seen = Set<string>
-const fresh = <T,>(pool: T[], key: (x: T) => string, seen: Seen) => { const left = pool.filter((x) => !seen.has(key(x))); return left.length ? left : pool }
 
 // 미니게임 주제별 배경·그림 (이벤트 길과 같은 그림)
 const MINI_THEME: Record<string, string> = {
@@ -89,7 +86,6 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
   roundRef.current = round
   const doneRound = useRef(-1)
   const isDuelRef = useRef(!!mini.duel)
-  const seen = useRef<Seen>(new Set())
   // 판마다 한 번만 결과를 받음 (타이머·StrictMode에서 두 번 불려도 안전)
   const done = useCallback((v: number) => {
     if (doneRound.current === roundRef.current) return
@@ -162,7 +158,7 @@ export function MiniGame({ mini, onFinish, guide, practiceLimit, outfit = DEFAUL
       case 'photo': return <Memory level={mini.level} symbols={Object.keys(CITY_ICON)} draw={(x) => <span className="city"><MiniIcon name={CITY_ICON[x]} size={30} /><small>{x}</small></span>} iconOf={cityIcon} onDone={done} report={report} />
       case 'pairs': return <Pairs level={mini.level} onDone={done} report={report} />
       case 'quickmath': return <QuickMath level={mini.level} onDone={done} report={report} />
-      case 'firstImpression': return <FirstImpression level={mini.level} seen={seen.current} onDone={done} />
+      case 'firstImpression': return <Hearts level={mini.level} onDone={done} />
       case 'oddEven': return <OddEven level={mini.level} onDone={done} />
       case 'highLow': return <HighLow level={mini.level} onDone={done} />
       case 'slot': return <Slot level={mini.level} onDone={done} />
@@ -676,9 +672,9 @@ function Leaves({ level, onDone, report, fly = false }: { level: number; onDone:
 // 여름 물총 싸움(water): 같은 규칙으로 눈벽 대신 튜브
 const SNOW_TOTAL = 10
 function Snowball({ level, onDone, report, water = false }: { level: number; onDone: (v: number) => void; report?: Report; water?: boolean }) {
-  const up = [1.0, 0.8, 0.62][level] // 고개를 내밀고 있는 초
+  const up = [1.3, 1.05, 0.85][level] // 고개를 내밀고 있는 초 (2026-11-02 사용자: 너무 어려워서 늘림)
   const gap = 0.35
-  const goal = [6, 7, 8][level]
+  const goal = [5, 6, 7][level]
   const slots = useMemo(() => { const r: number[] = []; for (let i = 0; i < SNOW_TOTAL; i++) { let k = rand(6); if (k === r[i - 1]) k = (k + 1 + rand(5)) % 6; r.push(k) } return r }, [])
   const [t, setT] = useState(0)
   const [hits, setHits] = useState<number[]>([])
@@ -974,28 +970,74 @@ function QuickMath({ level, onDone, report }: { level: number; onDone: (v: numbe
   )
 }
 
-const IMPRESSIONS = [
-  { q: '축제에서 눈이 마주쳤다. 뭐라고 할까?', a: ['저기, 혹시 같이 구경할래요?', '(못 본 척한다)', '음식이 맛있네요, 하나 드실래요?', '제 팔로워 수 아세요?'], best: [0, 2] },
-  { q: '상대가 공연을 보며 웃는다.', a: ['이 노래 좋아하세요?', '저 가수 별로던데요', '같이 앞쪽으로 가 볼래요?', '(휴대폰만 본다)'], best: [0, 2] },
-  { q: '비가 오기 시작했다!', a: ['제 우산 같이 써요', '(혼자 뛰어간다)', '근처 카페로 피할까요?', '비 맞는 것도 낭만이죠'], best: [0, 2] },
-]
-
-// 첫인상 고르기. 매력이 높으면 선택지가 적고 쉬움
-function FirstImpression({ level, seen, onDone }: { level: number; seen: Seen; onDone: (v: number) => void }) {
-  const sc = useMemo(() => { const pool = fresh(IMPRESSIONS, (x) => x.q, seen); const pick = pool[rand(pool.length)]; seen.add(pick.q); return pick }, [seen])
-  const shown = useMemo(() => {
-    const idx = sc.a.map((_, i) => i)
-    const bad = idx.filter((i) => !sc.best.includes(i))
-    const keepBad = bad.slice(0, [1, 2, 2][level])
-    const keepGood = level === 2 ? [sc.best[0]] : sc.best
-    return shuffle([...keepGood, ...keepBad])
-  }, [sc, level])
+// 하트 받기 (2026-11-02 사용자: 첫인상 고르기 대신). 바구니를 좌우로 옮겨 하트는 받고 깨진 하트는 피함
+// 매력이 높으면(쉬움) 천천히 떨어지고 깨진 하트가 적음. 받은 하트 - 깨진 하트 = 점수
+const HEART_T = 12
+const HEART_LANES = 5
+function Hearts({ level, onDone }: { level: number; onDone: (v: number) => void }) {
+  const every = [0.8, 0.7, 0.6][level] // 몇 초마다 하나
+  const fall = [2.2, 1.8, 1.4][level] // 위에서 바구니까지 초
+  const goal = [6, 7, 8][level]
+  const items = useMemo(() => {
+    const r: { id: number; at: number; lane: number; bad: boolean }[] = []
+    for (let i = 0; i * every + fall <= HEART_T - 0.2; i++) {
+      const prev = r[i - 1]?.lane ?? 2
+      const lane = Math.max(0, Math.min(HEART_LANES - 1, prev + rand(5) - 2)) // 앞 것과 두 줄 넘게 떨어지지 않게
+      r.push({ id: i, at: 0.4 + i * every, lane, bad: i > 0 && Math.random() < [0.2, 0.28, 0.35][level] })
+    }
+    return r
+  }, [every, fall, level])
+  const [t, setT] = useState(0)
+  const [lane, setLane] = useState(2)
+  const laneRef = useRef(2)
+  const [got, setGot] = useState<Record<number, 'good' | 'bad' | 'miss'>>({})
+  const gotRef = useRef<Record<number, 'good' | 'bad' | 'miss'>>({})
+  const score = Object.values(got).reduce((n, g) => n + (g === 'good' ? 1 : g === 'bad' ? -1 : 0), 0)
+  useEffect(() => {
+    const t0 = performance.now()
+    let raf = 0
+    const tick = (now: number) => {
+      const s = (now - t0) / 1000
+      setT(s)
+      let changed = false
+      for (const it of items) {
+        if (gotRef.current[it.id] || s < it.at + fall) continue
+        const hit = it.lane === laneRef.current
+        gotRef.current = { ...gotRef.current, [it.id]: hit ? (it.bad ? 'bad' : 'good') : 'miss' }
+        if (hit) sfx(it.bad ? 'bad' : 'pop')
+        changed = true
+      }
+      if (changed) setGot(gotRef.current)
+      if (s >= HEART_T) {
+        const sc = Object.values(gotRef.current).reduce((n, g) => n + (g === 'good' ? 1 : g === 'bad' ? -1 : 0), 0)
+        onDone(sc >= goal + 3 ? 2 : sc >= goal ? 1 : 0)
+        return
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [items, fall, goal, onDone])
+  const move = (to: number) => { const k = Math.max(0, Math.min(HEART_LANES - 1, to)); laneRef.current = k; setLane(k) }
+  useKeys({ ArrowLeft: () => move(laneRef.current - 1), ArrowRight: () => move(laneRef.current + 1), KeyA: () => move(laneRef.current - 1), KeyD: () => move(laneRef.current + 1) })
+  const laneX = (k: number) => 10 + k * 20
+  const falling = items.filter((it) => t >= it.at && t < it.at + fall && !gotRef.current[it.id])
+  const last = items.filter((it) => gotRef.current[it.id] && gotRef.current[it.id] !== 'miss' && t < it.at + fall + 0.35)
   return (
     <div className="mini-body">
-      <p>{sc.q}</p>
-      <div className="options">
-        {shown.map((i) => <button key={i} onClick={() => onDone(sc.best.includes(i) ? (Math.random() < [0.8, 0.6, 0.5][level] ? 2 : 1) : 0)}><b>{sc.a[i]}</b></button>)}
+      <p>💗 하트는 받고 💔 깨진 하트는 피하세요! 목표 {goal}개</p>
+      <div className="heart-field">
+        {Array.from({ length: HEART_LANES }, (_, k) => <button key={k} className="heart-lane" style={{ left: `${k * 20}%` }} onPointerDown={(e) => { e.preventDefault(); move(k) }} aria-label={`${k + 1}번 줄로`} />)}
+        {falling.map((it) => <span key={it.id} className="heart-drop" style={{ left: `${laneX(it.lane)}%`, top: `${((t - it.at) / fall) * 78}%` }}>{it.bad ? '💔' : '💗'}</span>)}
+        {last.map((it) => <span key={`p${it.id}`} className="heart-pop" style={{ left: `${laneX(it.lane)}%` }}>{gotRef.current[it.id] === 'good' ? '+1' : '-1'}</span>)}
+        <span className="heart-basket" style={{ left: `${laneX(lane)}%` }}>🧺</span>
       </div>
+      <div className="mini-grid two">
+        <button onPointerDown={(e) => { e.preventDefault(); move(laneRef.current - 1) }}>◀</button>
+        <button onPointerDown={(e) => { e.preventDefault(); move(laneRef.current + 1) }}>▶</button>
+      </div>
+      <div className="mini-big jua">💗 {score} · {Math.max(0, Math.ceil(HEART_T - t))}초</div>
+      <KeyHint>← → 로 바구니를 옮겨요 (줄을 눌러도 돼요)</KeyHint>
     </div>
   )
 }

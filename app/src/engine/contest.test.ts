@@ -13,7 +13,7 @@ it('단계가 끝날 때마다 대회를 하고, 끝나면 다음 단계로 간�
       const stage = s.stageIdx
       seen.push(s.stages[stage].id)
       expect(s.mini.playerId).toBe(0)
-      finishMini(s, 2) // 대성공이면 1등
+      finishMini(s, s.mini.game === 'dance' ? 2.5 : 2) // 대성공이면 1등 (춤은 맞힌 비율 점수: 2.5 = 100%)
       expect(s.stageIdx).toBe(stage + 1)
       expect(s.mini?.contest).toBeFalsy()
       expect(s.popup?.text).toContain('나: 1등!')

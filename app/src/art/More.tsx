@@ -366,7 +366,7 @@ export function EventPopup({ art, title, text, tone, who, hint = 0, onClose }: {
       <b className="jua">{title}</b>
       <span className="muted">{who}</span>
       {text.split('\n').map((l, i) => <span key={i}>{l}</span>)}
-      {hint > 0 && <small className="pop-hint">눌러도 닫혀요</small>}
+      {hint > 0 && <small className="pop-hint">닫기</small>}
       {hint > 0 && <i className="pop-timer" style={{ animationDuration: `${hint}ms` }} />}
     </button>
   )

@@ -14,9 +14,9 @@ import type {
   ChanceCard, ChoiceOption, DiceItem, GameState, InsuranceKind, JobDef, MapTheme, MiniId, Personality, Player, SabotageCard, Sector, Settings, Stage,
   StageId, StatKey, Suitor, Tile,
 } from './types'
-import { affinityGain, CASINO, casinoStake, FEST_GAMES, meet, resolveRps, rpsPending, startContest, startMini } from './mini'
+import { affinityGain, BRAIN_GAMES, CASINO, casinoStake, FEST_GAMES, meet, resolveRps, rpsPending, startContest, startMini } from './mini'
 import {
-  agencyTurn, type Attr, bigPrice, canDate, dateTile, findSuitor, makeSuitor, openShop, shopBuy, type ShopVisit, suitorDesc, triggerPoint,
+  agencyTurn, type Attr, bigPrice, canDate, canReunion, chancePrice, stars, dateTile, findSuitor, makeSuitor, openShop, shopBuy, type ShopVisit, suitorDesc, triggerPoint,
 } from './romance'
 import { addKid, eduPending, familyTick, isMinor, kidUpkeep } from './kids'
 import {
@@ -45,20 +45,6 @@ export const clampStat = (v: number) => Math.max(0, Math.min(10, v))
 export const workJob = (s: GameState, p: Player): JobDef | null => (stageOf(s).id === 'old' ? null : jobOf(p))
 export const jobTag = (j: JobDef) => `[${j.name}] `
 
-// ───────── 기분 (2026-10-17 사용자): 최근 5턴 동안 행복이 얼마나 오르내렸나. 쌓인 행복은 마지막 점수, 기분은 지금 삶의 상태 ─────────
-export const MOOD_TURNS = 5
-export const moodOf = (p: Player) => p.happy - (p.happyHist?.[0] ?? p.happy)
-export type MoodLevel = 0 | 1 | 2 // 우울 · 보통 · 기쁨 (2026-10-21 사용자: 5단계 → 3단계)
-export function moodLevel(p: Player): MoodLevel {
-  const m = moodOf(p)
-  // 행복은 원래 오르는 편이라 기쁨 기준을 위로 (100판 분포: 대략 우울 25% · 보통 50% · 기쁨 25%)
-  return m >= 12 ? 2 : m >= 0 ? 1 : 0
-}
-export const MOOD_NAMES = ['우울', '보통', '기쁨']
-export const MOOD_FACES = ['😟', '😐', '😄']
-export const MOOD_HELP = ['월급 -15%', '효과 없음', '연애 호감도 +15%'] // 운세와는 따로 (운세는 내 행동으로)
-const MOOD_SALARY = [0.85, 1, 1]
-export const MOOD_AFFINITY = [1, 1, 1.15]
 export const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}만`
 export const STATS: StatKey[] = ['int', 'str', 'cha']
 const SCHOOL_GIFT = 10 // 학생 단계 시작 때 모두에게 (만 원)
@@ -329,12 +315,17 @@ function beginTurn(s: GameState) {
   s.mini = null
   s.meetCheck = false
   s.phase = 'roll'
-  p.happyHist = [...(p.happyHist ?? []), p.happy].slice(-MOOD_TURNS)
   tickFortune(s, p)
   if ((p.chance as string) === 'shortcut') p.chance = 'reroll' // 예전 저장에 남은 지름길 카드 (2026-10-23 없앰)
   if (p.agency && !canDate(s, p) && stageOf(s).id === 'middle') {
     p.agency = null
     log(s, p.id, '중년 결혼식장을 지나 소개팅 회사가 자동 해지됐다', 'info')
+  }
+  if (p.reunion && !canDate(s, p)) {
+    p.reunion = false
+    const back = Math.round(chancePrice(s) / 2)
+    p.money += back
+    log(s, p.id, `${p.spouse ? '결혼해서' : '결혼식장을 지나'} 다시 만나기 카드가 없어졌다. 반값 +${won(back)} 돌려받음`, 'good')
   }
   for (const k of Object.keys(p.insuranceCooldown) as InsuranceKind[]) if (p.insuranceCooldown[k] > 0) p.insuranceCooldown[k]--
   if (p.creditBad > 0) p.creditBad--
@@ -370,11 +361,13 @@ function beginTurn(s: GameState) {
   if (p.money < 0 && rng.chance(0.25)) {
     badEvent(s, p, { text: '빚 독촉에 시달렸다', loss: 0, happyLoss: 4 })
   }
-  // 지난 내 차례가 끝난 뒤 나에게 일어난 일(퇴직금·은퇴·복권·방해 카드·월급 밖의 좋은 일·나쁜 일)을 창으로 (2026-10-22: 기록 창에만 떠서 몰랐음)
+  // 지난 내 차례가 끝난 뒤 나에게 일어난 큰 일만 모아 둠 → 이번 칸 사건이 끝난 뒤 창으로 (2026-11-02 사용자: 차례 시작에 너무 자주 떠서)
+  // 월급·작은 일은 빼고: 복권 당첨·퇴직금·은퇴·메달·축하금, 나쁜 일(배우자 성격 같은 작은 일은 뺌)
+  p.news = null
   if (p.human && p.lastLog !== undefined) {
     const n = Math.min(s.log.length, Math.max(0, s.logCount - p.lastLog))
-    const lines = s.log.slice(s.log.length - n).filter((l) => l.playerId === p.id && !/기한까지 \d+턴/.test(l.text) && (l.tone !== 'info' || /복권|퇴직금|은퇴|연금|월급|입학|축하/.test(l.text))) // 대출 기한 경고는 따로 알림이 떠서 뺌
-    if (lines.length) s.popup = { id: (s.popup?.id ?? 0) + 1, art: lines.some((l) => /복권/.test(l.text)) ? 'ticket' : 'money', title: '지난 차례 뒤 일어난 일', text: lines.slice(-6).map((l) => l.text).join('\n'), tone: lines.some((l) => l.tone === 'bad') ? 'bad' : 'good', playerId: p.id }
+    const lines = s.log.slice(s.log.length - n).filter((l) => l.playerId === p.id && !/기한까지 \d+턴/.test(l.text) && (l.tone === 'bad' ? !NEWS_SMALL.test(l.text) : NEWS_BIG.test(l.text))) // 대출 기한 경고는 따로 알림이 떠서 뺌
+    if (lines.length) p.news = { art: lines.some((l) => /복권/.test(l.text)) ? 'ticket' : lines.some((l) => l.tone === 'bad') ? 'warn' : 'money', text: lines.slice(-6).map((l) => l.text).join('\n'), tone: lines.some((l) => l.tone === 'bad') ? 'bad' : 'good' }
   }
   const sid = stageOf(s).id
   // 대학 생활은 최대 4차례 (주사위가 작아도 오래 머물지 않게, 2026-10-31 사용자). 5번째 차례 시작에 졸업
@@ -453,7 +446,7 @@ function economyTick(s: GameState, p: Player) {
   if (job?.id === 'ceo' && (st.id !== 'old' || p.bizKeep)) bizTick(s, p, st.id === 'old' ? BIZ.oldMult : 1)
   if (st.id !== 'old' && job) p.jobTenure++
   if (st.id !== 'old' && job && job.id !== 'ceo') {
-    const sal = Math.round(salaryOf(p) * MOOD_SALARY[moodLevel(p)]) // 우울하면 월급 -15%
+    const sal = salaryOf(p) // 기분(우울 -15%)은 없앰 (2026-11-02 사용자)
     const tax = Math.round(sal * TAX_RATE(sal))
     p.money += sal - tax
     // 성과급: 운세가 좋을수록 자주, 월급의 2배 (2026-10-21)
@@ -1013,6 +1006,8 @@ const themePool = (theme: MapTheme): Partial<Record<StageId, SpecialEvent[]>> =>
   return { child: all, student: all, young: all, middle: all, old: noStats }
 }
 
+const NEWS_BIG = /복권 \d등|퇴직금|은퇴|메달|축하|다시 만나기/
+const NEWS_SMALL = /부부 싸움|다퉜다|집안일|명품 쇼핑|빚 독촉/
 const POP_ART: Record<string, string> = { special: 'card', dilemma: 'card', money: 'money', risk: 'warn', card: 'card', happy: 'rest', date: 'heart', mini: 'medal' }
 const POP_TITLE: Record<string, string> = { special: '특별 이벤트', dilemma: '양심 선택', money: '돈 칸', risk: '위기 칸', card: '랜덤이벤트', happy: '행복 칸', date: '연애 칸', mini: '미니게임' }
 
@@ -1080,7 +1075,7 @@ function land(s: GameState, restLeft = 0) {
       if (rng.chance(0.5)) {
         const cost = sc * 2
         s.pending = {
-          type: 'happyPick', playerId: p.id, title: `행복 칸: ${sc2.title}`, text: `${sc2.text.replace(/!$/, '')}… 어떻게 보낼까요? (기분 ${MOOD_FACES[moodLevel(p)]} ${MOOD_NAMES[moodLevel(p)]})`,
+          type: 'happyPick', playerId: p.id, title: `행복 칸: ${sc2.title}`, text: `${sc2.text.replace(/!$/, '')}… 어떻게 보낼까요?`,
           options: [
             { id: 'big', label: '🎉 크게 놀기', desc: `-${won(cost)} · 행복 +7`, disabled: p.money < cost },
             { id: 'small', label: stageOf(s).id === 'child' ? '🧸 소소하게' : '☕ 소소하게', desc: '돈 안 듦 · 행복 +3' },
@@ -1107,7 +1102,8 @@ function land(s: GameState, restLeft = 0) {
     case 'mini': {
       // 테마 맵: 미니게임 칸의 약 1/3은 테마 게임 (보상은 원래 칸 게임대로). 카지노·축제 거리(연애)는 그대로
       const g = t.mini!
-      const keep = CASINO.includes(g) || (FEST_GAMES.includes(g) && stageOf(s).id === 'young')
+      // 두뇌 게임(두뇌 올림피아드) 자리에는 계절 게임이 안 나옴 (2026-11-02 사용자: 올림피아드에 눈싸움은 어색)
+      const keep = CASINO.includes(g) || BRAIN_GAMES.includes(g) || (FEST_GAMES.includes(g) && stageOf(s).id === 'young')
       if (theme && !keep && rng.chance(THEME_MINI_CHANCE)) startMini(s, p, THEME_GAME[theme], undefined, g)
       else startMini(s, p, g)
       break
@@ -2045,6 +2041,17 @@ export function choose(s: GameState, optionId: string) {
       else resolveRps(s, d.ids, picks, d.humans ?? [p.id])
       break
     }
+    case 'reunion': {
+      if (optionId === 'later') break
+      const x = findSuitor(p, optionId)
+      if (!x) break
+      p.reunion = false
+      const add = affinityGain(s, p, x)
+      x.affinity = Math.min(100, x.affinity + add)
+      p.happy += 1
+      log(s, p.id, `다시 만나기 카드: ${josa(x.name, '와/과')} 다시 만났다! 호감도 ${x.affinity}% (+${add}), 행복 +1`, 'good')
+      break
+    }
     case 'sabotageTarget': {
       const target = s.players[+optionId]
       if (target) applySabotage(s, p, target)
@@ -2101,7 +2108,7 @@ export function choose(s: GameState, optionId: string) {
 }
 // 결과 창을 따로 안 띄우는 선택 (갈림길·상점처럼 다음 화면이 바로 이어지는 것)
 const NO_RESULT_POP = new Set(['fork', 'shop', 'shopCoupon', 'agencyAttr', 'afterRoll', 'retake', 'casinoStake', 'festTarget', 'sabotageTarget', 'cardSwap'])
-const TYPE_POP_ART: Record<string, string> = { wallet: 'money', happyPick: 'rest', date: 'heart', marriage: 'heart', growPick: 'grow', job: 'money', invest: 'money' }
+const TYPE_POP_ART: Record<string, string> = { reunion: 'heart', wallet: 'money', happyPick: 'rest', date: 'heart', marriage: 'heart', growPick: 'grow', job: 'money', invest: 'money' }
 
 // ───────── 차례 전에 하는 행동 (재테크·카드) ─────────
 
@@ -2195,6 +2202,20 @@ export function playChance(s: GameState) {
   }
 }
 
+// 다시 만나기 카드 쓰기: 만난 적 있는 사람을 골라 데이트 (2026-11-02 사용자)
+export function playReunion(s: GameState) {
+  const p = cur(s)
+  if (!canAct(s) || !p.reunion || !canReunion(s, p)) return
+  s.pending = {
+    type: 'reunion', playerId: p.id, title: '💌 다시 만나기', text: '누구를 다시 만날까요? 데이트 칸처럼 호감도가 올라요.',
+    options: [
+      ...[...p.suitors].filter((x) => x.affinity < 100).sort((a, b) => b.affinity - a.affinity).map((x) => ({ id: `old:${x.name}:${x.grade}`, label: `${x.name}${stars(x.grade)} (호감 ${x.affinity}%)`, desc: suitorDesc(x) })),
+      { id: 'later', label: '나중에 쓸게요' },
+    ],
+  }
+  s.phase = 'decision'
+}
+
 export function startSabotage(s: GameState) {
   const p = cur(s)
   if (!canAct(s) || !p.sabotage) return
@@ -2269,6 +2290,7 @@ function endTurn(s: GameState) {
   const p = cur(s)
   const st = stageOf(s)
   p.lastLog = s.logCount
+  if (p.news) { s.news = { id: (s.news?.id ?? 0) + 1, title: '지난 차례 뒤 일어난 일', playerId: p.id, ...p.news }; p.news = null }
   if (st.rolls) p.rollsLeft = Math.max(0, p.rollsLeft - 1)
   if (st.id === 'old' && tileOf(s, p).kind === 'goal' && !p.finished) {
     p.finished = true

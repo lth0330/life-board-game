@@ -83,9 +83,10 @@ function ghost(game: string, grade: number, t: number, seed: number, level: numb
     }
     case 'snowball':
     case 'watergun': {
-      const up = [1.0, 0.8, 0.62][L]
+      const up = [1.3, 1.05, 0.85][L] // 내 화면 게임(Snowball)과 같게 (2026-11-02)
       const gap = 0.35
-      const hitsTotal = grade === 2 ? 9 + Math.floor(r(1) * 2) : grade === 1 ? [6, 7, 8][L] + Math.floor(r(1) * 2) : Math.floor(r(1) * [6, 7, 8][L])
+      const goal = [5, 6, 7][L]
+      const hitsTotal = grade === 2 ? Math.min(10, goal + 2 + Math.floor(r(1) * 2)) : grade === 1 ? goal + Math.floor(r(1) * 2) : Math.floor(r(1) * goal)
       const hitAt = shuffled(Array.from({ length: 10 }, (_, i) => i < hitsTotal), r, 40)
       const i = Math.floor(t / (up + gap))
       const into = t - i * (up + gap)

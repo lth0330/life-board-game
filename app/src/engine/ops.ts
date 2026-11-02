@@ -1,7 +1,7 @@
 // 플레이어가 하는 행동을 '주고받을 수 있는 목록'으로 (온라인에서 손님 기기는 이것만 방장 기기로 보냄)
 // 혼자 할 때도 같은 길로 적용해서, 온라인과 혼자 하기가 똑같이 움직이게 함
 import {
-  buyLottery, choose, contestReady, rpsPick, cur, cureAddiction, finishMini, playChance, repayFriendLoan, repayLoans, requestFriendLoan, roll, seekJob,
+  buyLottery, choose, contestReady, rpsPick, cur, cureAddiction, finishMini, playChance, playReunion, repayFriendLoan, repayLoans, requestFriendLoan, roll, seekJob,
   startSabotage, takeLoan, toggleInsurance, tradeStock, deposit, withdraw, giveTeammate,
 } from './game'
 import type { DiceItem, GameState, InsuranceKind, Sector } from './types'
@@ -12,7 +12,7 @@ export type Op =
   | ['finishMini', number, number?] // 대회는 누가 끝냈는지도
   | ['contestReady', number]
   | ['rpsPick', number, number] // 가위바위보 동시에: 누가, 무엇을
-  | ['buyLottery'] | ['cureAddiction'] | ['seekJob'] | ['playChance'] | ['startSabotage']
+  | ['buyLottery'] | ['cureAddiction'] | ['seekJob'] | ['playChance'] | ['playReunion'] | ['startSabotage']
   | ['tradeStock', Sector, number]
   | ['toggleInsurance', InsuranceKind]
   | ['takeLoan', number]
@@ -34,6 +34,7 @@ export function applyOp(s: GameState, op: Op) {
     case 'cureAddiction': return cureAddiction(s)
     case 'seekJob': return seekJob(s)
     case 'playChance': return playChance(s)
+    case 'playReunion': return playReunion(s)
     case 'startSabotage': return startSabotage(s)
     case 'tradeStock': return tradeStock(s, op[1], op[2])
     case 'toggleInsurance': return toggleInsurance(s, op[1])

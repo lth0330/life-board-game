@@ -4,7 +4,7 @@ import { Character } from '../art/Character'
 import { Trophy } from '../art/More'
 import { CARS, CHANCE_NAMES, DICE_ITEMS, HOUSE_RULES, HOUSES, INSURANCE, JOB_PROS_CONS, JOBS, KIDS, MEDALS, SABOTAGE_NAMES, SAVINGS_FEE, SAVINGS_PLANS, SECTORS } from '../engine/data'
 import {
-  ageOf, moodLevel, moodOf, MOOD_FACES, MOOD_HELP, MOOD_NAMES, MOOD_TURNS, AWARD_POINTS, awardsOf, canBankLoan, canBorrowFrom, loanCap, LOAN_RATE, LOAN_TURNS, fortuneName, friendDebt, houseValue, isAdultStage, jobOf, kidAllowance, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
+  ageOf, AWARD_POINTS, awardsOf, canBankLoan, canBorrowFrom, loanCap, LOAN_RATE, LOAN_TURNS, fortuneName, friendDebt, houseValue, isAdultStage, jobOf, kidAllowance, LOAN_RATES, loanLimit, loanTotal, salaryOf, scoreOf,
   stageOf, stars, stocksValue, teamTotals, TEAM_COLORS, TEAM_NAMES, sameTeam,
   myStakes, lotteryMult, lotteryPrice, LOTTERY_PRIZES,
 } from '../engine/game'
@@ -460,10 +460,6 @@ export function MyInfoSheet({ s, p, onClose }: { s: GameState; p: Player; onClos
           {p.record.bizShare !== undefined && <div className="muted">동업으로 번 돈 (받은 돈 - 투자금) {p.record.bizShare >= 0 ? '+' : ''}{won(p.record.bizShare)}</div>}
         </div>
       )}
-      <div className="note">
-        기분 {MOOD_FACES[moodLevel(p)]} <b>{MOOD_NAMES[moodLevel(p)]}</b> (최근 {MOOD_TURNS}턴 행복 {moodOf(p) >= 0 ? '+' : ''}{moodOf(p)}) · {MOOD_HELP[moodLevel(p)]}
-        <div className="muted">최근 5턴 행복이 많이 오르면 기쁨, 내려가면 우울이 돼요. 쌓인 행복은 마지막 점수에 들어가요.</div>
-      </div>
 
       <h3 className="jua">가족</h3>
       <div className="info-list">
