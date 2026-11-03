@@ -115,3 +115,22 @@ it('💌 카드는 상점에 한 번 들를 때 1장만 산다 (11-03)', () => {
   openShop(s, p) // 다음에 들르면 다시 살 수 있음
   expect((s.pending as { options: { id: string }[] }).options.some((o) => o.id === 'reunion')).toBe(true)
 })
+
+it('🤝 함께하기: 도착한 사람이 고르고, 평균 점수로 모두 보상 (11-03)', async () => {
+  const { meet, finishMini, COOP_OK } = await import('./game')
+  const s = youngGame()
+  const [me, ai] = s.players
+  ai.pos = me.pos
+  const m0 = me.money, a0 = ai.money, h0 = me.happy, ah0 = ai.happy
+  meet(s)
+  expect(s.pending?.type).toBe('meetChoice')
+  choose(s, 'coop')
+  expect(s.mini?.duel?.coop).toBe(true)
+  const aiScore = s.mini!.contest!.results[ai.id]
+  finishMini(s, 100, me.id) // 나는 100점
+  const avg = Math.round((100 + aiScore) / 2)
+  const gotHappy = avg >= 85 ? 5 : avg >= COOP_OK ? 3 : 1
+  expect(me.happy - h0).toBe(gotHappy)
+  expect(ai.happy - ah0).toBe(gotHappy)
+  expect(me.money - m0).toBe(ai.money - a0) // 모두 같은 돈
+})

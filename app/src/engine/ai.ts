@@ -150,6 +150,7 @@ function optionScore(s: GameState, p: Player, pd: Pending, id: string): number {
       }
       return 0
     }
+    case 'meetChoice': return id === 'coop' ? ({ family: 0.7, safe: 0.6, elite: 0.4, investor: 0.4, gambler: 0.2 }[per] ?? 0.4) + rng.next() * 0.3 : 0.45 + rng.next() * 0.3
     case 'bagFull': {
       // 가장 덜 쓸모 있는 것을 버림 (새것 포함)
       const item = (pd.data as { item: import('./types').BagItem }).item

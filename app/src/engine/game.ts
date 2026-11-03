@@ -15,7 +15,7 @@ import type {
   BagItem, ChanceCard, ChoiceOption, DiceItem, GameState, InsuranceKind, JobDef, MapTheme, MiniId, Personality, Player, SabotageCard, Sector, Settings, Stage,
   StageId, StatKey, Suitor, Tile,
 } from './types'
-import { affinityGain, BRAIN_GAMES, CASINO, JOB_GAME, casinoStake, FEST_GAMES, meet, resolveRps, rpsPending, startContest, startMini } from './mini'
+import { affinityGain, BRAIN_GAMES, CASINO, JOB_GAME, startCoop, startDuel, casinoStake, FEST_GAMES, meet, resolveRps, rpsPending, startContest, startMini } from './mini'
 import {
   agencyTurn, type Attr, bigPrice, canDate, canReunion, chancePrice, stars, dateTile, findSuitor, makeSuitor, isBagBuy, openShop, shopBuy, type ShopVisit, suitorDesc, triggerPoint,
 } from './romance'
@@ -2081,6 +2081,13 @@ export function choose(s: GameState, optionId: string) {
       log(s, p.id, `다시 만나기 카드: ${josa(x.name, '와/과')} 다시 만났다! 호감도 ${x.affinity}% (+${add}), 행복 +1`, 'good')
       break
     }
+    case 'meetChoice': {
+      const ids = (pd.data as { ids: number[] }).ids
+      const all = ids.map((i) => s.players[i])
+      if (optionId === 'coop') startCoop(s, all)
+      else startDuel(s, all)
+      break
+    }
     case 'sabotageTarget': {
       const target = s.players[+optionId]
       if (target) applySabotage(s, p, target, (pd.data as { card?: SabotageCard } | undefined)?.card)
@@ -2136,7 +2143,7 @@ export function choose(s: GameState, optionId: string) {
   }
 }
 // 결과 창을 따로 안 띄우는 선택 (갈림길·상점처럼 다음 화면이 바로 이어지는 것)
-const NO_RESULT_POP = new Set(['fork', 'shop', 'shopCoupon', 'agencyAttr', 'afterRoll', 'retake', 'casinoStake', 'festTarget', 'sabotageTarget', 'cardSwap', 'bagFull', 'shopDiscard'])
+const NO_RESULT_POP = new Set(['fork', 'shop', 'shopCoupon', 'agencyAttr', 'afterRoll', 'retake', 'casinoStake', 'festTarget', 'sabotageTarget', 'cardSwap', 'bagFull', 'shopDiscard', 'meetChoice'])
 const TYPE_POP_ART: Record<string, string> = { reunion: 'heart', wallet: 'money', happyPick: 'rest', date: 'heart', marriage: 'heart', growPick: 'grow', job: 'money', invest: 'money' }
 
 // ───────── 차례 전에 하는 행동 (재테크·카드) ─────────

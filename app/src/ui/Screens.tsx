@@ -1,3 +1,4 @@
+import { InstallButton } from './Install'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Logo } from '../art/Art'
 import { Character } from '../art/Character'
@@ -90,6 +91,7 @@ export function TitleScreen({ notice, gameNotice, onAuth, onGuest, onAdmin }: { 
       <button className="wide secondary" onClick={() => onAuth('join')}>회원가입</button>
       <button className="wide secondary" onClick={onGuest}>로그인 없이 하기 (저장 안 됨)</button>
       <button className="wide ghost" onClick={() => setManual(true)}>게임 설명서</button>
+      <InstallButton />
       <p className="muted center">한 계정으로 게임 저장과 온라인을 같이 써요. 다른 기기에서도 이어 할 수 있어요.</p>
       {manual && <Manual onClose={() => setManual(false)} />}
     </Frame>
@@ -133,6 +135,7 @@ export function MenuScreen({ profile, slot, gameNotice, onContinue, onNew, onOnl
       {profile && <button className="wide secondary" onClick={onDress}>캐릭터 꾸미기</button>}
       {profile && <button className="wide ghost" onClick={onAccount}>{/^google_/i.test(profile.loginId) ? '내 계정' : '내 계정 (이메일·비밀번호)'}</button>}
       <button className="wide ghost" onClick={() => setManual(true)}>게임 설명서</button>
+      <InstallButton />
       <button className="wide ghost" onClick={onLogout}>{profile ? '로그아웃' : '처음 화면으로'}</button>
       {manual && <Manual onClose={() => setManual(false)} />}
     </Frame>

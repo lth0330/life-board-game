@@ -129,8 +129,9 @@ export function finishMini(s: GameState, value: number, who?: number) {
     const p = s.players[id]
     const start = s.logCount
     if (m.duel) { // 같은 칸 대결: 모두 끝나면 결과를 보이고 하던 차례를 이어감
-      resolveDuel(s, 'timing', m.duel.ids, results)
-      showPop(s, p, start, 'medal', '대결 결과')
+      if (m.duel.coop) resolveCoop(s, m.duel.ids, results)
+      else resolveDuel(s, 'timing', m.duel.ids, results)
+      showPop(s, p, start, 'medal', m.duel.coop ? '함께하기 결과' : '대결 결과')
       resume(s)
       return
     }
@@ -318,6 +319,7 @@ export function miniGuide(s: GameState, game: MiniId | DuelId, duel: boolean, co
     const reward = scored ? `맞힌 비율로 1~4등 · ${prize ? `1등 ${won(prize)}·행복 +2 / 2등 ${won(prize / 2)}` : '1등 능력치 +1·행복 +2 / 2등 행복 +1'} / 3등 행복 +1` : prize ? `1등 ${won(prize)}·행복 +2 / 2등 ${won(prize / 2)} / 실패는 상 없음` : `1등 ${k && k !== 'fortune' ? STAT_NAMES[k] : '능력치'} +1·행복 +2 / 2등 행복 +1 / 실패는 상 없음`
     return { stat, reward }
   }
+  if (duel && s.mini?.duel?.coop) { const [mid, big] = COOP_MONEY[stageOf(s).id as 'young'] ?? [scaleOf(s), scaleOf(s) * 2]; return { stat: '같은 칸 사람들이 같이 해요 · 모두의 평균 점수로 정해요', reward: `평균 ${COOP_GREAT}점 이상 모두 행복 +5·${won(big)} / ${COOP_OK}점 이상 모두 행복 +3·${won(mid)} / 그 아래 모두 행복 +1` } }
   if (duel) return { stat: '같은 칸에 선 사람끼리 점수로 겨뤄요', reward: `1등이 꼴찌에게서 ${won(DUEL_STAKE[stageOf(s).id] ?? scaleOf(s))}을 받아요` }
   const shown = game
   if (s.mini?.game === game && s.mini.as) game = s.mini.as // 테마 게임: 보상은 원래 칸 게임대로
@@ -410,6 +412,56 @@ export function meet(s: GameState) {
     return
   }
   if (id === 'young' || id === 'middle') {
+    // 🤝 함께하기 (2026-11-03 사용자): 도착한 사람이 대결 / 함께하기를 고름. AI는 성격대로
+    if (p.human) {
+      const [mid, big] = COOP_MONEY[id]
+      s.pending = {
+        type: 'meetChoice', playerId: p.id, title: '같은 칸에서 만났어요',
+        text: `${josa(others.map((q) => q.name).join(', '), '와/과')} 같은 칸이에요. 어떻게 할까요?`,
+        options: [
+          { id: 'duel', label: '⚔️ 대결', desc: '주사위·가위바위보·멈추기 중 하나로 겨뤄요. 이기면 얻고 지면 잃어요' },
+          { id: 'coop', label: '🤝 함께하기', desc: `모두 같이 멈추기 게임을 해요. 평균 ${COOP_OK}점 넘으면 모두 행복 +3·${won(mid)}, ${COOP_GREAT}점 넘으면 행복 +5·${won(big)}` },
+        ],
+        data: { ids: all.map((q) => q.id) },
+      }
+      return
+    }
+    const coopChance = { family: 0.7, safe: 0.6, elite: 0.4, investor: 0.4, gambler: 0.2 }[p.personality] ?? 0.4
+    if (rng.chance(coopChance)) startCoop(s, all)
+    else startDuel(s, all)
+    return
+  }
+  meetEvents(s, all)
+}
+
+// 함께하기: 모두의 '멈추기' 평균 점수로 모두 보상 (경쟁 없음)
+export const COOP_OK = 60
+export const COOP_GREAT = 85
+const COOP_MONEY: Record<'young' | 'middle', [number, number]> = { young: [100, 200], middle: [200, 400] }
+export function startCoop(s: GameState, all: Player[]) {
+  const rng = rngOf(s)
+  const p = cur(s)
+  const ids = all.map((q) => q.id)
+  log(s, null, `${all.map((q) => q.name).join(', ')} 같은 칸에서 만났다! 🤝 함께하기: 멈추기`, 'info')
+  const players = (s.settings.online ? all.filter((q) => q.human) : p.human ? [p] : []).map((q) => q.id)
+  const res: Record<number, number> = {}
+  for (const q of all) if (!players.includes(q.id)) res[q.id] = timingScore(rng, q)
+  if (players.length) s.mini = { game: 'timing', playerId: players[0], level: miniLevel(s.players[players[0]], 'timing'), duel: { ids, results: {}, coop: true }, contest: { results: res, queue: players, seed: rng.int(1, 1e9) } }
+  else resolveCoop(s, ids, res)
+}
+export function resolveCoop(s: GameState, ids: number[], res: Record<number, number>) {
+  const id = stageOf(s).id as 'young' | 'middle'
+  const avg = Math.round(ids.reduce((a, i) => a + (res[i] ?? 0), 0) / ids.length)
+  const [mid, big] = COOP_MONEY[id] ?? [scaleOf(s), scaleOf(s) * 2]
+  const [happy, money, word] = avg >= COOP_GREAT ? [5, big, '대성공!'] : avg >= COOP_OK ? [3, mid, '성공!'] : [1, 0, '아쉽지만 즐거웠다']
+  for (const i of ids) { s.players[i].happy += happy; s.players[i].money += money }
+  log(s, null, `🤝 함께하기 ${word} (${ids.map((i) => `${s.players[i].name} ${res[i]}점`).join(', ')} · 평균 ${avg}점) 모두 행복 +${happy}${money ? `·+${won(money)}` : ''}`, 'good')
+}
+
+// 대결: 주사위·가위바위보·멈추기 중 하나
+export function startDuel(s: GameState, all: Player[]) {
+  const p = cur(s)
+  const rng = rngOf(s)
     const game = rng.pick(['dice', 'rps', 'timing'] as DuelId[])
     log(s, null, `${all.map((q) => q.name).join(', ')} 같은 칸에서 만났다! ${MINI_NAMES[game]}`, 'info')
     const ids = all.map((q) => q.id)
@@ -430,8 +482,12 @@ export function meet(s: GameState) {
       if (players.length) s.mini = { game: 'timing', playerId: players[0], level: miniLevel(s.players[players[0]], 'timing'), duel: { ids, results: {} }, contest: { results: res, queue: players, seed: rng.int(1, 1e9) } }
       else resolveDuel(s, game, ids, res)
     }
-    return
-  }
+}
+
+// 어린이·학생·노년: 운세에 따라 좋은 일·나쁜 일
+function meetEvents(s: GameState, all: Player[]) {
+  const rng = rngOf(s)
+  const id = stageOf(s).id as 'child' | 'student' | 'old'
   const ev = MEET_EVENTS[id]
   log(s, null, `${all.map((q) => q.name).join(', ')} 같은 칸에서 만났다!`, 'info')
   for (const q of all) {

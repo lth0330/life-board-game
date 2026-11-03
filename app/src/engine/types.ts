@@ -126,7 +126,7 @@ export interface MiniState {
   target?: string // 축제 거리에서 고른 상대 ('old:이름:등급' 또는 'new')
   as?: MiniId // 테마 게임이 원래 칸 게임 대신 나왔을 때: 보상은 원래 게임대로
   // 같은 칸 대결(타이밍). 2026-10-29부터 contest와 같이 모두 동시에 (results는 contest 쪽, 점수 0~100). queue는 예전 저장용
-  duel?: { ids: number[]; results: Record<number, number>; queue?: number[] }
+  duel?: { ids: number[]; results: Record<number, number>; queue?: number[]; coop?: boolean } // coop: 🤝 함께하기 (점수를 겨루지 않고 평균으로 모두 보상, 2026-11-03)
   // 단계 끝 대회: 모두 같은 미니게임을 동시에. results는 등급(0~2), queue는 아직 안 끝낸 사람, seed는 AI 장면용
   // ready: '준비 완료'를 누른 사람, go: 모두 준비돼서 3·2·1 뒤 다 같이 시작 (2026-10-29)
   contest?: { results: Record<number, number>; queue: number[]; seed?: number; ready?: number[]; go?: boolean; scores?: Record<number, number> } // scores: 맞힌 비율(0~100)로 등수를 가리는 대회 (춤)

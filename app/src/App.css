@@ -1334,3 +1334,6 @@ button.objection { background: #FFE08A; }
 .deal-face { font-size: 64px; line-height: 1.1; }
 .deal-table b { font-size: 28px; }
 .deal-table small { text-align: center; }
+
+/* 홈 화면 설치 안내 (2026-11-03) */
+.install-steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; line-height: 1.5; }

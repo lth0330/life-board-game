@@ -460,7 +460,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
   // ── 단계 끝 대회 (같은 칸 대결 타이밍도 같은 방식) ──
   const contest = game.mini?.contest
   const duelIds = game.mini?.duel?.ids
-  const contestTitle = duelIds ? '⚔️ 같은 칸 대결' : `🏆 ${contestName(game, game.mini?.game ?? '')}`
+  const contestTitle = game.mini?.duel?.coop ? '🤝 같은 칸 함께하기' : duelIds ? '⚔️ 같은 칸 대결' : `🏆 ${contestName(game, game.mini?.game ?? '')}`
   const myContestant = contest?.queue.find((i) => isMine(i))
   const [contestStart, setContestStart] = useState<number | null>(null) // 다 같이 시작한 때 (3·2·1 뒤, AI 흉내는 그때부터)
   const contestKey = contest ? `${game.turn}-${contest.seed}` : ''

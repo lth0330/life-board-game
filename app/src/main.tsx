@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import './ui/Install' // 설치 신호를 처음부터 들음
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
