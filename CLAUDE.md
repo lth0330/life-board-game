@@ -32,7 +32,7 @@
 - `package-lock.json`이 어긋나면 Amplify의 `npm ci`가 실패함 → 패키지를 더하면 빈 폴더에서 `npm ci`로 확인
 - 화면 확인: Edge(`C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe`)를 `--remote-debugging-port`로 띄워 CDP 스크립트로 조종·캡처. 서버 없이: `npx vite build --base ./ --outDir <scratchpad>` 뒤 `--allow-file-access-from-files`로 file:// 열기. 한 부분만 볼 땐 임시 `preview.html`+`src/preview.tsx`(커밋 안 함)
 - agent-browser는 그리기를 멈출 때가 있음 → `--disable-renderer-backgrounding,--disable-backgrounding-occluded-windows`. 배포본 시험 뒤 시험 계정·방·행동·프로필은 지우기
-- 밸런스 측정: AI끼리 1000판 시뮬레이션(임시 시험 파일, 커밋 안 함). 2026-10-29 기준 점수 중간값 224 (재산 121·행복 95·상 16)
+- 밸런스 측정: AI끼리 1000판 시뮬레이션(임시 시험 파일, 커밋 안 함). 2026-11-03 기준 점수 중간값 237 (재산 127·행복 86·상 13). 비교는 `git worktree`로 예전 커밋을 같은 방법으로 돌림
 - 밸런스 결정(바꾸지 않기): AI 성격끼리 점수 차이는 안 맞춤(대신 어려움이면 첫 AI는 가족형), 의사 1위 그대로, 주가 오름세 안 넣음
 
 ## 다음에 할 것
