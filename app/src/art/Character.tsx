@@ -34,8 +34,14 @@ function aged(o: Outfit, age?: number): { o: Outfit; scale: number; cane: boolea
 }
 
 // 팔·다리: 굵은 선 두 겹(테두리 + 색)
-function Limb({ d, w, fill, cls }: { d: string; w: number; fill: string; cls?: string }) {
-  return <g className={cls} fill="none" strokeLinecap="round" strokeLinejoin="round"><path d={d} stroke={INK} strokeWidth={w + SW * 2} /><path d={d} stroke={fill} strokeWidth={w} /></g>
+// shade: 오른쪽에 살짝 그림자 (2026-11-03 디테일)
+function Limb({ d, w, fill, cls, shade: sh }: { d: string; w: number; fill: string; cls?: string; shade?: boolean }) {
+  return (
+    <g className={cls} fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <path d={d} stroke={INK} strokeWidth={w + SW * 2} /><path d={d} stroke={fill} strokeWidth={w} />
+      {sh && <path d={d} stroke="rgba(42,33,24,0.13)" strokeWidth={w * 0.36} transform={`translate(${w * 0.27} 0)`} />}
+    </g>
+  )
 }
 
 // 팔: d = 팔 전체, sleeve = 반팔 소매, hand = 손 위치
@@ -94,12 +100,14 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
 
         <g transform={bodyT}>
         {/* 다리 */}
-        {bareLegs && <><Limb cls="leg-l" d="M42 116 L41.5 178" w={9} fill={o.skin} /><Limb cls="leg-r" d="M58 116 L58.5 178" w={9} fill={o.skin} /></>}
+        {bareLegs && <><Limb cls="leg-l" d="M42 116 L41.5 178" w={9} fill={o.skin} shade /><Limb cls="leg-r" d="M58 116 L58.5 178" w={9} fill={o.skin} shade /></>}
         {pantsLike && (
           <>
-            <Limb cls="leg-l" d="M42 114 L41 179" w={13} fill={o.bottomColor} />
-            <Limb cls="leg-r" d="M58 114 L59 179" w={13} fill={o.bottomColor} />
+            <Limb cls="leg-l" d="M42 114 L41 179" w={13} fill={o.bottomColor} shade />
+            <Limb cls="leg-r" d="M58 114 L59 179" w={13} fill={o.bottomColor} shade />
             <path d="M30 110 h40 v10 q-20 5 -40 0z" fill={o.bottomColor} stroke={INK} strokeWidth={SW} />
+            {/* 주머니·가운데 솔기 */}
+            <path d="M33.5 113 q5 4 8 -1.5 M66.5 113 q-5 4 -8 -1.5 M50 115 v7" stroke={shade(o.bottomColor, o.bottomColor === '#2A2118' ? 0.3 : -0.25)} strokeWidth="1.3" fill="none" strokeLinecap="round" />
             {o.bottom === 'jeans' && <path d="M41.5 122v52M58.5 122v52" stroke={shade(o.bottomColor, 0.45)} strokeWidth="1.3" strokeDasharray="2.5 2.5" />}
             {o.bottom === 'jeans' && <path d="M35 175h13M52 175h13" stroke={shade(o.bottomColor, 0.3)} strokeWidth="3" />}
             {o.bottom === 'track' && <path d="M35.5 120 L35 177M64.5 120 L65 177" stroke="#fff" strokeWidth="2" />}
@@ -107,15 +115,15 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
         )}
         {!dress && o.bottom === 'shorts' && (
           <>
-            <Limb cls="leg-l" d="M42 114 L41.5 134" w={14} fill={o.bottomColor} />
-            <Limb cls="leg-r" d="M58 114 L58.5 134" w={14} fill={o.bottomColor} />
+            <Limb cls="leg-l" d="M42 114 L41.5 134" w={14} fill={o.bottomColor} shade />
+            <Limb cls="leg-r" d="M58 114 L58.5 134" w={14} fill={o.bottomColor} shade />
             <path d="M30 110 h40 v10 q-20 5 -40 0z" fill={o.bottomColor} stroke={INK} strokeWidth={SW} />
           </>
         )}
         {!dress && o.bottom === 'skirt' && <path d="M31 108 h38 l8 38 q-27 7 -54 0z" fill={o.bottomColor} stroke={INK} strokeWidth={SW} />}
-        {!dress && o.bottom === 'skirt' && <path d="M44 112 l-3 36 M56 112 l3 36" stroke={shade(o.bottomColor, -0.18)} strokeWidth="1.5" fill="none" />}
+        {!dress && o.bottom === 'skirt' && <path d="M44 112 l-3 36 M56 112 l3 36 M50 112 v37 M25 140.5 q25 6.5 50 0" stroke={shade(o.bottomColor, -0.18)} strokeWidth="1.5" fill="none" />}
         {!dress && o.bottom === 'longskirt' && <path d="M31 108 h38 l10 66 q-29 7 -58 0z" fill={o.bottomColor} stroke={INK} strokeWidth={SW} />}
-        {!dress && o.bottom === 'longskirt' && <path d="M45 112 l-4 62 M55 112 l4 62" stroke={shade(o.bottomColor, -0.18)} strokeWidth="1.5" fill="none" />}
+        {!dress && o.bottom === 'longskirt' && <path d="M45 112 l-4 62 M55 112 l4 62 M23 167 q27 6.5 54 0" stroke={shade(o.bottomColor, -0.18)} strokeWidth="1.5" fill="none" />}
 
         {/* 신발 */}
         <g className="leg-l" clipPath={`url(#${torsoClip}L)`}><Shoes o={o} /></g>
@@ -139,6 +147,8 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
         <g clipPath={`url(#${torsoClip})`}>
           {o.top === 'stripe' && <g stroke={shade(o.topColor, 0.75)} strokeWidth="4.5"><path d="M20 82h60M20 94h60M20 106h60" /></g>}
           <path d={dress ? 'M60 72 Q70 100 80 150 L66 152 Q62 100 60 72Z' : TORSO_SHADE} fill="rgba(42,33,24,0.13)" />
+          {/* 밑단 (2026-11-03 디테일) */}
+          <path d={dress ? 'M20 143 Q50 152 80 143' : 'M27 113.5 Q50 118.5 73 113.5'} stroke={shade(o.topColor, -0.2)} strokeWidth="1.6" fill="none" />
           <path d="M37 76 Q35 86 36 94" stroke="rgba(255,255,255,0.35)" strokeWidth="3" strokeLinecap="round" fill="none" />
         </g>
         {!back && <TopFront o={o} />}
@@ -162,6 +172,9 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
           <circle cx="76.5" cy="46" r="5" />
           <ellipse cx="50" cy="42" rx="27" ry="25" />
         </g>
+        {/* 귀 안쪽·얼굴 오른쪽 아래 그늘 (2026-11-03 디테일) */}
+        <path d="M25.5 43.5 q-2.6 2.5 0 5 M74.5 43.5 q2.6 2.5 0 5" stroke="rgba(42,33,24,0.3)" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+        <path d="M23.5 42 a26.5 24.5 0 0 0 53 0 a29 26 0 0 1 -53 0z" fill="rgba(42,33,24,0.07)" transform="translate(1.2 3)" />
         {!back && <Face o={o} expr={expr} layer="face" />}
         {hasAcc('earrings') && <g fill={accC('earrings')} stroke={INK} strokeWidth="1.2"><circle cx="22.5" cy="53" r="2.4" /><circle cx="77.5" cy="53" r="2.4" /></g>}
 
@@ -208,7 +221,7 @@ function Face({ o, expr, layer }: { o: Outfit; expr: Expr; layer: 'face' | 'fx' 
   const brow = shade(o.hairColor, -0.1)
   const RED = '#E5484D', BLUE = '#6FC3EE', MOUTH = '#B3463A'
   const dot = (x: number, rx = 3.3, ry = 4.2) => (
-    <g><ellipse cx={x} cy="47" rx={rx} ry={ry} fill={INK} /><circle cx={x + rx * 0.35} cy={47 - ry * 0.4} r={rx * 0.42} fill="#fff" /></g>
+    <g><ellipse cx={x} cy="47" rx={rx} ry={ry} fill={INK} /><circle cx={x + rx * 0.35} cy={47 - ry * 0.4} r={rx * 0.42} fill="#fff" /><circle cx={x - rx * 0.38} cy={47 + ry * 0.42} r={rx * 0.2} fill="#fff" opacity="0.8" /></g>
   )
   const arc = (x: number) => <path d={`M${x - 4.5} 48.5 q4.5 -6.5 9 0`} stroke={INK} strokeWidth="2.8" strokeLinecap="round" fill="none" />
   const heart = (x: number, y: number, s: number, c = RED) => <path d={`M${x} ${y + s * 0.9} C${x - s * 1.4} ${y - s * 0.1} ${x - s * 0.7} ${y - s * 1.1} ${x} ${y - s * 0.35} C${x + s * 0.7} ${y - s * 1.1} ${x + s * 1.4} ${y - s * 0.1} ${x} ${y + s * 0.9}Z`} fill={c} stroke={INK} strokeWidth="1.2" />
@@ -311,7 +324,8 @@ function Face({ o, expr, layer }: { o: Outfit; expr: Expr; layer: 'face' | 'fx' 
         <path d="M45.5 56 q4.5 4 9 0" stroke={INK} strokeWidth="2.2" fill="none" strokeLinecap="round" />
       </>
   }
-  return <g>{layer === 'fx' ? fx : face}</g>
+  const nose = expr === 'surprised' || expr === 'angry' ? null : <path d="M48.6 51.6 q1.4 1.1 2.8 0" stroke="rgba(42,33,24,0.38)" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+  return <g>{layer === 'fx' ? fx : <>{face}{nose}</>}</g>
 }
 
 // 앞모습: 몸 뒤로 보이는 머리 (긴 머리·포니테일·양갈래·똥머리)
@@ -319,7 +333,7 @@ function HairBehind({ o }: { o: Outfit }) {
   const c = o.hairColor
   const p = { fill: c, stroke: INK, strokeWidth: SW }
   switch (o.hair) {
-    case 'long': return <path d="M22 40 Q20 13 50 13 Q80 13 78 40 L81 86 Q66 92 50 90 Q34 92 19 86Z" {...p} />
+    case 'long': return <g><path d="M22 40 Q20 13 50 13 Q80 13 78 40 L81 86 Q66 92 50 90 Q34 92 19 86Z" {...p} /><path d="M27 62 Q25 74 27 86 M73 62 Q75 74 73 86" stroke={shade(c, c === '#2A1E17' ? 0.25 : -0.22)} strokeWidth="1.4" fill="none" strokeLinecap="round" /></g>
     case 'bob': return <path d="M21 40 Q20 13 50 13 Q80 13 79 40 L80 64 Q72 68 66 64 L34 64 Q28 68 20 64Z" {...p} />
     case 'pony': return <path d="M68 22 Q92 30 86 70 Q80 58 72 50Z" {...p} />
     case 'bun': return <circle cx="50" cy="12" r="10" {...p} />
@@ -333,13 +347,14 @@ function HairBehind({ o }: { o: Outfit }) {
 function HairFront({ o }: { o: Outfit }) {
   const c = o.hairColor
   const p = { fill: c, stroke: INK, strokeWidth: SW }
-  const hi = <path d="M36 22 Q44 17 54 18" stroke="rgba(255,255,255,0.35)" strokeWidth="3" strokeLinecap="round" fill="none" />
+  const hi = <><path d="M36 22 Q44 17 54 18" stroke="rgba(255,255,255,0.38)" strokeWidth="3" strokeLinecap="round" fill="none" /><path d="M59 19 q4 1 6 3" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round" fill="none" /></>
+  const strands = (d: string) => <path d={d} stroke={shade(c, c === '#2A1E17' ? 0.25 : -0.22)} strokeWidth="1.3" strokeLinecap="round" fill="none" />
   switch (o.hair) {
     case 'buzz': return <path d="M24 38 Q24 16 50 16 Q76 16 76 38 Q64 28 50 28 Q36 28 24 38Z" fill={c} opacity="0.85" />
     case 'curly': return <g {...p}><circle cx="30" cy="30" r="9" /><circle cx="70" cy="30" r="9" /><circle cx="38" cy="20" r="10" /><circle cx="62" cy="20" r="10" /><circle cx="50" cy="16" r="10" /><circle cx="44" cy="28" r="7" /><circle cx="57" cy="28" r="7" /></g>
-    case 'bob': case 'long': return <g><path d="M23 42 Q23 16 50 15 Q77 16 77 42 Q76 33 70 32 H30 Q24 33 23 42Z" {...p} />{hi}</g>
+    case 'bob': case 'long': return <g><path d="M23 42 Q23 16 50 15 Q77 16 77 42 Q76 33 70 32 H30 Q24 33 23 42Z" {...p} />{strands('M40 19 Q37 25 36 31 M60 19 Q63 25 64 31 M50 16 v6')}{hi}</g>
     case 'twoblock': return <g><path d="M24 44 Q22 30 26 24" stroke={shade(c, 0.25)} strokeWidth="4" fill="none" /><path d="M76 44 Q78 30 74 24" stroke={shade(c, 0.25)} strokeWidth="4" fill="none" /><path d="M25 36 Q22 13 52 13 Q80 14 77 34 Q70 24 58 27 Q46 30 36 38 Q30 34 25 36Z" {...p} />{hi}</g>
-    default: return <g><path d="M23 44 Q22 16 50 15 Q78 16 77 44 Q74 31 66 30 Q60 36 52 31 Q44 37 36 31 Q28 34 23 44Z" {...p} />{hi}</g>
+    default: return <g><path d="M23 44 Q22 16 50 15 Q78 16 77 44 Q74 31 66 30 Q60 36 52 31 Q44 37 36 31 Q28 34 23 44Z" {...p} />{strands('M42 19 Q40 25 38 29 M56 18 Q57 24 54 29 M68 22 Q70 26 69 30')}{hi}</g>
   }
 }
 
@@ -397,7 +412,10 @@ function Outer({ o, back, arms }: { o: Outfit; back: boolean; arms: [Arm, Arm] }
           {o.outer === 'cardigan' && <g fill="#F4EBD6" stroke={INK} strokeWidth="1"><circle cx="43" cy="84" r="1.8" /><circle cx="43" cy="96" r="1.8" /><circle cx="43" cy="108" r="1.8" /></g>}
           {o.outer === 'gown' && <g fill="none" stroke={shade(c, -0.25)} strokeWidth="1.5"><path d="M33 104 h8 v7 h-8z" /><path d="M36 102 v-6" stroke="#1B4DDB" strokeWidth="2" /></g>}
           {o.outer === 'raincoat' && <g fill={shade(c, -0.25)}><circle cx="42" cy="92" r="2" /><circle cx="42" cy="108" r="2" /><circle cx="42" cy="124" r="2" /></g>}
-          {o.outer === 'coat' && <g fill={shade(c, -0.3)}><circle cx="42" cy="100" r="1.8" /><circle cx="42" cy="116" r="1.8" /><circle cx="58" cy="100" r="1.8" /><circle cx="58" cy="116" r="1.8" /></g>}
+          {o.outer === 'coat' && <g fill={shade(c, -0.3)}><circle cx="42" cy="96" r="1.8" /><circle cx="58" cy="96" r="1.8" /><circle cx="42" cy="126" r="1.8" /><circle cx="58" cy="126" r="1.8" /></g>}
+          {o.outer === 'coat' && <path d="M29.5 108 L46 108 L46.2 113.5 L29.3 113.5Z M54 108 L70.5 108 L70.7 113.5 L53.8 113.5Z" fill={shade(c, -0.18)} stroke={INK} strokeWidth="1.4" />}
+          {o.outer === 'jacket' && <path d="M32.5 103 h9 M58.5 103 h9" stroke={shade(c, c === '#2A2118' ? 0.3 : -0.3)} strokeWidth="1.6" strokeLinecap="round" />}
+          {o.outer === 'padding' && <path d="M33 78 q3 -2.5 8 -2 M59 78 q3 -2.5 8 -2 M33 91 q3 -2 7 -1.5 M59 91 q3 -2 7 -1.5" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" fill="none" />}
         </>
       )}
       {o.outer === 'padding' && <g stroke={shade(c, -0.25)} strokeWidth="1.6" fill="none"><path d="M30 84 h14 M56 84 h14 M30 97 h14 M56 97 h14 M30 110 h14 M56 110 h14" />{back && <path d="M30 84 h40 M30 97 h40 M30 110 h40" />}</g>}
@@ -425,7 +443,7 @@ function Shoes({ o }: { o: Outfit }) {
     case 'boots': return <g {...p}><path d="M34 162 h15 v20 q0 6 -6 6 h-12 q-4 0 -4 -4 q0 -4 7 -6z" /><path d="M66 162 h-15 v20 q0 6 6 6 h12 q4 0 4 -4 q0 -4 -7 -6z" /></g>
     case 'sandals': return <g><g {...p}><rect x="30" y="184" width="20" height="5" rx="2.5" /><rect x="50" y="184" width="20" height="5" rx="2.5" /></g><path d="M36 184 q5 -6 10 0 M54 184 q5 -6 10 0" stroke={shade(c, -0.3)} strokeWidth="2.5" fill="none" /></g>
     case 'loafers': return <g><g {...p}><path d="M34 177 h14 q3 0 3 4 v5 q0 3 -3 3 h-18 q-3 0 -3 -3 q0 -6 7 -9z" /><path d="M66 177 h-14 q-3 0 -3 4 v5 q0 3 3 3 h18 q3 0 3 -3 q0 -6 -7 -9z" /></g><path d="M34 181 h10 M56 181 h10" stroke={shade(c, 0.35)} strokeWidth="1.5" /></g>
-    default: return <g><g {...p}><path d="M35 176 h13 q3 0 3 4 v6 q0 3 -3 3 h-19 q-3 0 -3 -3 q0 -8 9 -10z" /><path d="M65 176 h-13 q-3 0 -3 4 v6 q0 3 3 3 h19 q3 0 3 -3 q0 -8 -9 -10z" /></g><path d="M27 185 h23 M50 185 h23" stroke="#fff" strokeWidth="2" /></g>
+    default: return <g><g {...p}><path d="M35 176 h13 q3 0 3 4 v6 q0 3 -3 3 h-19 q-3 0 -3 -3 q0 -8 9 -10z" /><path d="M65 176 h-13 q-3 0 -3 4 v6 q0 3 3 3 h19 q3 0 3 -3 q0 -8 -9 -10z" /></g><path d="M27 185 h23 M50 185 h23" stroke="#fff" strokeWidth="2" /><path d="M39 178.5 l4 2.5 M43 178.5 l-4 2.5 M61 178.5 l-4 2.5 M57 178.5 l4 2.5" stroke={shade(c, c === '#F4EBD6' ? -0.35 : 0.45)} strokeWidth="1.1" strokeLinecap="round" /><path d="M30 181 q1.5 -2 4 -2.5 M70 181 q-1.5 -2 -4 -2.5" stroke="rgba(255,255,255,0.55)" strokeWidth="1.4" strokeLinecap="round" fill="none" /></g>
   }
 }
 
