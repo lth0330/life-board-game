@@ -23,7 +23,7 @@
 - 서버 설정 `app/amplify/`, 화면 쪽 `app/src/online/`, 방장 기기가 게임을 진행하고 상태를 올림. 같이 하기는 각자 기기로 (한 기기 여럿 문제는 고치지 않음)
 - **비밀 파일은 절대 커밋하지 않기**: `aws.txt`(AWS·관리자 비밀번호), `google.txt`(구글 로그인 키). 둘 다 `.gitignore`
 - 관리자: 처음 화면 ⚙️, 아이디 `admin`
-- 구글 로그인: Google Cloud 프로젝트 `degul-life`·클라이언트 `degul-web`. 키는 AWS SSM 비밀 보관함(`GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`, sandbox와 main 각각). 리디렉션 URI는 Cognito 도메인 `…/oauth2/idpresponse` (sandbox `91fd253f8581921aeeef`, main `f1ed733f4a1a9d798dac`). 아이디 계정과 구글 계정은 따로. Google '테스트' 상태라 테스트 사용자만 → 모두 쓰려면 '앱 게시'
+- 구글 로그인: Google Cloud 프로젝트 `degul-life`·클라이언트 `degul-web`. 키는 AWS SSM 비밀 보관함(`GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`, sandbox와 main 각각). 리디렉션 URI는 Cognito 도메인 `…/oauth2/idpresponse` (sandbox `91fd253f8581921aeeef`, main `f1ed733f4a1a9d798dac`). 아이디 계정과 구글 계정은 따로(합치지 않기로 함, 11-03 사용자: 구글을 안 쓰고 싶은 사람은 아이디로, 어느 쪽이든 게임은 같음). Google '테스트' 상태라 테스트 사용자만 → 모두 쓰려면 '앱 게시'
 - 서버 설정을 바꾸면 먼저 `npx ampx sandbox --once`로 시험 환경에 올려 보기. main 비밀값 바꾸기는 자동 모드에서 막힘 → 스크립트를 만들어 사용자가 `!`로 실행
 - `aws login`은 2026-10-31에 다시 만료됨 → 사용자가 `! aws login`. 배포 확인: `aws amplify list-jobs --app-id d16edqa9h9pqgu --branch-name main`, 또는 사이트 JS를 curl로 받아 새 문구 찾기
 
