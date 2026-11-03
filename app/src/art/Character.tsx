@@ -172,9 +172,6 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
           <circle cx="76.5" cy="46" r="5" />
           <ellipse cx="50" cy="42" rx="27" ry="25" />
         </g>
-        {/* 귀 안쪽·얼굴 오른쪽 아래 그늘 (2026-11-03 디테일) */}
-        <path d="M25.5 43.5 q-2.6 2.5 0 5 M74.5 43.5 q2.6 2.5 0 5" stroke="rgba(42,33,24,0.3)" strokeWidth="1.3" fill="none" strokeLinecap="round" />
-        <path d="M23.5 42 a26.5 24.5 0 0 0 53 0 a29 26 0 0 1 -53 0z" fill="rgba(42,33,24,0.07)" transform="translate(1.2 3)" />
         {!back && <Face o={o} expr={expr} layer="face" />}
         {hasAcc('earrings') && <g fill={accC('earrings')} stroke={INK} strokeWidth="1.2"><circle cx="22.5" cy="53" r="2.4" /><circle cx="77.5" cy="53" r="2.4" /></g>}
 
@@ -221,7 +218,7 @@ function Face({ o, expr, layer }: { o: Outfit; expr: Expr; layer: 'face' | 'fx' 
   const brow = shade(o.hairColor, -0.1)
   const RED = '#E5484D', BLUE = '#6FC3EE', MOUTH = '#B3463A'
   const dot = (x: number, rx = 3.3, ry = 4.2) => (
-    <g><ellipse cx={x} cy="47" rx={rx} ry={ry} fill={INK} /><circle cx={x + rx * 0.35} cy={47 - ry * 0.4} r={rx * 0.42} fill="#fff" /><circle cx={x - rx * 0.38} cy={47 + ry * 0.42} r={rx * 0.2} fill="#fff" opacity="0.8" /></g>
+    <g><ellipse cx={x} cy="47" rx={rx} ry={ry} fill={INK} /><circle cx={x + rx * 0.35} cy={47 - ry * 0.4} r={rx * 0.42} fill="#fff" /></g>
   )
   const arc = (x: number) => <path d={`M${x - 4.5} 48.5 q4.5 -6.5 9 0`} stroke={INK} strokeWidth="2.8" strokeLinecap="round" fill="none" />
   const heart = (x: number, y: number, s: number, c = RED) => <path d={`M${x} ${y + s * 0.9} C${x - s * 1.4} ${y - s * 0.1} ${x - s * 0.7} ${y - s * 1.1} ${x} ${y - s * 0.35} C${x + s * 0.7} ${y - s * 1.1} ${x + s * 1.4} ${y - s * 0.1} ${x} ${y + s * 0.9}Z`} fill={c} stroke={INK} strokeWidth="1.2" />
@@ -324,8 +321,7 @@ function Face({ o, expr, layer }: { o: Outfit; expr: Expr; layer: 'face' | 'fx' 
         <path d="M45.5 56 q4.5 4 9 0" stroke={INK} strokeWidth="2.2" fill="none" strokeLinecap="round" />
       </>
   }
-  const nose = expr === 'surprised' || expr === 'angry' ? null : <path d="M48.6 51.6 q1.4 1.1 2.8 0" stroke="rgba(42,33,24,0.38)" strokeWidth="1.4" fill="none" strokeLinecap="round" />
-  return <g>{layer === 'fx' ? fx : <>{face}{nose}</>}</g>
+  return <g>{layer === 'fx' ? fx : face}</g>
 }
 
 // 앞모습: 몸 뒤로 보이는 머리 (긴 머리·포니테일·양갈래·똥머리)
@@ -333,7 +329,7 @@ function HairBehind({ o }: { o: Outfit }) {
   const c = o.hairColor
   const p = { fill: c, stroke: INK, strokeWidth: SW }
   switch (o.hair) {
-    case 'long': return <g><path d="M22 40 Q20 13 50 13 Q80 13 78 40 L81 86 Q66 92 50 90 Q34 92 19 86Z" {...p} /><path d="M27 62 Q25 74 27 86 M73 62 Q75 74 73 86" stroke={shade(c, c === '#2A1E17' ? 0.25 : -0.22)} strokeWidth="1.4" fill="none" strokeLinecap="round" /></g>
+    case 'long': return <path d="M22 40 Q20 13 50 13 Q80 13 78 40 L81 86 Q66 92 50 90 Q34 92 19 86Z" {...p} />
     case 'bob': return <path d="M21 40 Q20 13 50 13 Q80 13 79 40 L80 64 Q72 68 66 64 L34 64 Q28 68 20 64Z" {...p} />
     case 'pony': return <path d="M68 22 Q92 30 86 70 Q80 58 72 50Z" {...p} />
     case 'bun': return <circle cx="50" cy="12" r="10" {...p} />
@@ -347,14 +343,13 @@ function HairBehind({ o }: { o: Outfit }) {
 function HairFront({ o }: { o: Outfit }) {
   const c = o.hairColor
   const p = { fill: c, stroke: INK, strokeWidth: SW }
-  const hi = <><path d="M36 22 Q44 17 54 18" stroke="rgba(255,255,255,0.38)" strokeWidth="3" strokeLinecap="round" fill="none" /><path d="M59 19 q4 1 6 3" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round" fill="none" /></>
-  const strands = (d: string) => <path d={d} stroke={shade(c, c === '#2A1E17' ? 0.25 : -0.22)} strokeWidth="1.3" strokeLinecap="round" fill="none" />
+  const hi = <path d="M36 22 Q44 17 54 18" stroke="rgba(255,255,255,0.35)" strokeWidth="3" strokeLinecap="round" fill="none" />
   switch (o.hair) {
     case 'buzz': return <path d="M24 38 Q24 16 50 16 Q76 16 76 38 Q64 28 50 28 Q36 28 24 38Z" fill={c} opacity="0.85" />
     case 'curly': return <g {...p}><circle cx="30" cy="30" r="9" /><circle cx="70" cy="30" r="9" /><circle cx="38" cy="20" r="10" /><circle cx="62" cy="20" r="10" /><circle cx="50" cy="16" r="10" /><circle cx="44" cy="28" r="7" /><circle cx="57" cy="28" r="7" /></g>
-    case 'bob': case 'long': return <g><path d="M23 42 Q23 16 50 15 Q77 16 77 42 Q76 33 70 32 H30 Q24 33 23 42Z" {...p} />{strands('M40 19 Q37 25 36 31 M60 19 Q63 25 64 31 M50 16 v6')}{hi}</g>
+    case 'bob': case 'long': return <g><path d="M23 42 Q23 16 50 15 Q77 16 77 42 Q76 33 70 32 H30 Q24 33 23 42Z" {...p} />{hi}</g>
     case 'twoblock': return <g><path d="M24 44 Q22 30 26 24" stroke={shade(c, 0.25)} strokeWidth="4" fill="none" /><path d="M76 44 Q78 30 74 24" stroke={shade(c, 0.25)} strokeWidth="4" fill="none" /><path d="M25 36 Q22 13 52 13 Q80 14 77 34 Q70 24 58 27 Q46 30 36 38 Q30 34 25 36Z" {...p} />{hi}</g>
-    default: return <g><path d="M23 44 Q22 16 50 15 Q78 16 77 44 Q74 31 66 30 Q60 36 52 31 Q44 37 36 31 Q28 34 23 44Z" {...p} />{strands('M42 19 Q40 25 38 29 M56 18 Q57 24 54 29 M68 22 Q70 26 69 30')}{hi}</g>
+    default: return <g><path d="M23 44 Q22 16 50 15 Q78 16 77 44 Q74 31 66 30 Q60 36 52 31 Q44 37 36 31 Q28 34 23 44Z" {...p} />{hi}</g>
   }
 }
 
