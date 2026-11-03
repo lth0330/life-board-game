@@ -92,7 +92,12 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
   const torsoClip = `t${uid}`
   return (
     <svg viewBox={vb} width={size} height={h} role={title ? 'img' : undefined} aria-label={title} aria-hidden={title ? undefined : true}>
-      <defs><clipPath id={torsoClip}><path d={dress ? DRESS : TORSO} /></clipPath><clipPath id={`${torsoClip}L`}><rect x="0" y="0" width="50" height="200" /></clipPath><clipPath id={`${torsoClip}R`}><rect x="50" y="0" width="50" height="200" /></clipPath></defs>
+      <defs>
+        {/* 옷 입체감 (2026-11-03): 위는 밝게 → 원래 색 → 아래는 어둡게. 머리는 원래 단색 (사용자) */}
+        <linearGradient id={`${uid}t`} gradientUnits="userSpaceOnUse" x1="0" y1="66" x2="0" y2={dress ? 156 : 122}><stop offset="0" stopColor={shade(o.topColor, 0.35)} /><stop offset="0.4" stopColor={o.topColor} /><stop offset="1" stopColor={shade(o.topColor, -0.32)} /></linearGradient>
+        <linearGradient id={`${uid}o`} gradientUnits="userSpaceOnUse" x1="0" y1="66" x2="0" y2={outerLong ? 152 : 122}><stop offset="0" stopColor={shade(o.outerColor, 0.35)} /><stop offset="0.4" stopColor={o.outerColor} /><stop offset="1" stopColor={shade(o.outerColor, -0.34)} /></linearGradient>
+        <linearGradient id={`${uid}b`} gradientUnits="userSpaceOnUse" x1="0" y1="108" x2="0" y2={o.bottom === 'longskirt' ? 176 : 150}><stop offset="0" stopColor={shade(o.bottomColor, 0.25)} /><stop offset="0.45" stopColor={o.bottomColor} /><stop offset="1" stopColor={shade(o.bottomColor, -0.34)} /></linearGradient>
+        <clipPath id={torsoClip}><path d={dress ? DRESS : TORSO} /></clipPath><clipPath id={`${torsoClip}L`}><rect x="0" y="0" width="50" height="200" /></clipPath><clipPath id={`${torsoClip}R`}><rect x="50" y="0" width="50" height="200" /></clipPath></defs>
       {!crop && <ellipse cx="50" cy="191" rx={24 * scale} ry="4" fill="rgba(42,33,24,0.16)" />}
       <g transform={`translate(${50 - 50 * scale} ${200 - 200 * scale}) scale(${scale})`} strokeLinejoin="round">
         {/* 뒤로 넘어간 머리 (앞모습일 때 몸 뒤) */}
@@ -120,9 +125,9 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
             <path d="M30 110 h40 v10 q-20 5 -40 0z" fill={o.bottomColor} stroke={INK} strokeWidth={SW} />
           </>
         )}
-        {!dress && o.bottom === 'skirt' && <path d="M31 108 h38 l8 38 q-27 7 -54 0z" fill={o.bottomColor} stroke={INK} strokeWidth={SW} />}
+        {!dress && o.bottom === 'skirt' && <path d="M31 108 h38 l8 38 q-27 7 -54 0z" fill={`url(#${uid}b)`} stroke={INK} strokeWidth={SW} />}
         {!dress && o.bottom === 'skirt' && <path d="M44 112 l-3 36 M56 112 l3 36 M50 112 v37 M25 140.5 q25 6.5 50 0" stroke={shade(o.bottomColor, -0.18)} strokeWidth="1.5" fill="none" />}
-        {!dress && o.bottom === 'longskirt' && <path d="M31 108 h38 l10 66 q-29 7 -58 0z" fill={o.bottomColor} stroke={INK} strokeWidth={SW} />}
+        {!dress && o.bottom === 'longskirt' && <path d="M31 108 h38 l10 66 q-29 7 -58 0z" fill={`url(#${uid}b)`} stroke={INK} strokeWidth={SW} />}
         {!dress && o.bottom === 'longskirt' && <path d="M45 112 l-4 62 M55 112 l4 62 M23 167 q27 6.5 54 0" stroke={shade(o.bottomColor, -0.18)} strokeWidth="1.5" fill="none" />}
 
         {/* 신발 */}
@@ -130,7 +135,7 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
         <g className="leg-r" clipPath={`url(#${torsoClip}R)`}><Shoes o={o} /></g>
 
         {/* 코트 자락 (몸 뒤) */}
-        {outerOn && outerLong && !back && <path d="M29 100 L25 150 Q50 156 75 150 L71 100Z" fill={o.outerColor} stroke={INK} strokeWidth={SW} />}
+        {outerOn && outerLong && !back && <path d="M29 100 L25 150 Q50 156 75 150 L71 100Z" fill={`url(#${uid}o)`} stroke={INK} strokeWidth={SW} />}
 
         {/* 팔 */}
         <Limb d={aL.d} w={9} fill={longSleeve ? o.topColor : o.skin} />
@@ -143,10 +148,10 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
         {hasAcc('watch') && pose === 'idle' && <rect x="20" y="106.5" width="10" height="4" rx="1.5" fill={accC('watch')} stroke={INK} strokeWidth="1.5" />}
 
         {/* 상의 */}
-        <path d={dress ? DRESS : TORSO} fill={o.topColor} stroke={INK} strokeWidth={SW} />
+        <path d={dress ? DRESS : TORSO} fill={`url(#${uid}t)`} stroke={INK} strokeWidth={SW} />
         <g clipPath={`url(#${torsoClip})`}>
           {o.top === 'stripe' && <g stroke={shade(o.topColor, 0.75)} strokeWidth="4.5"><path d="M20 82h60M20 94h60M20 106h60" /></g>}
-          <path d={dress ? 'M60 72 Q70 100 80 150 L66 152 Q62 100 60 72Z' : TORSO_SHADE} fill="rgba(42,33,24,0.13)" />
+          <path d={dress ? 'M60 72 Q70 100 80 150 L66 152 Q62 100 60 72Z' : TORSO_SHADE} fill="rgba(42,33,24,0.24)" />
           {/* 밑단 (2026-11-03 디테일) */}
           <path d={dress ? 'M20 143 Q50 152 80 143' : 'M27 113.5 Q50 118.5 73 113.5'} stroke={shade(o.topColor, -0.2)} strokeWidth="1.6" fill="none" />
           <path d="M37 76 Q35 86 36 94" stroke="rgba(255,255,255,0.35)" strokeWidth="3" strokeLinecap="round" fill="none" />
@@ -155,7 +160,7 @@ export function Character({ outfit, view = 'front', size = 100, title, age, expr
         {back && o.top === 'hoodie' && <path d="M36 70 Q50 92 64 70 Q50 76 36 70Z" fill={shade(o.topColor, -0.12)} stroke={INK} strokeWidth={SW} />}
 
         {/* 겉옷 */}
-        {outerOn && <Outer o={o} back={back} arms={[aL, aR]} />}
+        {outerOn && <Outer o={o} back={back} arms={[aL, aR]} grad={`url(#${uid}o)`} />}
         {/* 겉옷 소매가 손을 덮지 않게 손을 한 번 더 (2026-10-21 사용자) */}
         {outerOn && <g fill={o.skin} stroke={INK} strokeWidth={SW}><circle cx={aL.hand[0]} cy={aL.hand[1]} r="5.5" /><circle cx={aR.hand[0]} cy={aR.hand[1]} r="5.5" /></g>}
         </g>
@@ -325,9 +330,9 @@ function Face({ o, expr, layer }: { o: Outfit; expr: Expr; layer: 'face' | 'fx' 
 }
 
 // 앞모습: 몸 뒤로 보이는 머리 (긴 머리·포니테일·양갈래·똥머리)
-function HairBehind({ o }: { o: Outfit }) {
+function HairBehind({ o, g }: { o: Outfit; g?: string }) {
   const c = o.hairColor
-  const p = { fill: c, stroke: INK, strokeWidth: SW }
+  const p = { fill: g ?? c, stroke: INK, strokeWidth: SW }
   switch (o.hair) {
     case 'long': return <path d="M22 40 Q20 13 50 13 Q80 13 78 40 L81 86 Q66 92 50 90 Q34 92 19 86Z" {...p} />
     case 'bob': return <path d="M21 40 Q20 13 50 13 Q80 13 79 40 L80 64 Q72 68 66 64 L34 64 Q28 68 20 64Z" {...p} />
@@ -340,9 +345,9 @@ function HairBehind({ o }: { o: Outfit }) {
 }
 
 // 앞모습: 앞머리
-function HairFront({ o }: { o: Outfit }) {
+function HairFront({ o, g }: { o: Outfit; g?: string }) {
   const c = o.hairColor
-  const p = { fill: c, stroke: INK, strokeWidth: SW }
+  const p = { fill: g ?? c, stroke: INK, strokeWidth: SW }
   const hi = <path d="M36 22 Q44 17 54 18" stroke="rgba(255,255,255,0.35)" strokeWidth="3" strokeLinecap="round" fill="none" />
   switch (o.hair) {
     case 'buzz': return <path d="M24 38 Q24 16 50 16 Q76 16 76 38 Q64 28 50 28 Q36 28 24 38Z" fill={c} opacity="0.85" />
@@ -354,9 +359,9 @@ function HairFront({ o }: { o: Outfit }) {
 }
 
 // 뒷모습: 머리 전체
-function HairBack({ o }: { o: Outfit }) {
+function HairBack({ o, g }: { o: Outfit; g?: string }) {
   const c = o.hairColor
-  const p = { fill: c, stroke: INK, strokeWidth: SW }
+  const p = { fill: g ?? c, stroke: INK, strokeWidth: SW }
   if (o.hair === 'buzz') return <ellipse cx="50" cy="38" rx="25" ry="21" fill={c} opacity="0.85" />
   return (
     <g {...p}>
@@ -389,9 +394,9 @@ function TopFront({ o }: { o: Outfit }) {
   }
 }
 
-function Outer({ o, back, arms }: { o: Outfit; back: boolean; arms: [Arm, Arm] }) {
+function Outer({ o, back, arms, grad }: { o: Outfit; back: boolean; arms: [Arm, Arm]; grad?: string }) {
   const c = o.outerColor
-  const p = { fill: c, stroke: INK, strokeWidth: SW }
+  const p = { fill: grad ?? c, stroke: INK, strokeWidth: SW }
   const sleeves = o.outer !== 'vest'
   const len = LONG_OUTER.includes(o.outer) ? 150 : o.outer === 'padding' ? 120 : 118
   return (

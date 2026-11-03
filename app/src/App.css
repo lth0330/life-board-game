@@ -1180,6 +1180,8 @@ button.danger { white-space: nowrap; flex-shrink: 0; background: #C2452D; color:
 
 /* 땅 그림 파일이 있으면 (src/assets/art/ground*.webp, 2026-10-29) */
 .world.has-ground .plane::before { background: var(--ground-img) 0 0 / 512px 512px repeat, var(--grass); }
+/* 땅 그림이 있으면 판 아래쪽 빈 땅도 같은 무늬·색으로 (2026-11-03: 판 밖이 단색이라 경계가 보였음) */
+.world.has-ground .sky-deco .ground { background: var(--ground-img) 0 0 / 256px 256px repeat, #b2db52; }
 
 /* 구글 로그인 버튼 (2026-10-29) */
 .or-line { margin: 10px 0 4px; }
