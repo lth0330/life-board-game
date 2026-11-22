@@ -86,7 +86,8 @@
 칸 위에 올라가는 아이콘. 동그랗고 단순하게.
 `tile-good` 선물 상자 · `tile-money` 동전 · `tile-grow` 새싹 · `tile-happy` 웃는 얼굴 · `tile-risk` 경고 삼각형 · `tile-card` 별 카드 · `tile-stop` 멈춤 표지판 · `tile-date` 하트 · `tile-mini` 게임기 · `tile-rest` 벤치 · `tile-goal` 깃발 · `tile-work` 서류 가방(업무 칸)
 
-### 사건 창 그림 (각 120×100)
+### 사건 창 그림 (각 120×100) — ✅ 11-23 넣음
+10개씩 3장(2줄×5개)으로 받아 잘랐음. 요청 문장은 아래 목록을 줄·순서로 나눠 썼고, 첫 장에 기준 집 그림과 칸 그림 시트를 같이 올림.
 창 위에 크게 나오는 그림. 장면 하나를 단순하게 (사람 없이, 물건·장소로).
 `marriage` 웨딩 케이크와 반지 · `baby` 아기 침대와 딸랑이 · `shop` 쇼핑백 · `job` 서류 가방과 명함 · `biz` 가게 셔터가 올라가는 모습 · `medal` 금메달 · `book` 펼친 책 · `family` 집과 하트 · `sign` 갈림길 표지판 · `dice` 주사위 두 개 · `heart` 큰 하트 · `ticket` 복권 · `card` 카드 한 장 · `grow` 화분 새싹 · `travel` 여행 가방과 비행기 · `amusement` 관람차 · `walk` 산책길 벤치 · `rest` 해먹 · `game` 게임기 · `friends` 하이파이브하는 두 손 · `playground` 미끄럼틀 · `karaoke` 마이크 · `hike` 산과 깃발 · `garden` 물뿌리개와 꽃 · `trophy` 트로피 · `cake` 생일 케이크 · `broken` 깨진 하트 · `warn` 경고 표지 · `grad` 학사모 · `money` 돈 다발
 

@@ -46,6 +46,8 @@
 
 ## 사건 창 그림
 
+**11-23 모두 넣음** (파일은 300×250). 결정 창·칸 사건 창·큰 사건 배너의 작은 그림이 모두 이 파일을 씀(11-23 전엔 칸 사건 창·배너는 코드 그림만 썼음). 배너 위 큰 장면(`SCENES`)은 아직 코드 그림
+
 `event-` + 이름 (120×100): `marriage` `baby` `shop` `job` `biz` `medal` `book` `family` `sign` `dice` `heart` `ticket` `card` `grow` `travel` `amusement` `walk` `rest` `game` `friends` `playground` `karaoke` `hike` `garden` `trophy` `cake` `broken` `warn` `grad` `money`
 
 ## 미니게임

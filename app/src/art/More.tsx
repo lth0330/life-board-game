@@ -213,6 +213,8 @@ export function BannerArt({ title, tone }: { title: string; tone: string }) {
   const scene = SCENES.find(([re]) => re.test(title))?.[1]
   if (scene) return <svg className="scene-art" viewBox="0 0 220 150" width="220" height="150" aria-hidden="true">{scene()}</svg>
   const key = BANNER_ART.find(([re]) => re.test(title))?.[1] ?? (tone === 'bad' ? 'warn' : null)
+  const file = key ? artFile(`event-${key}`) : undefined
+  if (file) return <img className="banner-art" src={file} width="72" height="60" alt="" draggable={false} style={{ objectFit: 'contain' }} />
   const draw = key ? ART[key] : null
   if (!draw) return null
   return <svg className="banner-art" viewBox="0 0 120 100" width="72" height="60" aria-hidden="true">{draw('')}</svg>
@@ -360,9 +362,11 @@ export function Roulette({ title, chance, ok, who, manual, onDone }: { title: st
 // hint: 내 사건이면 몇 초 뒤 닫히는지 줄어드는 막대로 (ms, 2026-10-31 사용자)
 export function EventPopup({ art, title, text, tone, who, hint = 0, onClose }: { art: string; title: string; text: string; tone: string; who: string; hint?: number; onClose: () => void }) {
   const draw = ART[art]
+  const file = artFile(`event-${art}`) // 그림 파일이 있으면 그 그림 (2026-11-23)
   return (
     <button className={`event-pop t-${tone}`} onClick={onClose} aria-label={`${title}: ${text} (눌러서 닫기)`}>
-      {draw && <svg viewBox="0 0 120 100" width="150" height="125" aria-hidden="true">{draw('')}</svg>}
+      {file ? <img src={file} width="150" height="125" alt="" draggable={false} style={{ objectFit: 'contain' }} />
+        : draw && <svg viewBox="0 0 120 100" width="150" height="125" aria-hidden="true">{draw('')}</svg>}
       <b className="jua">{title}</b>
       <span className="muted">{who}</span>
       {text.split('\n').map((l, i) => <span key={i}>{l}</span>)}
