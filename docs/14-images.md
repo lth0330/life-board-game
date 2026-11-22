@@ -42,7 +42,7 @@
 
 ## 칸 그림
 
-`tile-` + 칸 종류: `tile-good`(좋은 일) `tile-money` `tile-grow` `tile-happy` `tile-risk`(위기) `tile-card`(랜덤이벤트) `tile-stop` `tile-date`(연애) `tile-mini` `tile-rest` `tile-goal` `tile-work`(업무 칸, 11-03) — 각 96×96
+`tile-` + 칸 종류: `tile-good`(좋은 일) `tile-money` `tile-grow` `tile-happy` `tile-risk`(위기) `tile-card`(랜덤이벤트) `tile-stop` `tile-date`(연애) `tile-mini` `tile-rest` `tile-goal` `tile-work`(업무 칸, 11-03) `tile-shop`(상점) — 각 96×96. **11-23 모두 넣음**
 
 ## 사건 창 그림
 
