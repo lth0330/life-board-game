@@ -25,7 +25,7 @@
 - 서버 설정 `app/amplify/`, 화면 쪽 `app/src/online/`, 방장 기기가 게임을 진행하고 상태를 올림. 같이 하기는 각자 기기로 (한 기기 여럿 문제는 고치지 않음)
 - **비밀 파일은 절대 커밋하지 않기**: `aws.txt`(AWS·관리자 비밀번호), `google.txt`(구글 로그인 키). 둘 다 `.gitignore`
 - 관리자: 처음 화면 ⚙️, 아이디 `admin`
-- 구글 로그인: Google Cloud 프로젝트 `degul-life`·클라이언트 `degul-web`. 키는 AWS SSM 비밀 보관함(`GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`, sandbox와 main 각각). 리디렉션 URI는 Cognito 도메인 `…/oauth2/idpresponse` (sandbox `91fd253f8581921aeeef`, main `f1ed733f4a1a9d798dac`). 아이디 계정과 구글 계정은 따로(합치지 않기로 함, 11-03 사용자: 구글을 안 쓰고 싶은 사람은 아이디로, 어느 쪽이든 게임은 같음). Google '테스트' 상태라 테스트 사용자만 → 모두 쓰려면 '앱 게시'
+- 구글 로그인: Google Cloud 프로젝트 `degul-life`·클라이언트 `degul-web`. 키는 AWS SSM 비밀 보관함(`GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`, sandbox와 main 각각). 리디렉션 URI는 Cognito 도메인 `…/oauth2/idpresponse` (sandbox `91fd253f8581921aeeef`, main `f1ed733f4a1a9d798dac`). 아이디 계정과 구글 계정은 따로(합치지 않기로 함, 11-03 사용자: 구글을 안 쓰고 싶은 사람은 아이디로, 어느 쪽이든 게임은 같음). **11-23 앱 게시함(프로덕션 단계)** → 누구나 구글 로그인. 브랜딩: 홈페이지·개인정보처리방침 `…amplifyapp.com/privacy.html`(`app/public/privacy.html`, 연락처는 사용자 구글 이메일), 로고는 비움(올리면 구글 심사)
 - 서버 설정을 바꾸면 먼저 `npx ampx sandbox --once`로 시험 환경에 올려 보기. main 비밀값 바꾸기는 자동 모드에서 막힘 → 스크립트를 만들어 사용자가 `!`로 실행
 - `aws login`은 2026-10-31에 다시 만료됨 → 사용자가 `! aws login`. 배포 확인: `aws amplify list-jobs --app-id d16edqa9h9pqgu --branch-name main`, 또는 사이트 JS를 curl로 받아 새 문구 찾기
 
@@ -38,7 +38,7 @@
 - 밸런스 결정(바꾸지 않기): AI 성격끼리 점수 차이는 안 맞춤(대신 어려움이면 첫 AI는 가족형), 의사 1위 그대로, 주가 오름세 안 넣음
 
 ## 다음에 할 것
-- **오늘 순서 (11-23 사용자)**: 구글 로그인 '앱 게시'(지금 '테스트'라 테스트 사용자만 로그인 → 포트폴리오 보는 사람이 막힘) → 처음 화면 '테스트 중' 공지 띠 정리(관리자 ⚙️) → 사람이 직접 볼 것 → 그림
+- **오늘 순서 (11-23 사용자)**: ~~구글 '앱 게시'~~(끝) → 처음 화면 '테스트 중' 공지 띠 정리(관리자 ⚙️) → 사람이 직접 볼 것 → 그림
 - **그림 작업 (11-03)**: 판 그림(집·건물 12·입구 5·나무·땅·하늘·꾸미기 6)은 사용자가 ChatGPT로 그려 Claude가 잘라 넣고 올림. 그림체 기준 = 두 번째 단순한 집. 남은 것: 칸 아이콘 12, 사건 창 그림 30, 계절 그림(없으면 계절 판은 코드 그림). ChatGPT 시트 자르기: 투명도 150~230 아래 지우고 덩어리별로(numpy·scipy)
 - 그림: 캐릭터·옷은 코드 그림을 Claude가 다듬기, 판·건물·나무·하늘·사건 창은 사용자가 ChatGPT로 (`docs/15-gpt-art.md`)
 - 나중에: 그림·배경을 이미지 파일로 더 좋은 퀄리티로, 판 밖(전체 지도·대기실·미니게임 창) 테마, 겨울 지붕 눈, 진짜 3D(맨 마지막)
