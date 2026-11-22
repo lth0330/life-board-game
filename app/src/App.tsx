@@ -321,8 +321,11 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
   }, [act, online])
   const isMine = (id: number) => (online ? online.mine.includes(id) : game.players[id].human)
   // 단계 정산 창: 온라인은 각자 닫음 (다른 사람 화면을 닫지 않게)
-  const [closedSummary, setClosedSummary] = useState<number | null>(null)
-  const summaryOpen = !!game.summary && (!online || closedSummary !== game.stageIdx)
+  // 닫은 것은 탭을 닫기 전까지 기억 (새로고침하면 지난 정산 창이 다시 뜨던 것, 2026-11-23). 판(seed)·단계로 구분
+  const summaryKey = `${game.seed}:${game.stageIdx}`
+  const [closedSummary, setClosedSummary] = useState<string | null>(() => { try { return sessionStorage.getItem('dgl:closedSummary') } catch { return null } })
+  const closeSummary = () => { setClosedSummary(summaryKey); try { sessionStorage.setItem('dgl:closedSummary', summaryKey) } catch { /* 무시 */ } }
+  const summaryOpen = !!game.summary && (!online || closedSummary !== summaryKey)
 
   // ── 주사위 결과 잠깐 보여주기 ──
   const [diceShow, setDiceShow] = useState<{ value: number; second?: number } | null>(null)
@@ -800,7 +803,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
         )
       })()}
 
-      {summaryOpen && !walking && !popShow && <StageSummary s={game} onClose={() => (online ? setClosedSummary(game.stageIdx) : act((s) => { s.summary = null }))} />}
+      {summaryOpen && !walking && !popShow && <StageSummary s={game} onClose={() => (online ? closeSummary() : act((s) => { s.summary = null }))} />}
 
       {wheel && <Roulette title={wheel.title} chance={wheel.chance} ok={wheel.ok} who={game.players[wheel.playerId].name} manual={isMine(wheel.playerId) && game.players[wheel.playerId].human} onDone={closeWheel} />}
 
