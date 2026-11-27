@@ -11,7 +11,7 @@ interface Props { outfit: Outfit; view?: 'front' | 'back'; size?: number; title?
 const INK = '#2A2118'
 const SW = 2.2 // 테두리 굵기
 
-const shade = (hex: string, amt: number) => {
+export const shade = (hex: string, amt: number) => {
   const n = parseInt(hex.slice(1), 16)
   const f = (v: number) => Math.max(0, Math.min(255, Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt)))
   return `rgb(${f(n >> 16)}, ${f((n >> 8) & 255)}, ${f(n & 255)})`
@@ -22,8 +22,8 @@ const mix = (a: string, b: string, t: number) => {
   return `#${((c(16) << 16) | (c(8) << 8) | c(0)).toString(16).padStart(6, '0')}`
 }
 
-type Extra = 'baby' | 'kinder' | 'student' | null
-function aged(o: Outfit, age?: number): { o: Outfit; scale: number; cane: boolean; extra: Extra } {
+export type Extra = 'baby' | 'kinder' | 'student' | null
+export function aged(o: Outfit, age?: number): { o: Outfit; scale: number; cane: boolean; extra: Extra } {
   if (age === undefined) return { o, scale: 1, cane: false, extra: null }
   const f = o.gender === 'f'
   if (age < 4) return { o: { ...o, hair: 'buzz', hat: f ? 'ribbon' : 'none', hatColor: '#F3A3C0', top: 'tee', topColor: f ? '#F7D3E2' : '#CFE7F5', outer: 'none', bottom: 'shorts', bottomColor: '#FFFFFF', shoes: 'sneakers', shoesColor: '#FFFFFF', acc: 'none', acc2: 'none', acc3: 'none' }, scale: heightOf(age), cane: false, extra: 'baby' }
@@ -467,6 +467,8 @@ function Hat({ o, back }: { o: Outfit; back: boolean }) {
     case 'chef': return <g><path d="M31 30 v-5 q-9-2-7-10 q2-7 10-5 q2-8 16-8 q14 0 16 8 q8-2 10 5 q2 8-7 10 v5z" {...p} fill="#fff" /><rect x="30" y="26" width="40" height="9" rx="3" {...p} fill="#f2f2f2" /></g>
     case 'santa': return <g><path d="M25 32 Q28 8 54 8 Q72 10 82 30 L74 28 Q64 18 52 20 Q36 22 32 32z" {...p} fill="#D6342B" /><rect x="22" y="27" width="56" height="9" rx="4.5" {...p} fill="#fff" /><circle cx="81" cy="30" r="5.5" {...p} fill="#fff" /></g>
     case 'police': return <g>{!back && <path d="M26 33 Q50 42 74 33 L74 37 Q50 46 26 37z" fill="#1d2433" stroke={INK} strokeWidth={SW} />}<path d="M24 32 Q22 12 50 11 Q78 12 76 32z" {...p} /><rect x="23" y="27" width="54" height="7" rx="3" fill="#1d2433" stroke={INK} strokeWidth="1.6" />{!back && <circle cx="50" cy="20" r="4" fill="#E8C060" stroke={INK} strokeWidth="1.2" />}</g>
+    // 학사모 (장면 전용): 머리 덮는 모자 + 비스듬히 보이는 네모 판 + 노란 술
+    case 'grad': return <g><path d="M24 36 Q23 14 50 14 Q77 14 76 36 Q50 30 24 36Z" fill="#2A2238" stroke={INK} strokeWidth={SW} /><path d="M10 16 L50 4 L90 16 L50 28Z" fill="#2A2238" stroke={INK} strokeWidth={SW} strokeLinejoin="round" /><circle cx="50" cy="16" r="2.6" fill="#F2C230" stroke={INK} strokeWidth="1.2" />{!back && <><path d="M50 16 L80 20 V38" stroke="#F2C230" strokeWidth="2.6" fill="none" /><path d="M77 37 h6 l-1 7 h-4z" fill="#F2C230" stroke={INK} strokeWidth="1" /></>}</g>
     case 'crown': return <g><path d="M30 28 l5 -18 l9 10 l6 -14 l6 14 l9 -10 l5 18z" fill="#E8C060" stroke={INK} strokeWidth={SW} /><g fill="#C2452D" stroke={INK} strokeWidth="1"><circle cx="50" cy="22" r="2.4" /><circle cx="38" cy="23" r="1.8" /><circle cx="62" cy="23" r="1.8" /></g></g>
     default: return null
   }
