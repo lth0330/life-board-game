@@ -58,7 +58,8 @@ const BUILDING_FOR: Record<string, BuildingKind> = {
 
 export function Building({ name, color = '#B5452F', theme }: { name: string; color?: string; theme?: string | null }) {
   const kind = BUILDING_FOR[name] ?? 'house'
-  const file = artFile(`building-${kind}`, theme) // 그림 파일이 있으면 그 그림 + 이름판
+  // 그림 파일이 있으면 그 그림 + 이름판. 계절 판에 그 계절 건물 그림이 없으면 기본 건물 그림 (2026-11-27 사용자: 건물 코드 그림엔 계절 차이가 없음)
+  const file = artFile(`building-${kind}`, theme) ?? artFile(`building-${kind}`)
   // 이름판: 평평하게, 글자 수에 맞춰 너비
   const pw = Math.min(200, Math.max(110, name.length * 24 + 44))
   const plate = (bg: string) => (
