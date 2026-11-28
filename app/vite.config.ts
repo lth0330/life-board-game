@@ -1,10 +1,11 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { offlineSW } from './sw-plugin.mjs'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), offlineSW()],
   // React는 따로 한 파일로: 게임 코드를 고쳐 다시 올려도 이 파일은 브라우저에 남아 있어 빨리 열림 (2026-10-29)
   build: {
     rollupOptions: {
