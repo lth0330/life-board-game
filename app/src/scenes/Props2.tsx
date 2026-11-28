@@ -128,9 +128,19 @@ export function Tissue() {
   return <path d="M-6 -10 Q0 -14 6 -10 L5 2 Q0 4 -5 2Z" fill="#fff" stroke={INK} strokeWidth="1.4" strokeLinejoin="round" />
 }
 
-/** 휴대폰 */
-export function Phone() {
-  return <g><rect x="-4" y="-14" width="8" height="14" rx="2" fill="#3A3434" stroke={INK} strokeWidth="1.4" /><rect x="-2.6" y="-12.5" width="5.2" height="10" rx="1" fill="#9FD0EC" /></g>
+/** 휴대폰 (손에 쥔 아래 끝이 0,0). 귀에 대면 얼굴 반쯤 크기 (11-28 사용자: 작으면 통화하는 것 같지 않음) */
+export function Phone({ lit = true }: { lit?: boolean }) {
+  return (
+    <g>
+      <rect x="-6.5" y="-25" width="13" height="25" rx="3" fill="#2E2A2C" stroke={INK} strokeWidth="1.5" />
+      <rect x="-5" y="-22" width="10" height="19" rx="1.4" fill={lit ? '#BFE6F7' : '#3E4A56'} />
+      {lit && <><circle cx="0" cy="-15" r="3" fill="#7FCB8A" /><path d="M-1.6 -16 q0.4 2.4 3 3.2" stroke="#fff" strokeWidth="1.1" fill="none" strokeLinecap="round" /><path d="M-3 -8 h6 M-2 -6 h4" stroke="#7A98B0" strokeWidth="0.9" /></>}
+      <path d="M-1.8 -23.6 h3.6" stroke="#5A5658" strokeWidth="0.9" strokeLinecap="round" />
+      <circle cx="0" cy="-1.6" r="0.9" fill="#5A5658" />
+      <path d="M-4.2 -21 L-2 -21" stroke="rgba(255,255,255,0.6)" strokeWidth="0.8" />
+      <path d="M6.6 -19 v4" stroke={INK} strokeWidth="1.4" strokeLinecap="round" />
+    </g>
+  )
 }
 
 /** 소파 (옆) — 왼쪽이 등받이 */
@@ -138,12 +148,61 @@ export function Sofa({ x, y, w = 90, color = '#C9694F' }: { x: number; y: number
   return (
     <g transform={`translate(${x} ${y})`}>
       <ellipse cy="1" rx={w / 2 + 4} ry="4" fill="rgba(42,33,24,0.16)" />
-      <rect x={-w / 2} y="-30" width={w} height="22" rx="8" fill={color} stroke={INK} strokeWidth="2.2" />
-      <rect x={-w / 2 + 4} y="-8" width="6" height="8" fill="#7A5232" stroke={INK} strokeWidth="1.6" />
-      <rect x={w / 2 - 10} y="-8" width="6" height="8" fill="#7A5232" stroke={INK} strokeWidth="1.6" />
+      {/* 받침 (진한 색) → 방석 두 개 (솔기·빛) → 앞 테두리 바느질 → 가는 나무 다리 */}
+      <rect x={-w / 2} y="-22" width={w} height="14" rx="5" fill={shade(color, -0.18)} stroke={INK} strokeWidth="2.2" />
+      <path d={`M${-w / 2 + 4} -12 H${w / 2 - 4}`} stroke={shade(color, -0.32)} strokeWidth="1" strokeDasharray="2 2" />
+      {[0, 1].map((k) => <g key={k}><rect x={-w / 2 + 2 + k * (w / 2 - 2)} y="-31" width={w / 2 - 2} height="11" rx="5" fill={color} stroke={INK} strokeWidth="1.8" /><path d={`M${-w / 2 + 8 + k * (w / 2 - 2)} -28 H${-w / 2 + 22 + k * (w / 2 - 2)}`} stroke={shade(color, 0.35)} strokeWidth="1.6" strokeLinecap="round" /></g>)}
+      {[-w / 2 + 6, w / 2 - 10].map((lx) => <path key={lx} d={`M${lx} -8 L${lx + 1} 0 H${lx + 4} L${lx + 5} -8Z`} fill="#7A5232" stroke={INK} strokeWidth="1.4" strokeLinejoin="round" />)}
     </g>
   )
 }
 export function SofaBack({ x, y, w = 90, color = '#C9694F' }: { x: number; y: number; w?: number; color?: string }) {
-  return <rect x={x - w / 2 - 6} y={y - 62} width="16" height="40" rx="7" fill={shade(color, -0.15)} stroke={INK} strokeWidth="2.2" />
+  return (
+    <g>
+      <rect x={x - w / 2 - 6} y={y - 62} width="16" height="42" rx="7" fill={shade(color, -0.12)} stroke={INK} strokeWidth="2.2" />
+      <path d={`M${x - w / 2 - 1} ${y - 56} V${y - 28}`} stroke={shade(color, 0.25)} strokeWidth="1.6" strokeLinecap="round" />
+      {[y - 50, y - 40, y - 30].map((by) => <circle key={by} cx={x - w / 2 + 3} cy={by} r="1.1" fill={shade(color, -0.35)} />)}
+    </g>
+  )
+}
+
+/** 작은 옆 탁자: (x, y) = 바닥 가운데. 윗판 · 서랍(손잡이) · 다리 · 아래 선반의 책 */
+export function SideTable({ x, y, w = 26, h = 30, color = '#C98B55' }: { x: number; y: number; w?: number; h?: number; color?: string }) {
+  return (
+    <g transform={`translate(${x} ${y})`} strokeLinejoin="round">
+      {[-w / 2 + 2, w / 2 - 5].map((lx) => <path key={lx} d={`M${lx} ${-h + 4} H${lx + 3} L${lx + 2.6} 0 H${lx + 0.4}Z`} fill={shade(color, -0.25)} stroke={INK} strokeWidth="1.3" />)}
+      <rect x={-w / 2 + 3} y={-9} width={w - 6} height="2.6" fill={shade(color, -0.15)} stroke={INK} strokeWidth="1" />
+      <rect x={-w / 2 + 5} y={-15} width="6" height="6" fill="#5E8FC9" stroke={INK} strokeWidth="0.8" /><rect x={-w / 2 + 11} y={-14} width="5" height="5" fill="#E0533F" stroke={INK} strokeWidth="0.8" />
+      <rect x={-w / 2 + 1} y={-h + 3} width={w - 2} height="11" fill={color} stroke={INK} strokeWidth="1.5" />
+      <path d={`M-3 ${-h + 8.5} h6`} stroke={INK} strokeWidth="1.6" strokeLinecap="round" />
+      <rect x={-w / 2 - 2} y={-h} width={w + 4} height="4" rx="1.5" fill={shade(color, 0.12)} stroke={INK} strokeWidth="1.6" />
+    </g>
+  )
+}
+
+/** 옆에서 본 소파 (한 사람이 앉음): 등받이(단추·쿠션) · 먼 쪽 팔걸이(둥근 끝) · 방석 · 받침 · 다리. (x, y) = 바닥 가운데, 앉는 면 높이 약 30 */
+export function SideSofa({ x, y, color = '#C9694F', pillow = '#F2C230' }: { x: number; y: number; color?: string; pillow?: string }) {
+  const dk = shade(color, -0.18), lt = shade(color, 0.3)
+  return (
+    <g transform={`translate(${x} ${y})`} strokeLinejoin="round">
+      <ellipse cy="1" rx="36" ry="4" fill="rgba(42,33,24,0.16)" />
+      {/* 먼 쪽 팔걸이 (앞 끝이 둥글게 말림) */}
+      <path d="M-26 -20 V-40 Q-26 -44 -22 -44 H22 Q32 -44 32 -35 Q32 -27 24 -26 V-20Z" fill={dk} stroke={INK} strokeWidth="2" />
+      <circle cx="26" cy="-36" r="4.4" fill={shade(color, -0.08)} stroke={INK} strokeWidth="1.4" /><path d="M26 -38 q2 1 0 3" stroke={INK} strokeWidth="0.9" fill="none" />
+      {/* 등받이 (단추 · 빛) */}
+      <rect x="-34" y="-74" width="18" height="58" rx="8" fill={color} stroke={INK} strokeWidth="2.2" />
+      <path d="M-29 -66 V-30" stroke={lt} strokeWidth="1.8" strokeLinecap="round" />
+      {[-60, -48, -36].map((by) => <circle key={by} cx="-24" cy={by} r="1.2" fill={dk} />)}
+      {/* 기대 놓은 쿠션 */}
+      <rect x="-18" y="-50" width="13" height="16" rx="4" fill={pillow} stroke={INK} strokeWidth="1.4" transform="rotate(-12 -12 -42)" />
+      <path d="M-14 -46 l6 6" stroke={shade(pillow, -0.2)} strokeWidth="0.9" transform="rotate(-12 -12 -42)" />
+      {/* 받침 · 방석 */}
+      <rect x="-30" y="-22" width="62" height="14" rx="5" fill={dk} stroke={INK} strokeWidth="2.2" />
+      <path d="M-26 -12 H28" stroke={shade(color, -0.32)} strokeWidth="1" strokeDasharray="2 2" />
+      <rect x="-18" y="-32" width="48" height="12" rx="5" fill={color} stroke={INK} strokeWidth="2" />
+      <path d="M-12 -29 H8" stroke={lt} strokeWidth="1.6" strokeLinecap="round" />
+      {/* 다리 */}
+      {[-24, 22].map((lx) => <path key={lx} d={`M${lx} -8 L${lx + 1} 0 H${lx + 4} L${lx + 5} -8Z`} fill="#7A5232" stroke={INK} strokeWidth="1.4" />)}
+    </g>
+  )
 }

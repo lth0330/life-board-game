@@ -52,14 +52,36 @@ export function Exclaim({ t, t0, x, y, dur = 0.9, text = '!' }: { t: number; t0:
   return <text x={x} y={y} textAnchor="middle" fontSize={22 * ease.back(Math.min(1, k * 4))} fill="#E0533F" stroke={INK} strokeWidth="1.3" paintOrder="stroke" opacity={k > 0.8 ? (1 - k) * 5 : 1}>{text}</text>
 }
 
-/** 머리 위 먹구름 + 빗방울 (속상함) */
+/** 머리 위 먹구름 + 빗방울 (속상함). 11-28 사용자: 디테일 → 겹친 구름 덩어리(뒤는 어둡게) · 아래 그늘 · 빛 · 물방울 모양 비 · 둥실둥실 */
 export function Gloom({ t, t0, t1 = 99, x, y }: { t: number; t0: number; t1?: number; x: number; y: number }) {
   if (t < t0 || t > t1) return null
   const k = ease.back(seg(t, t0, t0 + 0.4))
+  const bob = Math.sin((t - t0) * 2.2) * 1.2
+  const back: [number, number, number][] = [[-12, -4, 7], [-3, -9, 9], [8, -7, 8], [15, -1, 6]]
+  const front: [number, number, number][] = [[-15, 1, 6], [-6, -2, 8], [4, -4, 8.5], [13, 1, 6.5], [-1, 3, 7]]
+  const blobs = (b: [number, number, number][], c: string, sw: number) => (
+    <g>
+      {sw > 0 && b.map(([cx, cy, r], i) => <circle key={`o${i}`} cx={cx} cy={cy} r={r} fill={INK} stroke={INK} strokeWidth={sw} />)}
+      {b.map(([cx, cy, r], i) => <circle key={`f${i}`} cx={cx} cy={cy} r={r} fill={c} />)}
+    </g>
+  )
   return (
-    <g transform={`translate(${x} ${y}) scale(${k})`}>
-      <path d="M-16 4 a7 7 0 0 1 4 -11 a10 10 0 0 1 18 -2 a7 7 0 0 1 10 9 z" fill="#9AA3AE" stroke={INK} strokeWidth="1.8" />
-      {[-9, 0, 9].map((dx, i) => { const q = (t * 1.6 + i * 0.33) % 1; return <path key={dx} d={`M${dx} ${7 + q * 14} l-1.5 4`} stroke="#5FB6E0" strokeWidth="2" strokeLinecap="round" opacity={1 - q} /> })}
+    <g transform={`translate(${x} ${y + bob}) scale(${k})`}>
+      {/* 비: 물방울 모양, 살짝 비스듬히, 떨어지며 흐려짐 */}
+      {[-13, -6, 1, 8, 14].map((dx, i) => {
+        const q = (t * 1.5 + i * 0.37) % 1
+        return <path key={dx} d="M0 -3 Q2.4 1 0 2.4 Q-2.4 1 0 -3Z" fill="#7FC6EA" stroke="#3E8EBE" strokeWidth="0.6" opacity={1 - q * 0.9} transform={`translate(${dx - q * 3} ${8 + q * 18}) rotate(12)`} />
+      })}
+      {blobs(back, '#6E7884', 3.2)}
+      {blobs(front, '#9AA3AE', 0)}
+      {/* 아래 그늘 (평평한 밑면) */}
+      <path d="M-20 4 Q-18 9 -10 9 H12 Q19 9 19 4 Q10 7 0 6.5 Q-10 7 -20 4Z" fill="#7E8894" />
+      <path d="M-19 7 Q-12 11 0 10 Q12 11 19 6" stroke={INK} strokeWidth="1.6" fill="none" />
+      {/* 빛 받은 윗부분 */}
+      <path d="M-9 -6 Q-6 -10 -1 -9 M2 -9 Q6 -12 10 -9" stroke="#C3CAD2" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+      <circle cx="-12" cy="-1" r="1.6" fill="#C3CAD2" />
+      {/* 소용돌이 무늬 */}
+      <path d="M-4 1 q2 -2 4 0 q1 2 -1 2" stroke="#7E8894" strokeWidth="1" fill="none" />
     </g>
   )
 }

@@ -4,7 +4,7 @@ import { Home } from './Backdrops2'
 import { Bang, Bubble, Hearts } from './Fx'
 import { Exclaim } from './Fx2'
 import { Confetti, MoneyRain } from './Fx3'
-import { Sofa, SofaBack } from './Props2'
+import { SideSofa } from './Props2'
 import { Ticket } from './Props3'
 import { INK, ease, pick, poseAt, seg } from './kit'
 import { CHEER, SIT, STAND, sitLift } from './poses'
@@ -62,8 +62,7 @@ export const lottery: SceneDef = {
         <Home winX={14} frameX={116} />
         <MoneyRain t={t} t0={WIN + 0.6} n={10} />
         <TV t={t} />
-        <SofaBack x={SOFA} y={GROUND} w={100} />
-        <Sofa x={SOFA} y={GROUND} w={100} />
+        <SideSofa x={SOFA} y={GROUND} />
         <Confetti t={t} t0={WIN + 0.4} dur={4} />
         <Actor c={me} x={seated ? SOFA + 10 : SOFA + 40} y={seated ? seatY : GROUND} pose={pose} expr={expr} holding={t < 6.3 ? <Ticket /> : undefined} caneLean={!seated} />
         {BALLS.map((b, i) => <Exclaim key={i} t={t} t0={b + 0.5} x={SOFA + 40} y={top + 2} text={'!'.repeat(i + 1)} dur={0.8} />)}

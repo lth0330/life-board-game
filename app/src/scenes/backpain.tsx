@@ -4,8 +4,8 @@ import { Actor, GROUND, headH, type SceneDef } from './Stage'
 import { Home } from './Backdrops2'
 import { Bang, Bubble, Sweat } from './Fx'
 import { Zap } from './Fx3'
-import { BoxHeld } from './Props3'
-import { INK, ease, keys, pick, poseAt } from './kit'
+import { BoxHeld, CardBox } from './Props3'
+import { ease, keys, pick, poseAt } from './kit'
 import { gaitOf, STAND } from './poses'
 import type { SidePose } from '../art/SideCharacter'
 import type { Expr } from '../art/Character'
@@ -44,7 +44,7 @@ export const backpain: SceneDef = {
     return (
       <g>
         <Home />
-        {boxOnFloor && <g transform={`translate(${BOXX + (t > DROPT ? 6 : 0)} ${boxY})`}><rect x="-14" y="-22" width="28" height="22" rx="2" fill="#C98B55" stroke={INK} strokeWidth="2" /><path d="M-14 -14 H14 M0 -22 V-14" stroke="#9A6A3E" strokeWidth="2" /></g>}
+        {boxOnFloor && <g transform={`translate(${BOXX + (t > DROPT ? 6 : 0)} ${boxY})`}><CardBox /></g>}
         <Actor c={me} x={x} pose={pose} expr={expr} holding={holding} caneLean={t > 1.8} />
         <Sweat t={t} t0={LIFT + 0.3} x={x + 22} y={top + 22} dur={1.0} />
         <Zap t={t} t0={ZAPT} t1={ZAPT + 1.2} x={x - 14} y={zapY} />

@@ -1,26 +1,75 @@
 // 장면 소품 더: 부케·아기·열쇠·상자·졸업장·학사모·복권·모니터·스쿠터·우산·물뿌리개·상추·아이스크림·상자 속 돌
 import { INK } from './kit'
 
-/** 부케 (손에 듦) */
-export function Bouquet() {
+/** 꽃다발 (손에 듦, 0,0 = 쥐는 곳). 포장지 고깔 · 리본 · 장미·튤립·데이지·안개꽃·잎 (11-28 사용자: 퀄리티) */
+export function Bouquet({ wrap = '#F7D3E2', ribbon = '#E0533F' }: { wrap?: string; ribbon?: string }) {
+  const rose = (x: number, y: number, c: string, r = 4.2) => (
+    <g transform={`translate(${x} ${y})`}>
+      <circle r={r} fill={c} stroke={INK} strokeWidth="1" />
+      <path d={`M${-r * 0.45} ${-r * 0.1} Q0 ${-r * 0.75} ${r * 0.45} ${-r * 0.1} Q${r * 0.3} ${r * 0.5} ${-r * 0.2} ${r * 0.35} M${-r * 0.75} ${r * 0.1} Q${-r * 0.2} ${r * 0.85} ${r * 0.7} ${r * 0.2}`} stroke="rgba(42,33,24,0.45)" strokeWidth="0.8" fill="none" />
+    </g>
+  )
+  const tulip = (x: number, y: number, c: string, rot: number) => (
+    <g transform={`translate(${x} ${y}) rotate(${rot})`}>
+      <path d="M0 6 V2" stroke="#4E8A3A" strokeWidth="1.1" />
+      <path d="M-3.2 -2 Q-3.6 3 0 3.4 Q3.6 3 3.2 -2 L1.6 -0.6 L0 -3.4 L-1.6 -0.6Z" fill={c} stroke={INK} strokeWidth="0.9" strokeLinejoin="round" />
+    </g>
+  )
+  const daisy = (x: number, y: number) => (
+    <g transform={`translate(${x} ${y})`}>
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((d) => <ellipse key={d} cx="0" cy="-2.6" rx="1.2" ry="2.2" fill="#fff" stroke={INK} strokeWidth="0.55" transform={`rotate(${d})`} />)}
+      <circle r="1.5" fill="#F2C230" stroke={INK} strokeWidth="0.6" />
+    </g>
+  )
   return (
-    <g>
-      <path d="M-3 0 L0 -12 L3 0Z" fill="#7FBF6A" stroke={INK} strokeWidth="1.2" />
-      {[[-5, -14, '#F7B8C8'], [0, -17, '#fff'], [5, -14, '#F2708A'], [-2, -11, '#FFE27A'], [3, -10, '#fff']].map(([x, y, c], i) => <circle key={i} cx={x as number} cy={y as number} r="4" fill={c as string} stroke={INK} strokeWidth="1.1" />)}
+    <g strokeLinejoin="round">
+      {/* 줄기 (포장지 아래로 살짝) */}
+      <path d="M-1.5 0 L-1 5 M0.5 0 L0.6 5.4 M2 0 L1.8 4.6" stroke="#4E8A3A" strokeWidth="1.1" strokeLinecap="round" />
+      {/* 뒤쪽 포장지 */}
+      <path d="M-1.5 1 L-13 -17 Q0 -22 13 -17 L1.5 1Z" fill={wrap} stroke={INK} strokeWidth="1.2" />
+      {/* 잎 */}
+      {[[-10, -17, -40], [10, -17, 40], [-6, -24, -15], [7, -24, 18]].map(([x, y, r], i) => <ellipse key={i} cx={x} cy={y} rx="2.2" ry="5" fill={i % 2 ? '#6FAF5E' : '#5E9A50'} stroke={INK} strokeWidth="0.8" transform={`rotate(${r} ${x} ${y})`} />)}
+      {/* 안개꽃 */}
+      {[[-9, -22], [-3, -29], [4, -29], [10, -22], [-11, -19], [0, -31], [12, -19]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="1.3" fill="#fff" stroke="rgba(42,33,24,0.5)" strokeWidth="0.5" />)}
+      {tulip(-7, -24, '#C77FD0', -18)}
+      {tulip(8, -25, '#FFE27A', 16)}
+      {daisy(-1, -27)}
+      {rose(-5, -18, '#F2708A')}
+      {rose(4, -19, '#E0533F', 4.6)}
+      {rose(0, -14, '#F7B8C8', 3.8)}
+      {/* 앞쪽 포장지 (겹친 종이) */}
+      <path d="M-1.5 1 L-10 -13 Q-3 -9 0 -12 Q3 -9 10 -13 L1.5 1Z" fill={wrap} stroke={INK} strokeWidth="1.2" />
+      <path d="M-1 -1 L-6 -10 M1 -1 L5 -10" stroke="rgba(255,255,255,0.6)" strokeWidth="0.9" />
+      {/* 리본 */}
+      <path d="M-3.4 -3 Q-9 -7 -8 -2 Q-7 1 -1 -2 M3.4 -3 Q9 -7 8 -2 Q7 1 1 -2" fill={ribbon} stroke={INK} strokeWidth="0.9" />
+      <path d="M-1 -1.5 L-4 5 M1 -1.5 L3.6 5.2" stroke={ribbon} strokeWidth="1.4" strokeLinecap="round" />
+      <rect x="-2" y="-3.6" width="4" height="3.4" rx="1" fill={ribbon} stroke={INK} strokeWidth="0.9" />
     </g>
   )
 }
 
 /** 포대기에 싼 아기 (두 팔로 안음, 손 위치 기준) */
 export function Baby({ t, cry = false }: { t: number; cry?: boolean }) {
+  // 11-28 사용자: 조금 더 크게 · 퀄리티 → 포대기(접힌 자락·무늬·리본) · 머리를 감싼 두건 · 털모자 · 감은 눈·볼·작은 손
   const wob = Math.sin(t * 3) * 3
+  const wave = Math.sin(t * 6) * 8
   return (
-    <g transform={`translate(4 -6) rotate(${-20 + wob})`}>
-      <ellipse cx="0" cy="0" rx="14" ry="8" fill="#FFF6EA" stroke={INK} strokeWidth="1.8" />
-      <circle cx="10" cy="-3" r="7" fill="#F6D2B8" stroke={INK} strokeWidth="1.6" />
-      <path d="M6 -9 Q10 -12 14 -8" fill="#F2A3C0" stroke={INK} strokeWidth="1.2" />
-      {cry ? <ellipse cx="13" cy="-1" rx="2" ry="2.4" fill={INK} /> : <path d="M11 -1 q2 1.5 3 0" stroke={INK} strokeWidth="1.1" fill="none" />}
-      <path d="M8 -4 q1 -1 2 0 M12 -5 q1 -1 2 0" stroke={INK} strokeWidth="1" fill="none" />
+    <g transform={`translate(5 -8) rotate(${-20 + wob}) scale(1.3)`} strokeLinejoin="round">
+      {/* 포대기 */}
+      <path d="M-16 2 Q-17 -9 -4 -9 H8 Q14 -9 14 -2 Q14 7 4 8 H-8 Q-16 8 -16 2Z" fill="#FFF6EA" stroke={INK} strokeWidth="1.5" />
+      <path d="M-14 -3 Q-4 3 10 -6 M-12 5 Q-2 1 8 6" stroke="#E8D9C2" strokeWidth="1.1" fill="none" />
+      {[[-9, 0], [-3, -4], [2, 3]].map(([dx, dy], i) => <circle key={i} cx={dx} cy={dy} r="0.9" fill="#F7B8C8" />)}
+      <path d="M-1 -7 q-3 -2 -4 0 q1 2 4 0 q3 -2 4 0 q-1 2 -4 0" fill="#F2A3C0" stroke={INK} strokeWidth="0.6" />
+      {/* 작은 손 (꼼지락) */}
+      <g transform={`rotate(${cry ? wave : 0} 5 -6)`}><circle cx="5" cy="-9" r="2.2" fill="#F6D2B8" stroke={INK} strokeWidth="0.9" /></g>
+      {/* 두건 · 얼굴 · 모자 */}
+      <circle cx="11" cy="-4" r="7.6" fill="#FFF6EA" stroke={INK} strokeWidth="1.4" />
+      <circle cx="11.6" cy="-3.4" r="5.8" fill="#F6D2B8" stroke={INK} strokeWidth="1.1" />
+      <path d="M5.4 -6.6 Q11 -13 17 -6.6 Q11 -9 5.4 -6.6Z" fill="#F2A3C0" stroke={INK} strokeWidth="1" />
+      <circle cx="11" cy="-11.6" r="1.6" fill="#F7B8C8" stroke={INK} strokeWidth="0.7" />
+      <ellipse cx="9.4" cy="-1.6" rx="1.3" ry="0.8" fill="#F5A3A3" opacity="0.8" /><ellipse cx="15" cy="-1.8" rx="1.1" ry="0.7" fill="#F5A3A3" opacity="0.8" />
+      {cry ? <><path d="M9.8 -4.4 l1.6 0.8 M13.4 -4.6 l-1.6 0.8" stroke={INK} strokeWidth="0.9" /><ellipse cx="12" cy="-0.6" rx="1.4" ry="1.8" fill="#8A3A3A" stroke={INK} strokeWidth="0.6" /></>
+        : <><path d="M9.6 -4.2 q1 0.9 2 0 M13 -4.4 q1 0.9 2 0" stroke={INK} strokeWidth="0.9" fill="none" /><path d="M11.4 -1 q0.9 0.8 1.8 0" stroke={INK} strokeWidth="0.8" fill="none" /></>}
     </g>
   )
 }
@@ -39,10 +88,20 @@ export function Key() {
 
 /** 무거운 상자 (두 손으로 듦, 손 위치 기준) */
 export function BoxHeld() {
+  return <g transform="translate(6 8)"><CardBox /></g>
+}
+
+/** 종이 상자 (바닥 가운데 0,0): 위 덮개 테이프 · 옆면 그늘 · 손잡이 구멍 · 취급 주의 표시 */
+export function CardBox({ w = 28, h = 22 }: { w?: number; h?: number }) {
   return (
-    <g transform="translate(6 -4)">
-      <rect x="-14" y="-14" width="28" height="22" rx="2" fill="#C98B55" stroke={INK} strokeWidth="2" />
-      <path d="M-14 -6 H14 M0 -14 V-6" stroke="#9A6A3E" strokeWidth="2" />
+    <g strokeLinejoin="round">
+      <rect x={-w / 2} y={-h} width={w} height={h} rx="1.5" fill="#C98B55" stroke={INK} strokeWidth="2" />
+      <rect x={w / 2 - 7} y={-h + 1} width="6" height={h - 2} fill="#B07A44" />
+      <path d={`M${-w / 2} ${-h + 5} H${w / 2}`} stroke="#9A6A3E" strokeWidth="1.2" />
+      <rect x="-3" y={-h} width="6" height="9" fill="#E8D9B8" stroke="#B89A6A" strokeWidth="0.8" />
+      <rect x={-w / 2 + 5} y={-h + 9} width="8" height="3" rx="1.5" fill="#7A5232" />
+      <g transform={`translate(${-w / 2 + 7} ${-5})`}><path d="M-2.4 0 V-3.4 Q-2.4 -5 0 -5 Q2.4 -5 2.4 -3.4 V0" stroke="#7A5232" strokeWidth="0.9" fill="none" /><path d="M-3 0 H3" stroke="#7A5232" strokeWidth="0.9" /></g>
+      <path d={`M${w / 2 - 12} -4 l2 -4 l2 4 M${w / 2 - 10} -8 v6`} stroke="#7A5232" strokeWidth="0.8" fill="none" />
     </g>
   )
 }
@@ -105,7 +164,8 @@ export function Pad() {
 }
 
 /** 스쿠터 (옆, 오른쪽). 사람은 위에 따로 그림 */
-export function Scooter({ x, y, color = '#7FCBE8', spin = 0, rot = 0, fallen = 0 }: { x: number; y: number; color?: string; spin?: number; rot?: number; fallen?: number }) {
+export function Scooter({ x, y, color = '#7FCBE8', spin = 0, rot = 0, fallen = 0, grip }: { x: number; y: number; color?: string; spin?: number; rot?: number; fallen?: number; grip?: [number, number] }) {
+  // grip = 손 위치 (스쿠터 기준) → 손잡이 기둥이 그 손까지 이어짐 (끌고 갈 때)
   // fallen 0~1: 손잡이 기둥이 앞으로 넘어가 바닥에 눕는 정도
   const wheel = (cx: number) => <g transform={`translate(${cx} -8) rotate(${spin})`}><circle r="8" fill="#3A3434" stroke={INK} strokeWidth="2" /><circle r="3" fill="#CFCBC6" /><path d="M-3 0 H3" stroke={INK} strokeWidth="1.2" /></g>
   if (fallen >= 1) return (
@@ -121,7 +181,9 @@ export function Scooter({ x, y, color = '#7FCBE8', spin = 0, rot = 0, fallen = 0
   return (
     <g transform={`translate(${x} ${y}) rotate(${rot} 0 -8)`}>
       <path d="M-26 -12 H10 Q18 -12 20 -20" fill="none" stroke={INK} strokeWidth="5.5" strokeLinecap="round" />
-      <g transform={`rotate(${fallen * 84} 20 -20)`}><path d="M20 -20 L27 -74" fill="none" stroke={INK} strokeWidth="5.5" strokeLinecap="round" /><path d="M21 -74 h14" stroke={INK} strokeWidth="5" strokeLinecap="round" /><path d="M29 -74 h6" stroke="#3A3434" strokeWidth="3" strokeLinecap="round" /></g>
+      {grip ? (
+        <g><path d={`M20 -20 L${grip[0]} ${grip[1]}`} fill="none" stroke={INK} strokeWidth="5.5" strokeLinecap="round" /><path d={`M20 -20 L${grip[0]} ${grip[1]}`} fill="none" stroke="#B9C3CF" strokeWidth="2.4" strokeLinecap="round" /><path d={`M${grip[0] - 6} ${grip[1]} h12`} stroke={INK} strokeWidth="5" strokeLinecap="round" /></g>
+      ) : <g transform={`rotate(${fallen * 84} 20 -20)`}><path d="M20 -20 L27 -74" fill="none" stroke={INK} strokeWidth="5.5" strokeLinecap="round" /><path d="M20 -20 L27 -74" fill="none" stroke="#B9C3CF" strokeWidth="2.4" strokeLinecap="round" /><path d="M21 -74 h14" stroke={INK} strokeWidth="5" strokeLinecap="round" /><path d="M29 -74 h6" stroke="#3A3434" strokeWidth="3" strokeLinecap="round" /></g>}
       <path d="M-30 -10 Q-30 -24 -16 -24 H4 V-12 H-30Z" fill={color} stroke={INK} strokeWidth="2" strokeLinejoin="round" />
       {wheel(-22)}{wheel(20)}
     </g>

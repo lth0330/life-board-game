@@ -20,10 +20,20 @@ function Hall() {
     <g>
       <rect width={W} height={H} fill="#F4ECDD" />
       {Array.from({ length: 9 }, (_, i) => <path key={i} d={`M${i * 40 + 12} 0 V${STAGE_Y}`} stroke="#EADFC9" strokeWidth="6" />)}
+      {/* 벽 판 · 몰딩 · 학교 깃발 · 무대 조명 */}
+      {Array.from({ length: 8 }, (_, i) => <rect key={i} x={i * 40 + 20} y="72" width="24" height={STAGE_Y - 80} rx="2" fill="none" stroke="#E3D2B4" strokeWidth="1.4" />)}
+      <rect y="64" width={W} height="4" fill="#EBDDC2" stroke="rgba(42,33,24,0.3)" strokeWidth="0.8" />
+      {[66, 254].map((fx, i) => <g key={fx} transform={`translate(${fx} ${STAGE_Y})`}><path d="M0 0 V-84" stroke="#C9A06A" strokeWidth="2.4" /><circle cy="-86" r="2.6" fill="#F2C230" stroke={INK} strokeWidth="1" /><path d={`M1 -80 H${i ? -24 : 24} V-54 Q${i ? -12 : 12} -50 1 -54Z`} fill={i ? '#2A4A8A' : '#B03A3A'} stroke={INK} strokeWidth="1.2" /><circle cx={i ? -12 : 12} cy="-67" r="5" fill="none" stroke="#FFE27A" strokeWidth="1.4" /><path d={`M${i ? -12 : 12} -70 v6 M${i ? -15 : 9} -67 h6`} stroke="#FFE27A" strokeWidth="1" /><path d={`M${i ? -24 : 24} -80 l${i ? -3 : 3} 4 M${i ? -24 : 24} -54 l${i ? -3 : 3} 4`} stroke="#F2C230" strokeWidth="1.2" /><rect x="-4" y="-4" width="8" height="4" fill="#8A8F98" stroke={INK} strokeWidth="0.8" /></g>)}
+      {[100, 220].map((lx) => <g key={lx} transform={`translate(${lx} 46)`}><path d="M0 -6 V0" stroke={INK} strokeWidth="1.2" /><path d="M-6 0 H6 L4 7 H-4Z" fill="#3A3434" stroke={INK} strokeWidth="1" /><ellipse cy="7.4" rx="3.6" ry="1.3" fill="#FFF3A6" /></g>)}
       <path d="M0 0 Q34 50 6 120 L0 120Z M320 0 Q286 50 314 120 L320 120Z" fill="#B03A3A" stroke={INK} strokeWidth="2" />
+      <path d="M4 12 Q22 50 4 112 M12 18 Q26 54 8 100 M316 12 Q298 50 316 112 M308 18 Q294 54 312 100" stroke="#8A2A2A" strokeWidth="1.2" fill="none" />
+      <path d="M2 64 Q14 60 22 66 M318 64 Q306 60 298 66" stroke="#F2C230" strokeWidth="2.4" fill="none" strokeLinecap="round" />
       <path d="M0 0 H320 V10 Q300 16 280 10 Q260 16 240 10 Q220 16 200 10 Q180 16 160 10 Q140 16 120 10 Q100 16 80 10 Q60 16 40 10 Q20 16 0 10Z" fill="#C2452D" stroke={INK} strokeWidth="1.8" />
       <g transform="translate(160 18)">
+        <path d="M-40 0 L-34 -8 M40 0 L34 -8" stroke={INK} strokeWidth="0.9" />
         <rect x="-52" y="0" width="104" height="24" rx="4" fill="#2A4A8A" stroke={INK} strokeWidth="2" />
+        <rect x="-49" y="3" width="98" height="18" rx="3" fill="none" stroke="#FFE27A" strokeWidth="0.8" />
+        {[-52, 52].map((tx) => <g key={tx}><path d={`M${tx} 22 v6`} stroke="#F2C230" strokeWidth="1.2" /><path d={`M${tx - 2} 28 h4 l-1 5 h-2z`} fill="#F2C230" stroke={INK} strokeWidth="0.6" /></g>)}
         <text textAnchor="middle" y="17" fontSize="14" fill="#FFE27A">졸업식</text>
       </g>
       {/* 꽃 장식 기둥 */}
@@ -32,7 +42,14 @@ function Hall() {
       <rect x="20" y={STAGE_Y} width="280" height="8" fill="#C98B55" stroke={INK} strokeWidth="2" />
       <rect x="24" y={STAGE_Y + 8} width="272" height={GROUND - STAGE_Y - 8} fill="#A8784A" stroke={INK} strokeWidth="2" />
       {[80, 160, 240].map((x) => <path key={x} d={`M${x} ${STAGE_Y + 8} V${GROUND}`} stroke="#8A5A34" strokeWidth="1.4" />)}
+      {Array.from({ length: 13 }, (_, i) => <path key={i} d={`M${30 + i * 21} ${STAGE_Y + 12 + (i % 3) * 4} q5 -1 10 0`} stroke="#946238" strokeWidth="0.8" fill="none" />)}
+      <path d={`M20 ${STAGE_Y + 2} H300`} stroke="#E0A86A" strokeWidth="1" />
+      {/* 무대 앞 학교 문장 */}
+      <g transform={`translate(160 ${STAGE_Y + 17})`}><circle r="7" fill="#F2C230" stroke={INK} strokeWidth="1.2" /><circle r="4.6" fill="#2A4A8A" /><path d="M0 -3 l0.9 2 l2.1 0.2 l-1.6 1.4 l0.5 2.1 l-1.9 -1.1 l-1.9 1.1 l0.5 -2.1 l-1.6 -1.4 l2.1 -0.2z" fill="#FFE27A" /></g>
+      {/* 계단 (단상 왼쪽) */}
+      {[0, 1].map((k) => <rect key={k} x={6 + k * 6} y={STAGE_Y + 8 + k * 9} width={18 - k * 6} height={GROUND - STAGE_Y - 8 - k * 9} fill="#B8874F" stroke={INK} strokeWidth="1.4" />)}
       <rect y={GROUND} width={W} height={H - GROUND} fill="#8A6A4A" />
+      {[GROUND + 7, GROUND + 15].map((fy, r) => <g key={fy}><path d={`M0 ${fy} H${W}`} stroke="rgba(42,33,24,0.2)" strokeWidth="1" />{Array.from({ length: 6 }, (_, i) => <path key={i} d={`M${i * 60 + (r % 2) * 30 + 10} ${fy - 7} V${fy}`} stroke="rgba(42,33,24,0.16)" strokeWidth="1" />)}</g>)}
       <path d={`M0 ${GROUND} H${W}`} stroke={INK} strokeWidth="2.2" />
     </g>
   )
@@ -70,11 +87,11 @@ export const grad: SceneDef = {
         {people.map((c, i) => (
           <g key={i} transform={`translate(0 ${jump(i)})`}>
             <FrontActor c={c} x={xs[i]} y={STAGE_Y} size={SZ} expr={expr(i)} pose={pose(i)} />
-            {pose(i) === 'idle' && <g transform={`translate(${xs[i] + SZ * 0.3} ${STAGE_Y - height * 0.42})`}>{uni ? <g transform="scale(1.2)"><Diploma /></g> : <g transform="scale(1.4)"><Bouquet /></g>}</g>}
+            {pose(i) === 'idle' && <g transform={`translate(${xs[i] + SZ * 0.3} ${STAGE_Y - height * 0.42})`}>{uni ? <g transform="scale(1.2)"><Diploma /></g> : <g transform="scale(1.05)"><Bouquet /></g>}</g>}
           </g>
         ))}
         {uni && people.map((_, i) => { const p = cap(i); return !capOn(i) && <GradCap key={i} x={p.x} y={p.y} rot={p.r} /> })}
-        {!uni && pose(0) === 'up' && people.map((_, i) => <g key={i} transform={`translate(${xs[i] + SZ * 0.34} ${STAGE_Y - height - 4 + jump(i)}) scale(1.5)`}><Bouquet /></g>)}
+        {!uni && pose(0) === 'up' && people.map((_, i) => <g key={i} transform={`translate(${xs[i] + SZ * 0.34} ${STAGE_Y - height - 4 + jump(i)}) scale(1.1)`}><Bouquet /></g>)}
         {/* 사진 찍는 가족: 뒷모습 */}
         <FrontActor c={PARENT} x={262} y={py} size={66} pose={camUp ? 'up' : 'idle'} back />
         {camUp && <Camera x={262} y={py - 66 * 1.88 + 2} />}

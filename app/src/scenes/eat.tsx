@@ -1,7 +1,7 @@
 // 장면: 친구들과 떡볶이 (좋은 일 10초, 학생). 각자 작은 접시 하나씩 → 젓가락으로 떡 집기 → 후후 불기 → 냠 → 오물오물 → 배부름
 import { Actor, FrontActor, GROUND, castAt, headH, type Cast, type SceneDef } from './Stage'
 import { Restaurant } from './Backdrops'
-import { Chopsticks, Plate, Stool, Table } from './Props'
+import { Chopsticks, FrontStool, Plate, SeatedLegs, Stool, Table } from './Props'
 import { Bubble, Hearts, Sparkle, Steam, Sweat } from './Fx'
 import { ease, keys, pick, seg } from './kit'
 import type { SidePose } from '../art/SideCharacter'
@@ -15,6 +15,7 @@ const TOP = GROUND - TH - 7 // 식탁 윗면
 const lift = (c: Cast) => sitLift(c, 28)
 const START = 1.5 // 먹기 시작
 const STOP = 7.0 // 다 먹음
+const MX = 165 // 가운데 친구 자리
 
 /** 한 입 순서 (p = 0~1): 접시로 손 뻗어 집기 → 입 앞으로 → 후후 → 냠 → 오물오물 */
 function phase(p: number) {
@@ -39,7 +40,7 @@ export const eat: SceneDef = {
   draw: (t, cast) => {
     const people = [cast[0], castAt(cast, 1), castAt(cast, 2)]
     // 나(왼쪽, 오른쪽 봄) · 친구1(오른쪽, 왼쪽 봄) · 친구2(식탁 뒤 가운데, 오른쪽 봄)
-    const seat = [{ x: 78, plate: 118, flip: false, off: 0, per: 2.2 }, { x: 252, plate: 212, flip: true, off: 0.7, per: 2.4 }, { x: 165, plate: 165, flip: false, off: 1.3, per: 2.6 }]
+    const seat = [{ x: 78, plate: 118, flip: false, off: 0, per: 2.2 }, { x: 252, plate: 212, flip: true, off: 0.7, per: 2.4 }, { x: MX, plate: MX, flip: false, off: 1.3, per: 2.6 }]
     const st = (i: number) => {
       const s = seat[i]
       const eating = t > START && t < STOP
@@ -62,27 +63,39 @@ export const eat: SceneDef = {
     return (
       <g>
         <Restaurant />
-        {/* 뒤쪽 친구: 식탁 뒤에 앉음 (식탁보다 먼저 그림) */}
-        {/* 가운데 친구: 식탁 건너편에서 앞(보는 사람 쪽)을 보고 앉음. 식탁 위로 윗몸만 보임 */}
-        <clipPath id="eat-mid"><rect x="0" y="0" width="320" height={TOP + 2} /></clipPath>
-        <g clipPath="url(#eat-mid)"><g transform={`translate(0 ${S[2].chew ? -1.5 * Math.max(0, Math.sin(t * 18)) : 0})`}><FrontActor c={people[2]} x={165} y={GROUND + 13} size={60} expr={expr(2)} /></g></g>
+        {/* 가운데 친구: 식탁 건너편 의자에 앞(보는 사람 쪽)을 보고 앉음. 의자·다리는 식탁 다리 사이로 보임 (11-28 사용자) */}
+        <FrontStool x={MX} y={GROUND} h={28} />
+        <clipPath id="eat-mid"><rect x="0" y="0" width="320" height={GROUND - 27} /></clipPath>
+        <g clipPath="url(#eat-mid)"><g transform={`translate(0 ${S[2].chew ? -1.5 * Math.max(0, Math.sin(t * 18)) : 0})`}><FrontActor c={people[2]} x={MX} y={GROUND + 12} size={60} expr={expr(2)} pose="table" /></g></g>
+        <SeatedLegs c={people[2]} x={MX} y={GROUND} />
         <Stool x={seat[0].x - 6} y={GROUND} h={28 + lift(people[0])} />
         <Stool x={seat[1].x + 6} y={GROUND} color="#5E8FC9" h={28 + lift(people[1])} />
         <Actor c={people[0]} x={seat[0].x} y={GROUND - lift(people[0])} size={SIZE} pose={S[0].pose} expr={expr(0)} holding={stick(0)} noCane />
         <Actor c={people[1]} x={seat[1].x} y={GROUND - lift(people[1])} size={SIZE} flip pose={S[1].pose} expr={expr(1)} holding={stick(1)} noCane />
         <Table x={165} y={GROUND} w={150} h={TH} />
-        {/* 가운데 친구의 손과 젓가락: 접시 → 입 */}
+        {/* 가운데 친구의 팔과 젓가락: 접시(끝이 떡에 닿음) → 입. 젓가락이 식탁을 뚫지 않게 (11-28 사용자) */}
         {(() => {
           const k = Math.max(0, Math.min(1, ((S[2].pose.armN?.[1] ?? 22) - 22) / 94))
-          const hy = TOP - 8 - k * 26
-          return <g transform={`translate(${174 + 4 * k} ${hy})`}><g transform={`rotate(${180 + 90 * k}) scale(1.3)`}><Chopsticks food={S[2].food} /></g><circle r="4.5" fill={people[2].outfit.skin} stroke="#2a2118" strokeWidth="1.6" /></g>
+          const o = people[2].outfit
+          const sleeve = ['hoodie', 'shirt', 'tie', 'sport', 'hanbok', 'police'].includes(o.top) ? o.topColor : o.skin
+          const eating = t > START && t < STOP
+          // 먹기 전·후엔 손을 식탁 위에 두고 젓가락을 눕혀 쥠
+          const hx = MX + 13, hy = eating ? TOP - 26 + 16 * k : TOP - 5, el: [number, number] = [MX + 14, TOP - 2]
+          return (
+            <g>
+              <path d={`M${el[0]} ${el[1]} L${hx} ${hy + 3}`} stroke="#2a2118" strokeWidth="8.6" strokeLinecap="round" />
+              <path d={`M${el[0]} ${el[1]} L${hx} ${hy + 3}`} stroke={sleeve} strokeWidth="5.4" strokeLinecap="round" />
+              <g transform={`translate(${hx} ${hy}) rotate(${eating ? -150 + 120 * k : -75}) scale(1.3)`}><Chopsticks food={S[2].food} /></g>
+              <circle cx={hx} cy={hy} r="3.6" fill={o.skin} stroke="#2a2118" strokeWidth="1.4" />
+            </g>
+          )
         })()}
         {seat.map((s, i) => <Plate key={i} x={s.plate} y={TOP + 1} n={S[i].left} fish={S[i].left > 3 ? 2 : S[i].left > 1 ? 1 : 0} />)}
         {seat.map((s, i) => S[i].left > 2 && <Steam key={i} t={t + i} x={s.plate} y={TOP - 14} n={2} />)}
         <Sparkle t={t} t0={0.3} x={seat[0].plate} y={TOP - 18} s={0.8} />
         <Sparkle t={t} t0={0.6} x={seat[1].plate} y={TOP - 16} s={0.7} />
         {/* 후후 부는 입김 */}
-        {S.map((s, i) => s.blow && <path key={i} transform={`translate(${i === 2 ? 174 : seat[i].x + (seat[i].flip ? -1 : 1) * 30} ${i === 2 ? GROUND - 72 : seatTop(people[i]) + 26}) scale(${seat[i].flip ? -1 : 1} 1)`} d={`M0 0 q4 -2 8 0 M2 5 q4 -2 8 0`} stroke="#9FC9E8" strokeWidth="1.6" fill="none" opacity={0.5 + 0.5 * Math.sin(t * 20)} />)}
+        {S.map((s, i) => s.blow && <path key={i} transform={`translate(${i === 2 ? MX + 4 : seat[i].x + (seat[i].flip ? -1 : 1) * 30} ${i === 2 ? GROUND - 72 : seatTop(people[i]) + 26}) scale(${seat[i].flip ? -1 : 1} 1)`} d={`M0 0 q4 -2 8 0 M2 5 q4 -2 8 0`} stroke="#9FC9E8" strokeWidth="1.6" fill="none" opacity={0.5 + 0.5 * Math.sin(t * 20)} />)}
         {/* 매워서 땀 */}
         <Sweat t={t} t0={4.6} x={seat[1].x - 14} y={seatTop(people[1]) + 14} />
         <Sweat t={t} t0={5.2} x={seat[1].x - 18} y={seatTop(people[1]) + 18} />

@@ -13,6 +13,7 @@ const BLD = [
   { w: 66, h: 60, c: '#E4DCEB', win: '#9FD0EC' },
 ]
 const BLD_SPAN = BLD.reduce((a, b) => a + b.w + 14, 0)
+const SHOPS = ['빵집', '꽃집', '카페', '약국', '문구점']
 
 /** 동네 길 (보도블록 + 건물 + 나무) */
 export function Street({ cam = 0, sky = ['#BFE4F7', '#E8F5FB'] }: { cam?: number; sky?: [string, string] }) {
@@ -39,9 +40,28 @@ export function Street({ cam = 0, sky = ['#BFE4F7', '#E8F5FB'] }: { cam?: number
             <g key={`${rep}-${i}`} transform={`translate(${x} ${horizon - b.h})`}>
               <rect width={b.w} height={b.h + 2} rx="5" fill={b.c} stroke={INK} strokeWidth="2.2" />
               <rect x="-3" y="-4" width={b.w + 6} height="7" rx="3" fill={shadeRoof(i)} stroke={INK} strokeWidth="2" />
-              {Array.from({ length: Math.floor((b.h - 16) / 20) }, (_, r) => Array.from({ length: Math.floor((b.w - 8) / 18) }, (_, c) => (
-                <rect key={`${r}-${c}`} x={8 + c * 18} y={10 + r * 20} width="10" height="11" rx="2" fill={b.win} stroke={INK} strokeWidth="1.6" />
+              {/* 옥상: 실외기 · 물탱크 */}
+              {i % 2 === 0 ? <g transform={`translate(${b.w - 18} -4)`}><rect y="-8" width="12" height="8" rx="1" fill="#D8DCE0" stroke={INK} strokeWidth="1.2" /><circle cx="6" cy="-4" r="2.6" fill="none" stroke={INK} strokeWidth="0.8" /></g>
+                : <g transform="translate(8 -4)"><path d="M0 0 V-6 M10 0 V-6" stroke={INK} strokeWidth="1.2" /><rect x="-2" y="-14" width="14" height="9" rx="4" fill="#7FB0D8" stroke={INK} strokeWidth="1.2" /></g>}
+              {/* 위층 창: 창틀 · 가운데 살 · 창턱 · 반짝 */}
+              {Array.from({ length: Math.max(1, Math.floor((b.h - 34) / 20)) }, (_, r) => Array.from({ length: Math.floor((b.w - 8) / 18) }, (_, c) => (
+                <g key={`${r}-${c}`}>
+                  <rect x={8 + c * 18} y={10 + r * 20} width="10" height="11" rx="1.5" fill={b.win} stroke={INK} strokeWidth="1.5" />
+                  <path d={`M${13 + c * 18} ${10 + r * 20} V${21 + r * 20}`} stroke="#fff" strokeWidth="1" />
+                  <path d={`M${9.5 + c * 18} ${11.5 + r * 20} l3 0 l-3 3z`} fill="#fff" opacity="0.6" />
+                  <rect x={7 + c * 18} y={21 + r * 20} width="12" height="2" rx="0.8" fill="#fff" stroke={INK} strokeWidth="0.7" />
+                </g>
               )))}
+              {/* 1층 가게: 간판 · 줄무늬 차양 · 유리문 · 진열창 */}
+              <g transform={`translate(0 ${b.h - 20})`}>
+                <rect x="3" y="-7" width={b.w - 6} height="7" rx="1" fill="#fff" stroke={INK} strokeWidth="1.1" />
+                <text x={b.w / 2} y="-1.6" textAnchor="middle" fontSize="5.4" fill={INK}>{SHOPS[i % SHOPS.length]}</text>
+                <path d={`M1 0 H${b.w - 1} L${b.w - 3} 6 H3Z`} fill={shadeRoof(i + 1)} stroke={INK} strokeWidth="1.1" />
+                {Array.from({ length: Math.floor((b.w - 4) / 8) }, (_, k) => <path key={k} d={`M${4 + k * 8} 0 L${5 + k * 8} 6`} stroke="#fff" strokeWidth="2.4" opacity="0.8" />)}
+                <rect x="6" y="8" width="10" height="14" fill="#BFE4F7" stroke={INK} strokeWidth="1.1" /><circle cx="14" cy="15" r="0.8" fill={INK} />
+                <rect x="20" y="8" width={b.w - 26} height="9" fill="#DFF3FB" stroke={INK} strokeWidth="1.1" />
+                <path d={`M23 10 l4 0 l-4 4z`} fill="#fff" opacity="0.7" />
+              </g>
             </g>
           )
         })
@@ -98,7 +118,7 @@ export function Restaurant({ menu = ['떡볶이', '순대', '튀김'], prices = 
       </g>
       {/* 천장 조명 · 벽시계 · 음식 사진 · 정수기 */}
       {[124, 184].map((x) => <g key={x}><path d={`M${x} 0 V10`} stroke={INK} strokeWidth="1.2" /><path d={`M${x - 10} 18 Q${x} 6 ${x + 10} 18Z`} fill="#F2C230" stroke={INK} strokeWidth="1.4" /><ellipse cx={x} cy="19" rx="4" ry="1.6" fill="#FFF3A6" /></g>)}
-      <g transform="translate(150 44)"><circle r="10" fill="#fff" stroke={INK} strokeWidth="1.8" /><path d="M0 0 V-6 M0 0 L5 2" stroke={INK} strokeWidth="1.4" strokeLinecap="round" /></g>
+      <g transform="translate(150 44)"><circle r="10" fill="#fff" stroke={INK} strokeWidth="1.8" /><circle r="8.2" fill="none" stroke="#E0533F" strokeWidth="1.2" />{Array.from({ length: 12 }, (_, i) => <path key={i} d="M0 -7 V-5.6" stroke={INK} strokeWidth={i % 3 ? 0.6 : 1.2} transform={`rotate(${i * 30})`} />)}<path d="M0 0 V-6 M0 0 L5 2" stroke={INK} strokeWidth="1.4" strokeLinecap="round" /><circle r="0.9" fill="#E0533F" /></g>
       {([[124, 64, '#E2452F', '떡볶이'], [166, 64, '#E8B070', '튀김']] as const).map(([x, y, c, n]) => <g key={n} transform={`translate(${x} ${y})`}><rect width="30" height="24" rx="2" fill="#fff" stroke={INK} strokeWidth="1.4" /><ellipse cx="15" cy="15" rx="10" ry="5" fill={c} stroke={INK} strokeWidth="0.9" /><text x="15" y="8" textAnchor="middle" fontSize="5.5" fill={INK}>{n}</text></g>)}
       <g transform="translate(304 158)"><rect x="-8" y="-44" width="16" height="44" fill="#E8EEF2" stroke={INK} strokeWidth="1.6" /><rect x="-6" y="-58" width="12" height="14" rx="3" fill="#BFE4F7" stroke={INK} strokeWidth="1.4" /><rect x="-4" y="-34" width="8" height="5" fill="#5E8FC9" /></g>
       {/* 바닥 */}

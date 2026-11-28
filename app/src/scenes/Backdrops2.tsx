@@ -1,5 +1,5 @@
 // 장면 배경 더: 병원 대기실·노래방·산·공원·집 안
-import { Bush, Lamp, Tree } from './Nature'
+import { Blossom, Bush, Grass, Lamp, ParkBench, TrashBin, Tree } from './Nature'
 import { INK } from './kit'
 import { W, H, GROUND } from './Stage'
 
@@ -10,7 +10,10 @@ export function Clinic({ sign = '내과', open = false }: { sign?: string; open?
   return (
     <g>
       <rect width={W} height={H} fill="#E3F2EC" />
-      <rect y="100" width={W} height="58" fill="#CFE6DC" />
+      {/* 천장 조명판 */}
+      <rect width={W} height="6" fill="#F4F8F6" />
+      {[60, 160, 260].map((x) => <g key={x}><rect x={x - 22} y="0" width="44" height="5" fill="#FFFDF0" stroke={INK} strokeWidth="1" /><path d={`M${x - 20} 2.5 H${x + 20}`} stroke="#F2E7B0" strokeWidth="1.4" /></g>)}
+      <path d={`M0 6 H${W}`} stroke="rgba(42,33,24,0.4)" strokeWidth="1" />      <rect y="100" width={W} height="58" fill="#CFE6DC" />
       <path d={`M0 100 H${W}`} stroke={INK} strokeWidth="2.2" />
       {/* 간판 */}
       <g transform="translate(14 8)">
@@ -44,9 +47,22 @@ export function Clinic({ sign = '내과', open = false }: { sign?: string; open?
         <path d="M0 -16 Q-4 -34 -14 -40 M0 -16 Q2 -38 8 -46 M0 -16 Q8 -30 16 -32" stroke="#4E8A3A" strokeWidth="2" fill="none" />
         {([[-14, -40, -30], [8, -46, 10], [16, -32, 40], [-6, -30, -50]] as const).map(([x, y, r], i) => <ellipse key={i} cx={x} cy={y} rx="8" ry="4" fill={i % 2 ? '#7FBF6A' : '#6FAF5E'} stroke={INK} strokeWidth="1.1" transform={`rotate(${r} ${x} ${y})`} />)}
       </g>
-      <rect y={GROUND} width={W} height={H - GROUND} fill="#D9D2C4" />
+      {/* 아래 벽: 판 무늬 · 손잡이 난간 */}
+      {Array.from({ length: 10 }, (_, i) => <rect key={i} x={i * 34 + 4} y="108" width="26" height="42" rx="2" fill="none" stroke="rgba(80,130,110,0.3)" strokeWidth="1.2" />)}
+      <rect y="100" width={W} height="5" fill="#B8D8CA" stroke={INK} strokeWidth="1" />
+      <path d={`M0 116 H${W}`} stroke="#A8B4BC" strokeWidth="2.4" /><path d={`M0 115 H${W}`} stroke="#E8EEF2" strokeWidth="0.8" />
+      {/* 벽시계 · 순서 안내판 · 손 소독제 · 진료 시간표 */}
+      <g transform="translate(244 24)"><circle r="9" fill="#FFFDF5" stroke={INK} strokeWidth="1.8" /><circle r="7.2" fill="none" stroke="#9AA4AE" strokeWidth="1" />{Array.from({ length: 12 }, (_, i) => <path key={i} d="M0 -6.4 V-5.2" stroke={INK} strokeWidth={i % 3 ? 0.6 : 1.2} transform={`rotate(${i * 30})`} />)}<path d="M0 0 V-5 M0 0 L3.6 1.5" stroke={INK} strokeWidth="1.2" strokeLinecap="round" /><circle r="0.9" fill="#E0533F" /></g>
+      <g transform="translate(160 78)"><rect width="60" height="14" rx="2" fill="#2A2A2A" stroke={INK} strokeWidth="1.4" /><text x="17" y="10" textAnchor="middle" fontSize="6" fill="#fff">진료 중</text><text x="44" y="10.5" textAnchor="middle" fontSize="8" fill="#FF6A5A">12번</text></g>
+      <g transform="translate(102 98)"><rect x="-4" y="-14" width="8" height="14" rx="2" fill="#E8EEF2" stroke={INK} strokeWidth="1" /><path d="M-1 -14 V-18 H4" stroke={INK} strokeWidth="1.2" fill="none" /><rect x="-3" y="-8" width="6" height="4" fill="#7FCBE8" /></g>
+      <g transform="translate(228 40)"><rect width="26" height="32" rx="1.5" fill="#fff" stroke={INK} strokeWidth="1.2" /><text x="13" y="7" textAnchor="middle" fontSize="4.6" fill="#2E6FD8">진료 시간</text>{[12, 17, 22, 27].map((ly) => <path key={ly} d={`M4 ${ly} H22`} stroke="#B8C2CE" strokeWidth="1" />)}</g>
+      {/* 창 블라인드 · 창턱 */}
+      <g transform="translate(20 46)"><path d="M2 2 H68" stroke="#F4F8F6" strokeWidth="6" />{[2, 6].map((ly) => <path key={ly} d={`M2 ${ly} H68`} stroke="#B8C2CE" strokeWidth="0.8" />)}<rect x="-3" y="43" width="76" height="4" rx="1.5" fill="#F4F8F6" stroke={INK} strokeWidth="1.2" /></g>
+      {/* 진료실 문틀 · 발판 */}
+      <g transform="translate(262 46)"><rect x="-3" y="-3" width="50" height="115" rx="3" fill="none" stroke="#B8A888" strokeWidth="2.4" />{!open && <rect x="3" y="96" width="38" height="12" fill="#D9CFB8" stroke={INK} strokeWidth="1" />}</g>      <rect y={GROUND} width={W} height={H - GROUND} fill="#D9D2C4" />
       <path d={`M0 ${GROUND} H${W}`} stroke={INK} strokeWidth="2.2" />
       {Array.from({ length: 8 }, (_, i) => <path key={i} d={`M${i * 44} ${GROUND} V${H}`} stroke="rgba(42,33,24,0.12)" strokeWidth="2" />)}
+      {[GROUND + 9, GROUND + 17].map((fy) => <path key={fy} d={`M0 ${fy} H${W}`} stroke="rgba(42,33,24,0.1)" strokeWidth="1.4" />)}
     </g>
   )
 }
@@ -74,7 +90,10 @@ export function Bench({ x, y, n = 1, color = '#5E8FC9', h = 28 }: { x: number; y
 export function Karaoke({ t, score, spot }: { t: number; score?: string; spot?: number }) {
   return (
     <g>
-      <rect width={W} height={H} fill="#3B2B52" />
+      <rect width={W} height={H} fill="#3B2B52" />      {/* 누빈 방음벽 (마름모) · 위아래 네온 띠 */}
+      {Array.from({ length: 17 }, (_, i) => <path key={i} d={`M${i * 20 - 40} 0 L${i * 20 + 80} ${GROUND} M${i * 20 + 40} 0 L${i * 20 - 80} ${GROUND}`} stroke="rgba(20,10,40,0.35)" strokeWidth="1" />)}
+      {Array.from({ length: 16 }, (_, i) => Array.from({ length: 7 }, (_, j) => <circle key={`${i}-${j}`} cx={i * 20 + (j % 2) * 10} cy={j * 22 + 6} r="1" fill="rgba(255,255,255,0.12)" />))}
+      <path d={`M0 4 H${W}`} stroke="#F2708A" strokeWidth="2.4" opacity={0.6 + 0.4 * Math.sin(t * 5)} /><path d={`M0 4 H${W}`} stroke="#FFD0DC" strokeWidth="0.8" />
       {/* 돌아가는 조명 */}
       {[0, 1, 2, 3, 4].map((i) => {
         const a = t * 1.3 + i * 1.26
@@ -82,8 +101,11 @@ export function Karaoke({ t, score, spot }: { t: number; score?: string; spot?: 
       })}
       <g transform="translate(160 10)">
         <path d="M0 0 V10" stroke="#B7B2AA" strokeWidth="2" />
-        <circle cy="18" r="9" fill="#D9D4CC" stroke={INK} strokeWidth="1.8" />
-        <path d="M-8 15 H8 M-9 20 H9 M-4 10 V27 M4 10 V27" stroke="#9A948C" strokeWidth="1" />
+        {/* 미러볼: 작은 거울 조각 · 반짝 */}
+        <circle cy="18" r="9" fill="#C9C4BC" stroke={INK} strokeWidth="1.8" />
+        <clipPath id="kr-ball"><circle cy="18" r="8.2" /></clipPath>
+        <g clipPath="url(#kr-ball)">{Array.from({ length: 6 }, (_, r) => Array.from({ length: 6 }, (_, c) => <rect key={`${r}-${c}`} x={-9 + c * 3.2 + ((t * 6) % 3.2)} y={10 + r * 3} width="2.8" height="2.6" fill={(r + c + Math.floor(t * 4)) % 4 === 0 ? '#FFFFFF' : (r + c) % 3 ? '#E4E0D8' : '#A8A39A'} />))}</g>
+        <path d="M5 13 l1.4 -3 l1.4 3 l3 1.4 l-3 1.4 l-1.4 3 l-1.4 -3 l-3 -1.4z" fill="#fff" opacity={0.5 + 0.5 * Math.sin(t * 9)} />
       </g>
       {/* 벽 무늬 별 · 스피커 · 노래책 선반 */}
       {[[30, 40], [300, 30], [250, 96], [20, 110]].map(([x, y], i) => <path key={i} d={`M${x} ${y - 5} l1.6 3.4 l3.6 0.4 l-2.7 2.4 l0.8 3.6 l-3.3 -1.8 l-3.3 1.8 l0.8 -3.6 l-2.7 -2.4 l3.6 -0.4z`} fill="#8A6AB0" opacity="0.6" />)}
@@ -104,38 +126,19 @@ export function Karaoke({ t, score, spot }: { t: number; score?: string; spot?: 
         )}
       </g>
       <rect x="140" y="110" width="40" height="8" rx="2" fill="#2A2238" stroke={INK} strokeWidth="1.8" />
+      {/* 노래방 기계 (번호판 · 불빛) */}
+      <g transform="translate(160 136)"><rect x="-22" y="-26" width="44" height="26" rx="2" fill="#2A2238" stroke={INK} strokeWidth="1.6" /><rect x="-18" y="-22" width="20" height="8" rx="1" fill="#1A1424" stroke="#5A4A6A" strokeWidth="0.8" /><text x="-8" y="-15.6" textAnchor="middle" fontSize="6" fill="#7FE08A">0427</text>{[0, 1, 2].map((i) => <circle key={i} cx={8 + i * 5} cy="-18" r="1.6" fill={Math.sin(t * 6 + i * 2) > 0 ? ['#F2708A', '#F2C230', '#7FCBE8'][i] : '#4A3A60'} />)}<path d="M-18 -9 H18 M-18 -5 H18" stroke="#4A3A60" strokeWidth="1.2" /></g>
       <rect y={GROUND} width={W} height={H - GROUND} fill="#2A2238" />
+      {/* 카펫 무늬 · 바닥 네온 */}
+      {Array.from({ length: 14 }, (_, i) => <path key={i} d={`M${i * 24 + 6} ${GROUND + 8} l2 -3 l2 3 l-2 3z`} fill="#4A3A60" />)}
+      {Array.from({ length: 14 }, (_, i) => <circle key={i} cx={i * 24 + 18} cy={GROUND + 17} r="1.4" fill="#4A3A60" />)}
+      <path d={`M0 ${GROUND - 2} H${W}`} stroke="#7FCBE8" strokeWidth="2" opacity={0.5 + 0.5 * Math.sin(t * 4 + 1)} />
       <path d={`M0 ${GROUND} H${W}`} stroke={INK} strokeWidth="2.2" />
       {spot !== undefined && <><path d={`M${spot - 14} 0 L${spot - 46} ${GROUND} H${spot + 46} L${spot + 14} 0Z`} fill="#FFF6C8" opacity="0.22" /><ellipse cx={spot} cy={GROUND + 2} rx="46" ry="9" fill="#FFF6C8" opacity="0.5" /></>}
     </g>
   )
 }
 
-/** 산길: 왼쪽 아래에서 오른쪽 위 꼭대기로. slopeY(x) = 그 자리 땅 높이 */
-export const PEAK_X = 250
-export const slopeY = (x: number) => (x < PEAK_X - 30 ? GROUND + 16 - x * 0.22 : GROUND + 16 - (PEAK_X - 30) * 0.22) // 꼭대기(오른쪽 끝)는 평평
-export function Mountain() {
-  let d = `M0 ${H} L0 ${slopeY(0)}`
-  for (let x = 0; x <= W; x += 10) d += ` L${x} ${slopeY(x)}`
-  d += ` L${W} ${H}Z`
-  return (
-    <g>
-      <defs><linearGradient id="mt-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#9ED3F0" /><stop offset="1" stopColor="#E8F5FB" /></linearGradient></defs>
-      <rect width={W} height={H} fill="url(#mt-sky)" />
-      <path d="M-20 120 L50 60 L110 110 L170 50 L240 115 L320 70 L360 120Z" fill="#C6D8E6" stroke="#9AB0C2" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M50 60 L40 70 L58 72Z M170 50 L160 60 L180 62Z" fill="#fff" />
-      <path d={d} fill="#8CC377" stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
-      {/* 길 */}
-      <path d={`M0 ${slopeY(0) + 6} ${Array.from({ length: 33 }, (_, i) => `L${i * 10} ${slopeY(i * 10) + 6}`).join(' ')}`} stroke="#D9C49A" strokeWidth="6" fill="none" strokeLinecap="round" />
-      {[40, 110, 175].map((x, i) => (
-        <g key={i} transform={`translate(${x} ${slopeY(x) + 22})`}>
-          <path d="M0 0 L-10 0 L0 -26 L10 0Z" fill="#5E8F6A" stroke={INK} strokeWidth="1.8" strokeLinejoin="round" />
-        </g>
-      ))}
-      {[70, 140, 205].map((x, i) => <circle key={i} cx={x} cy={slopeY(x) + 16} r="2.5" fill={['#F2708A', '#FFD23F', '#fff'][i]} stroke={INK} strokeWidth="1" />)}
-    </g>
-  )
-}
 
 /** 공원 (잔디·나무·벤치·산책길). cam = 카메라 이동 */
 export function Park({ cam = 0, sunset = 0 }: { cam?: number; sunset?: number }) {
@@ -167,20 +170,19 @@ export function Park({ cam = 0, sunset = 0 }: { cam?: number; sunset?: number })
       {Array.from({ length: 2 }, (_, i) => {
         const x = wrap(i * 200 + 150 - cam * 0.85, 400) - 40
         return (
-          <g key={i} transform={`translate(${x} 128)`}>
-            <path d="M-22 0 V-14 M22 0 V-14" stroke={INK} strokeWidth="2.4" />
-            <rect x="-26" y="-18" width="52" height="6" rx="3" fill="#C98B55" stroke={INK} strokeWidth="1.8" />
-            <rect x="-26" y="-30" width="52" height="6" rx="3" fill="#C98B55" stroke={INK} strokeWidth="1.8" />
-          </g>
+          <g key={i}><ParkBench x={x} y={129} /><TrashBin x={x + 40} y={130} /></g>
         )
       })}
       <rect y="122" width={W} height={H - 122} fill="#8CC377" />
       <path d={`M0 122 H${W}`} stroke={INK} strokeWidth="2" />
       <rect y={GROUND - 12} width={W} height="22" fill="#E6D3AE" />
       <path d={`M0 ${GROUND - 12} H${W} M0 ${GROUND + 10} H${W}`} stroke="rgba(42,33,24,0.3)" strokeWidth="2" />
+      {/* 길 가장자리 돌 */}
+      {Array.from({ length: 24 }, (_, i) => { const x = wrap(i * 16 - cam, 384) - 16; return <g key={i}><rect x={x} y={GROUND - 14} width="14" height="3.4" rx="1.5" fill="#D8C7A0" stroke="rgba(42,33,24,0.35)" strokeWidth="0.8" /><rect x={x + 3} y={GROUND + 9} width="14" height="3.4" rx="1.5" fill="#D8C7A0" stroke="rgba(42,33,24,0.35)" strokeWidth="0.8" /></g> })}
+      {/* 잔디 속 풀포기 · 꽃 (줄기·잎·꽃잎) */}
       {Array.from({ length: 8 }, (_, i) => {
         const x = wrap(i * 46 - cam, 368) - 24
-        return <g key={i}><path d={`M${x} ${GROUND + 18} l3 -6 l3 6`} stroke="#5E8F6A" strokeWidth="2" fill="none" /><circle cx={x + 26} cy={GROUND - 18} r="2.6" fill={i % 2 ? '#F2708A' : '#FFD23F'} stroke={INK} strokeWidth="1" /></g>
+        return <g key={i}><Grass x={x} y={GROUND + 22} /><Grass x={x + 14} y={GROUND - 20} c="#6FAF5E" /><path d={`M${x + 26} ${GROUND - 15} V${GROUND - 21}`} stroke="#4E8A3A" strokeWidth="1.1" /><Blossom x={x + 26} y={GROUND - 22} c={i % 2 ? '#F2708A' : '#FFD23F'} r={2.6} /></g>
       })}
     </g>
   )
@@ -189,14 +191,32 @@ export function Park({ cam = 0, sunset = 0 }: { cam?: number; sunset?: number })
 /** 집 안 거실 (천장 얼룩 자리 stainX). stain = 얼룩 크기 0~1 */
 export function Home({ stainX = 150, stain = 0, winX = 220, frameX = 30, night = 0 }: { stainX?: number; stain?: number; winX?: number; frameX?: number; night?: number }) {
   const sky = night > 0.5 ? '#2E3A66' : '#BFE4F7'
+  // 벽시계: 액자 오른쪽, 창문(커튼 포함)과 겹치면 창문 왼쪽 → 그래도 겹치면 창문 오른쪽
+  const clockX = (() => { const hit = (cx: number) => winX >= 0 && cx > winX - 24 && cx < winX + 102; let cx = frameX + 100; if (hit(cx)) cx = winX - 30; if (hit(cx) || cx < frameX + 92) cx = winX + 114; return cx > W - 12 ? -1 : cx })()
   return (
     <g>
       <rect width={W} height={H} fill="#F6EAD2" />
       <rect width={W} height="14" fill="#E9D9B8" />
-      <path d={`M0 14 H${W}`} stroke={INK} strokeWidth="2.2" />
+      <rect y="14" width={W} height="4" fill="#FFF8EA" />
+      {Array.from({ length: 40 }, (_, i) => <rect key={i} x={i * 8 + 2} y="10" width="4" height="4" fill="#DCC9A4" />)}
+      <path d={`M0 14 H${W}`} stroke={INK} strokeWidth="2.2" /><path d={`M0 18 H${W}`} stroke="rgba(42,33,24,0.35)" strokeWidth="1" />
       {stain > 0 && <ellipse cx={stainX} cy="16" rx={6 + 18 * stain} ry={2.5 + 4 * stain} fill="#8A7050" opacity="0.75" stroke="#6A5238" strokeWidth="1" />}
       {/* 벽지 줄무늬 */}
-      {Array.from({ length: 16 }, (_, i) => <path key={i} d={`M${i * 22 + 10} 14 V${GROUND}`} stroke="rgba(201,162,122,0.18)" strokeWidth="6" />)}
+      {Array.from({ length: 16 }, (_, i) => <path key={i} d={`M${i * 22 + 10} 18 V${GROUND - 40}`} stroke="rgba(201,162,122,0.18)" strokeWidth="6" />)}
+      {/* 벽지 작은 꽃무늬 */}
+      {Array.from({ length: 15 }, (_, i) => [30, 62, 94].map((wy, j) => <g key={`${i}-${j}`} transform={`translate(${i * 22 + 21} ${wy + (i % 2) * 16})`} fill="rgba(201,140,110,0.28)"><circle cx="-1.6" r="1.3" /><circle cx="1.6" r="1.3" /><circle cy="-1.6" r="1.3" /><circle cy="1.6" r="1.3" /></g>))}
+      {/* 아래 벽: 판자 벽 + 가로 몰딩 */}
+      <rect y={GROUND - 40} width={W} height="34" fill="#EAD6B4" />
+      {Array.from({ length: 10 }, (_, i) => <rect key={i} x={i * 34 + 4} y={GROUND - 34} width="26" height="24" rx="1.5" fill="none" stroke="rgba(150,110,70,0.35)" strokeWidth="1.2" />)}
+      <rect y={GROUND - 43} width={W} height="4" fill="#F7E9CF" stroke="rgba(42,33,24,0.45)" strokeWidth="1" />
+      {/* 벽시계 (둥근 테 · 눈금 · 바늘). 자리가 없으면 안 그림 */}
+      {clockX > 0 && <g transform={`translate(${clockX} 38)`}>
+        <circle r="10" fill="#FFFDF5" stroke={INK} strokeWidth="2" /><circle r="8.2" fill="none" stroke="#C98B55" strokeWidth="1.4" />
+        {Array.from({ length: 12 }, (_, i) => <path key={i} d="M0 -7 V-5.6" stroke={INK} strokeWidth={i % 3 ? 0.6 : 1.2} transform={`rotate(${i * 30})`} />)}
+        <path d="M0 0 L0 -5.4 M0 0 L3.6 1.4" stroke={INK} strokeWidth="1.2" strokeLinecap="round" /><circle r="0.9" fill="#E0533F" />
+      </g>}
+      {/* 전등 스위치 · 콘센트 */}
+      <g transform={`translate(${frameX + 6} 86)`}><rect x="-4" y="-6" width="8" height="12" rx="1.2" fill="#FFFDF5" stroke={INK} strokeWidth="1" /><rect x="-1.6" y="-3" width="3.2" height="4" rx="0.6" fill="#E8E0D0" stroke={INK} strokeWidth="0.6" /></g>
       {/* 창문: 창밖 하늘·구름·나뭇가지, 창틀·창턱, 커튼(주름·끈), 커튼봉 */}
       {winX >= 0 && <g transform={`translate(${winX} 34)`}>
         <clipPath id="home-win"><rect width="78" height="60" rx="5" /></clipPath>
@@ -232,6 +252,8 @@ export function Home({ stainX = 150, stain = 0, winX = 220, frameX = 30, night =
         {/* 세 식구 */}
         {[[12, '#E0533F', 1], [20, '#5E8FC9', 0.75], [28, '#F2C230', 1]].map(([cx, c, k], i) => <g key={i}><circle cx={cx as number} cy={28 - 15 * (k as number)} r={3.2 * (k as number)} fill="#F6D2B8" stroke={INK} strokeWidth="0.9" /><path d={`M${(cx as number) - 4 * (k as number)} 28 Q${cx} ${28 - 12 * (k as number)} ${(cx as number) + 4 * (k as number)} 28Z`} fill={c as string} stroke={INK} strokeWidth="0.9" /></g>)}
         <rect x="4" y="4" width="32" height="24" fill="none" stroke={INK} strokeWidth="1" />
+        <path d="M7 7 L14 7 L7 14Z" fill="#fff" opacity="0.45" />
+        <path d="M1.5 2 H38.5" stroke="#D9A066" strokeWidth="1" />
       </g>
       <g transform={`translate(${frameX + 50} 44)`}>
         <rect width="32" height="24" rx="2" fill="#5A4A3A" stroke={INK} strokeWidth="2" />
@@ -241,9 +263,12 @@ export function Home({ stainX = 150, stain = 0, winX = 220, frameX = 30, night =
         <path d="M9 13 L11 10 L13 13Z" fill="#fff" />
       </g>
       <rect y={GROUND - 6} width={W} height="6" fill="#E3C79A" stroke={INK} strokeWidth="1.6" />
+      {[40, 200].map((ox) => <g key={ox} transform={`translate(${ox + frameX} ${GROUND - 12})`}><rect x="-5" y="-4" width="10" height="8" rx="1.2" fill="#FFFDF5" stroke={INK} strokeWidth="0.9" /><circle cx="-1.8" r="0.8" fill={INK} /><circle cx="1.8" r="0.8" fill={INK} /></g>)}
+      {/* 마루: 가로 널판 · 엇갈린 이음매 · 결 */}
       <rect y={GROUND} width={W} height={H - GROUND} fill="#C99B6B" />
+      {[GROUND + 6, GROUND + 13, GROUND + 21].map((fy, r) => <g key={fy}><path d={`M0 ${fy} H${W}`} stroke="rgba(42,33,24,0.18)" strokeWidth="1.2" />{Array.from({ length: 6 }, (_, i) => <path key={i} d={`M${i * 60 + (r % 2) * 30 + 12} ${fy - (r ? 7 : 6)} V${fy}`} stroke="rgba(42,33,24,0.14)" strokeWidth="1" />)}</g>)}
+      {Array.from({ length: 8 }, (_, i) => <path key={i} d={`M${i * 41 + 6} ${GROUND + 9 + (i % 3) * 7} q6 -1.4 12 0`} stroke="rgba(120,80,40,0.25)" strokeWidth="0.8" fill="none" />)}
       <path d={`M0 ${GROUND} H${W}`} stroke={INK} strokeWidth="2.2" />
-      {Array.from({ length: 6 }, (_, i) => <path key={i} d={`M${i * 64 + 20} ${GROUND} L${i * 64} ${H}`} stroke="rgba(42,33,24,0.15)" strokeWidth="2" />)}
     </g>
   )
 }

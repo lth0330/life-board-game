@@ -35,6 +35,21 @@ const UPPER = 19, FORE = 17, THIGH = 35, SHIN = 33, CANE = 64
 const reach = (sh: number) => 1 + 0.55 * Math.min(1, Math.max(0, (sh - 60) / 100))
 const LONG_OUTER = ['coat', 'gown', 'raincoat']
 
+/** 가까운 손 위치 (발 가운데 기준, 장면 px). 물건 손잡이를 손에 맞출 때 씀 (어른·노인 기준, 아이 몸 비율은 무시) */
+export function sideHand(outfit: Outfit, age: number | undefined, pose: SidePose, size: number): [number, number] {
+  const P = { ...IDLE, ...pose }
+  const footY = ([h, k]: readonly number[]) => THIGH * Math.cos((h * Math.PI) / 180) + SHIN * Math.cos(((k - h) * Math.PI) / 180)
+  const bob = P.bob + THIGH + SHIN - Math.max(footY(P.legN), footY(P.legF))
+  const s = aged(outfit, age).scale
+  const rad = (d: number) => (d * Math.PI) / 180
+  const sh = rad(P.armN[0] - P.lean), el = rad(P.armN[0] + P.armN[1] - P.lean)
+  const sx = HIP[0] + Math.sin(rad(P.lean)) * (HIP[1] - SHOULDER[1]), sy = HIP[1] - Math.cos(rad(P.lean)) * (HIP[1] - SHOULDER[1])
+  const f = reach(P.armN[0])
+  const hx = sx + Math.sin(sh) * UPPER * f + Math.sin(el) * (FORE * f + 2), hy = sy + Math.cos(sh) * UPPER * f + Math.cos(el) * (FORE * f + 2)
+  const X = 50 - 50 * s + s * hx, Y = 200 - 200 * s + bob + s * hy
+  return [(X - 50) * size / 100, (Y - 190) * size / 100]
+}
+
 export function SideCharacter({ outfit, age, pose = {}, expr = 'normal', size = 100, flip, holding, noCane, noShadow, caneLean }: Props) {
   const uid = useId().replace(/:/g, '')
   const P = { ...IDLE, ...pose }

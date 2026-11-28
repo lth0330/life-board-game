@@ -3,7 +3,7 @@ import { Actor, GROUND, headH, isKid, type SceneDef } from './Stage'
 import { Home } from './Backdrops2'
 import { Bang, Bubble, Sweat } from './Fx'
 import { Drop, Exclaim, Gloom, MoneyFly } from './Fx2'
-import { Bucket, BucketHeld, Phone, Sofa, SofaBack } from './Props2'
+import { Bucket, BucketHeld, Phone, SideSofa } from './Props2'
 import { keys, pick, poseAt, seg } from './kit'
 import { gaitOf, HOLD_HEAD, POINT_UP, run, SIT, SIT_LEGS, SLUMP, STAND, sitLift } from './poses'
 import type { SidePose } from '../art/SideCharacter'
@@ -41,7 +41,7 @@ export const leak: SceneDef = {
     const seatY = GROUND - sitLift(me, 30)
     // 소파(앉음) → 움찔·위 보기 → 비켜섬 → 오른쪽 끝으로 뛰어가 양동이 → 들고 와서 소파 위에 내려놓음 → 옆에 섬
     const x = keys(t, [[3.4, SOFA - 6], [3.9, SOFA - 50], [4.9, SOFA - 50], [5.45, 330], [5.75, 330], [6.5, SOFA + 90], [10, SOFA + 90]])
-    const runL = t > 5.75 && t < 6.5 // 양동이 들고 왼쪽으로 돌아옴
+    // 양동이를 들고 왼쪽으로 돌아와 앞에 놓고, 그대로 물 새는 쪽(왼쪽)을 보고 섬 (11-28 사용자: 사람 기준 앞에 그릇)
     const carrying = t > 5.6 && t < BUCKET
     const sitPhone: SidePose = { ...SIT, armN: [50, 92], head: 8 }
     const pose = poseAt(t, [
@@ -63,10 +63,9 @@ export const leak: SceneDef = {
       <g>
         <Home />
         <Stain x={SX} k={seg(t, 0.4, 4)} bead={bead} />
-        <SofaBack x={SOFA} y={GROUND} w={100} />
-        <Sofa x={SOFA} y={GROUND} w={100} />
+        <SideSofa x={SOFA} y={GROUND} />
         {t > BUCKET && <Bucket x={SX} y={GROUND} level={seg(t, BUCKET, 11)} />}
-        <Actor c={me} x={x} y={t < 3.5 ? seatY : GROUND} pose={pose} expr={expr} flip={runL} holding={holding} caneLean={t < 5.0 || carrying || t > 6.6} />
+        <Actor c={me} x={x} y={t < 3.5 ? seatY : GROUND} pose={pose} expr={expr} flip={t > 5.75} holding={holding} caneLean={t < 5.0 || carrying || t > 6.6} />
         {drops.map((d, i) => <Drop key={i} t={t} t0={d} x={SX} y0={36} y1={d + 0.45 > BUCKET ? GROUND - 20 : GROUND - 2} />)}
         <Bang t={t} t0={HIT} x={SX + 22} y={GROUND - 30} text="똑!" size={16} color="#5E8FC9" dur={0.9} />
         <Exclaim t={t} t0={HIT + 0.1} x={SOFA - 26} y={headY - 18} />

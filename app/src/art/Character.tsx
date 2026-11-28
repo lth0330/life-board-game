@@ -5,7 +5,7 @@ import { accList, type Outfit } from '../engine/outfit'
 
 export type Expr = 'normal' | 'happy' | 'sad' | 'surprised' | 'angry' | 'love' | 'tease' | 'clap'
 // pose: 춤 동작 (left·right = 화면 기준 그쪽 팔 위로, up = 두 팔 위로, out = 두 팔 옆으로)
-export type Pose = 'idle' | 'left' | 'right' | 'up' | 'out'
+export type Pose = 'idle' | 'left' | 'right' | 'up' | 'out' | 'table'
 interface Props { outfit: Outfit; view?: 'front' | 'back'; size?: number; title?: string; age?: number; expr?: Expr; crop?: 'head'; pose?: Pose }
 
 const INK = '#2A2118'
@@ -58,8 +58,13 @@ const ARM_OUT: [Arm, Arm] = [
   { d: 'M33 78 Q22 79 12 79', sleeve: 'M33 78 Q29 78.5 25 79', hand: [10, 79] },
   { d: 'M67 78 Q78 79 88 79', sleeve: 'M67 78 Q71 78.5 75 79', hand: [90, 79] },
 ]
+// 식탁에 앉아 팔꿈치를 굽혀 손을 앞으로 (장면: 식탁 건너편 사람)
+const ARM_TABLE: [Arm, Arm] = [
+  { d: 'M33 78 Q27 98 36 110', sleeve: 'M33 78 Q29.5 86 28.5 91', hand: [38, 111] },
+  { d: 'M67 78 Q73 98 64 110', sleeve: 'M67 78 Q70.5 86 71.5 91', hand: [62, 111] },
+]
 const armsOf = (pose: Pose): [Arm, Arm] =>
-  pose === 'left' ? [ARM_UP[0], ARM_DOWN[1]] : pose === 'right' ? [ARM_DOWN[0], ARM_UP[1]] : pose === 'up' ? ARM_UP : pose === 'out' ? ARM_OUT : ARM_DOWN
+  pose === 'table' ? ARM_TABLE : pose === 'left' ? [ARM_UP[0], ARM_DOWN[1]] : pose === 'right' ? [ARM_DOWN[0], ARM_UP[1]] : pose === 'up' ? ARM_UP : pose === 'out' ? ARM_OUT : ARM_DOWN
 const TORSO = 'M33 72 Q50 66 67 72 Q71 94 70 118 Q50 122 30 118 Q29 94 33 72Z'
 const TORSO_SHADE = 'M62 72.5 Q69 92 68.5 117 Q64 119 59 119.5 Q64 96 62 72.5Z'
 // 길이가 긴 겉옷 (코트 모양)

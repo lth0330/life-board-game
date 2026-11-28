@@ -67,8 +67,48 @@ export function Flowers({ x0, x1, y, seed = 1 }: { x0: number; x1: number; y: nu
     <g>
       {Array.from({ length: n }, (_, i) => {
         const fx = x0 + i * 9 + ((i * 7 + seed * 3) % 5), h = 5 + ((i * 5 + seed) % 4)
-        return <g key={i}><path d={`M${fx} ${y} V${y - h}`} stroke="#4E8A3A" strokeWidth="1.2" /><circle cx={fx} cy={y - h} r="2.2" fill={cs[(i + seed) % cs.length]} stroke={INK} strokeWidth="0.7" /></g>
+        return <g key={i}><path d={`M${fx} ${y} V${y - h}`} stroke="#4E8A3A" strokeWidth="1.2" /><path d={`M${fx} ${y - 2} q-3 -1 -4 -4 q3 0 4 3`} fill="#6FAF5E" stroke="#4E8A3A" strokeWidth="0.5" /><Blossom x={fx} y={y - h} c={cs[(i + seed) % cs.length]} /></g>
       })}
+    </g>
+  )
+}
+
+/** 꽃 한 송이 (꽃잎 다섯 장 + 가운데) */
+export function Blossom({ x, y, c, r = 2.4 }: { x: number; y: number; c: string; r?: number }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      {[0, 72, 144, 216, 288].map((d) => <ellipse key={d} cx="0" cy={-r * 0.75} rx={r * 0.55} ry={r * 0.8} fill={c} stroke={INK} strokeWidth="0.5" transform={`rotate(${d})`} />)}
+      <circle r={r * 0.45} fill="#F2C230" stroke={INK} strokeWidth="0.4" />
+    </g>
+  )
+}
+
+/** 공원 휴지통 */
+export function TrashBin({ x, y }: { x: number; y: number }) {
+  return (
+    <g transform={`translate(${x} ${y})`} strokeLinejoin="round">
+      <path d="M-7 0 L-8 -20 H8 L7 0Z" fill="#5E8F6A" stroke={INK} strokeWidth="1.5" />
+      {[-4, 0, 4].map((k) => <path key={k} d={`M${k} -17 V-3`} stroke="#4A7656" strokeWidth="1.4" />)}
+      <path d="M-9.5 -20 Q0 -26 9.5 -20Z" fill="#4A7656" stroke={INK} strokeWidth="1.4" />
+      <rect x="-4" y="-14" width="8" height="5" rx="1" fill="#fff" stroke={INK} strokeWidth="0.6" />
+      <path d="M-2 -11.5 l1.5 1.5 l2.5 -3" stroke="#5E8F6A" strokeWidth="0.8" fill="none" />
+    </g>
+  )
+}
+
+/** 공원 벤치 (옆에서 본 긴 의자): 나무 판 여러 줄 · 쇠 다리 · 팔걸이 */
+export function ParkBench({ x, y, w = 56, c = '#C98B55' }: { x: number; y: number; w?: number; c?: string }) {
+  const leg = (lx: number) => <g key={lx}><path d={`M${lx} 0 Q${lx - 1} -8 ${lx + 2} -14 M${lx + 2} -14 L${lx - 2} -30`} stroke={INK} strokeWidth="3.2" fill="none" strokeLinecap="round" /><path d={`M${lx} 0 Q${lx - 1} -8 ${lx + 2} -14 M${lx + 2} -14 L${lx - 2} -30`} stroke="#4A4E56" strokeWidth="1.8" fill="none" strokeLinecap="round" /><path d={`M${lx - 3} -18 Q${lx + 4} -22 ${lx + 6} -16`} stroke="#4A4E56" strokeWidth="1.6" fill="none" /></g>
+  return (
+    <g transform={`translate(${x} ${y})`} strokeLinejoin="round">
+      {/* 등받이 판 3줄 */}
+      {[-34, -29, -24].map((by) => <rect key={by} x={-w / 2} y={by} width={w} height="3.6" rx="1.2" fill={c} stroke={INK} strokeWidth="1.1" />)}
+      {/* 앉는 판 2줄 */}
+      <rect x={-w / 2 - 2} y="-16" width={w + 4} height="4" rx="1.4" fill={c} stroke={INK} strokeWidth="1.2" />
+      <rect x={-w / 2 - 1} y="-13" width={w + 2} height="3" rx="1.2" fill={c} stroke={INK} strokeWidth="1" opacity="0.9" />
+      {[-w / 2 + 6, w / 2 - 6].map(leg)}
+      {/* 나뭇결 */}
+      <path d={`M${-w / 2 + 6} -32 h10 M${w / 2 - 18} -27 h8 M${-w / 4} -14.5 h12`} stroke="rgba(42,33,24,0.25)" strokeWidth="0.7" />
     </g>
   )
 }

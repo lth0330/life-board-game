@@ -2,6 +2,7 @@
 import { useId, type ReactNode } from 'react'
 import { INK } from './kit'
 import { shade as shadeHex } from '../art/Character'
+import type { Outfit } from '../engine/outfit'
 
 /** 길 위 돌멩이 */
 export function Stone({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
@@ -66,9 +67,13 @@ export function Table({ x, y, w = 120, h = 40, color = '#C98B55' }: { x: number;
   return (
     <g transform={`translate(${x} ${y})`}>
       <ellipse cy="1" rx={w / 2} ry="4" fill="rgba(42,33,24,0.16)" />
-      <rect x={-w / 2 + 8} y={-h} width="7" height={h} fill={shadeHex(color, -0.2)} stroke={INK} strokeWidth="2" />
-      <rect x={w / 2 - 15} y={-h} width="7" height={h} fill={shadeHex(color, -0.2)} stroke={INK} strokeWidth="2" />
+      {/* 다리 (아래로 살짝 가늘게) · 가로대 · 앞판 · 윗판 (나뭇결·빛) */}
+      {[-w / 2 + 8, w / 2 - 15].map((lx) => <path key={lx} d={`M${lx} ${-h} H${lx + 7} L${lx + 6} 0 H${lx + 1}Z`} fill={shadeHex(color, -0.2)} stroke={INK} strokeWidth="2" strokeLinejoin="round" />)}
+      <rect x={-w / 2 + 14} y={-h * 0.35} width={w - 28} height="3" fill={shadeHex(color, -0.25)} stroke={INK} strokeWidth="1.2" />
+      <rect x={-w / 2 + 6} y={-h - 1} width={w - 12} height="6" fill={shadeHex(color, -0.1)} stroke={INK} strokeWidth="1.6" />
       <rect x={-w / 2} y={-h - 7} width={w} height="8" rx="3" fill={color} stroke={INK} strokeWidth="2.2" />
+      <path d={`M${-w / 2 + 4} ${-h - 5} H${w / 2 - 4}`} stroke={shadeHex(color, 0.3)} strokeWidth="1.2" />
+      <path d={`M${-w / 2 + 12} ${-h - 2.5} q10 -1.5 20 0 M${w / 2 - 40} ${-h - 2.5} q10 1.5 22 0`} stroke={shadeHex(color, -0.25)} strokeWidth="0.8" fill="none" />
     </g>
   )
 }
@@ -79,6 +84,44 @@ export function Stool({ x, y, color = '#E0533F', h = 28 }: { x: number; y: numbe
     <g transform={`translate(${x} ${y})`}>
       <path d={`M-9 0 L-6 ${6 - h} M9 0 L6 ${6 - h}`} stroke={INK} strokeWidth="2.6" />
       <rect x="-13" y={-h} width="26" height="7" rx="3.5" fill={color} stroke={INK} strokeWidth="2.2" />
+    </g>
+  )
+}
+
+/** 동그란 의자 (앞에서 봄): 방석·다리 네 개·가로대 */
+export function FrontStool({ x, y, h = 28, color = '#5FB36A' }: { x: number; y: number; h?: number; color?: string }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <path d={`M-10 ${-h + 4} L-15 0 M10 ${-h + 4} L15 0 M-4 ${-h + 5} L-5 -1 M4 ${-h + 5} L5 -1`} stroke={INK} strokeWidth="4" strokeLinecap="round" />
+      <path d={`M-10 ${-h + 4} L-15 0 M10 ${-h + 4} L15 0`} stroke="#B9C3CF" strokeWidth="2" strokeLinecap="round" />
+      <path d={`M-13 -9 H13`} stroke={INK} strokeWidth="1.8" />
+      <ellipse cy={-h} rx="16" ry="4.5" fill={shadeHex(color, -0.25)} stroke={INK} strokeWidth="1.8" />
+      <ellipse cy={-h - 2} rx="16" ry="4.5" fill={color} stroke={INK} strokeWidth="1.8" />
+      <ellipse cx="-4" cy={-h - 3} rx="6" ry="1.4" fill="rgba(255,255,255,0.4)" />
+    </g>
+  )
+}
+
+/** 앞을 보고 앉은 사람의 다리 (의자 위 무릎 → 정강이 → 신발). (x, y) = 바닥 가운데. 윗몸은 FrontActor를 엉덩이 위로 잘라 따로 그림 */
+export function SeatedLegs({ c, x, y }: { c: { outfit: Outfit }; x: number; y: number }) {
+  const o = c.outfit
+  const dress = o.top === 'dress'
+  const pants = !dress && ['pants', 'jeans', 'track'].includes(o.bottom)
+  const legC = pants ? o.bottomColor : o.skin
+  const skirtC = dress ? o.topColor : o.bottomColor
+  const longSkirt = !dress && o.bottom === 'longskirt'
+  return (
+    <g transform={`translate(${x} ${y})`} strokeLinejoin="round">
+      {/* 정강이 */}
+      {[-5, 5].map((dx) => <g key={dx}><path d={`M${dx} -25 V-5`} stroke={INK} strokeWidth="9.4" strokeLinecap="round" /><path d={`M${dx} -25 V-5`} stroke={legC} strokeWidth="6.4" strokeLinecap="round" /></g>)}
+      {/* 신발 (앞코가 보는 사람 쪽) */}
+      {[-5.5, 5.5].map((dx) => <path key={dx} d={`M${dx - 5} -1 Q${dx - 5} -6 ${dx} -6 Q${dx + 5} -6 ${dx + 5} -1 Q${dx} 1.5 ${dx - 5} -1Z`} fill={o.shoesColor} stroke={INK} strokeWidth="1.5" />)}
+      {/* 허벅지 (앞으로 나와 짧게 보임) · 무릎 */}
+      <path d="M-11 -33 H11 V-26 Q11 -22 6 -22 Q0 -23 -6 -22 Q-11 -22 -11 -26Z" fill={pants ? o.bottomColor : o.skin} stroke={INK} strokeWidth="1.6" />
+      {pants && <path d="M0 -32 V-23" stroke="rgba(42,33,24,0.35)" strokeWidth="1.2" />}
+      {/* 치마·원피스는 무릎을 덮음 */}
+      {!pants && o.bottom !== 'shorts' && <path d={`M-13 -34 H13 L${longSkirt ? 15 : 13} ${longSkirt ? -8 : -21} Q0 ${longSkirt ? -5 : -18} ${longSkirt ? -15 : -13} ${longSkirt ? -8 : -21}Z`} fill={skirtC} stroke={INK} strokeWidth="1.6" />}
+      {!dress && o.bottom === 'shorts' && <path d="M-12 -34 H12 V-28 H-12Z" fill={o.bottomColor} stroke={INK} strokeWidth="1.6" />}
     </g>
   )
 }

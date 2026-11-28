@@ -8,7 +8,8 @@ import { Bubble, Hearts, Sparkle } from './Fx'
 import { Notes } from './Fx2'
 import { INK, pick, poseAt, seg } from './kit'
 import { gaitOf, SIT, STAND } from './poses'
-import { Bush, Tree } from './Nature'
+import { Tree } from './Nature'
+import { BalloonCart, CandyPillar, Carousel, Castle, CottonStand, FerrisWheel, Lamp, LampGarland, Pavers, Planter, TicketBooth } from './Amuse'
 import type { SidePose } from '../art/SideCharacter'
 import type { Expr } from '../art/Character'
 import { DEFAULT_OUTFIT } from '../engine/outfit'
@@ -16,93 +17,87 @@ import { DEFAULT_OUTFIT } from '../engine/outfit'
 const GATE_END = 2.6, RIDE_END = 7.6
 const KID: Cast = { outfit: { ...DEFAULT_OUTFIT, gender: 'f', hair: 'pony', topColor: '#F28CB1' }, age: 7 }
 
-/** 깃발 줄 */
-const Garland = ({ y, x0 = 0, x1 = W }: { y: number; x0?: number; x1?: number }) => (
-  <g>
-    <path d={`M${x0} ${y} Q${(x0 + x1) / 2} ${y + 14} ${x1} ${y}`} stroke={INK} strokeWidth="1.2" fill="none" />
-    {Array.from({ length: Math.floor((x1 - x0) / 16) }, (_, i) => { const x = x0 + 8 + i * 16, k = (x - x0) / (x1 - x0), yy = y + 14 * 4 * k * (1 - k) * 0.5 * 2; return <path key={i} d={`M${x - 5} ${yy} L${x + 5} ${yy} L${x} ${yy + 9}Z`} fill={['#E0533F', '#F2C230', '#5E8FC9', '#7FBF6A', '#C77FD0'][i % 5]} stroke={INK} strokeWidth="0.9" /> })}
-  </g>
-)
 /** 풍선 (줄 끝 = 0,0) */
 const Balloon = ({ c, t = 0 }: { c: string; t?: number }) => <g transform={`rotate(${Math.sin(t * 2) * 6})`}><path d="M0 0 Q-3 -14 0 -26" stroke={INK} strokeWidth="1" fill="none" /><ellipse cy="-34" rx="8" ry="10" fill={c} stroke={INK} strokeWidth="1.4" /><path d="M-3 -39 q2 -3 5 -2" stroke="#fff" strokeWidth="1.6" fill="none" /><path d="M-1.5 -24 h3 l-1.5 2z" fill={c} stroke={INK} strokeWidth="0.8" /></g>
 /** 솜사탕 */
 const Cotton = () => <g><path d="M0 4 V-12" stroke="#E8DCC8" strokeWidth="2" /><g fill="#F7B8D8" stroke={INK} strokeWidth="1.2"><circle cx="-5" cy="-18" r="6" /><circle cx="4" cy="-20" r="7" /><circle cx="0" cy="-26" r="6" /></g></g>
 
-/** 롤러코스터 칸 (두 사람) */
-function Coaster({ x, riders }: { x: number; riders: Cast[] }) {
+/** 롤러코스터 칸 (두 사람): 앞코 · 좌석 등받이 · 안전바 · 레일 위 바퀴 */
+function Coaster({ x, riders, lead }: { x: number; riders: Cast[]; lead?: boolean }) {
   const y = railY(x)
   const dy = railY(x + 4) - railY(x - 4)
   const ang = (Math.atan2(dy, 8) * 180) / Math.PI
   const down = dy > 1.5 // 내려갈 때 만세
   const pose: SidePose = down ? { ...SIT, armN: [160, 10], armF: [150, 10], head: -10 } : { ...SIT, armN: [70, 30], armF: [60, 30] }
   return (
-    <g transform={`translate(${x} ${y}) rotate(${ang})`}>
-      {riders.map((c, i) => <Actor key={i} c={c} x={-12 + i * 26} y={2} size={32} pose={pose} expr={down ? 'surprised' : 'happy'} noCane />)}
-      <path d="M-26 -14 H30 Q34 -14 34 -8 V0 H-28 Q-30 -8 -26 -14Z" fill="#F2C230" stroke={INK} strokeWidth="2" />
-      <path d="M-22 -8 H26" stroke="#E0533F" strokeWidth="2" />
-      <circle cx="-16" cy="2" r="4" fill="#3A3434" stroke={INK} strokeWidth="1.4" />
-      <circle cx="22" cy="2" r="4" fill="#3A3434" stroke={INK} strokeWidth="1.4" />
+    <g transform={`translate(${x} ${y - 4}) rotate(${ang})`} strokeLinejoin="round">
+      {/* 등받이 (사람 뒤) */}
+      {[-20, 6].map((sx) => <path key={sx} d={`M${sx - 4} -10 V-22 Q${sx - 4} -26 ${sx} -26 Q${sx + 3} -26 ${sx + 3} -22 V-10Z`} fill="#E0533F" stroke={INK} strokeWidth="1.4" />)}
+      {riders.map((c, i) => <Actor key={i} c={c} x={-12 + i * 26} y={0} size={32} pose={pose} expr={down ? 'surprised' : 'happy'} noCane />)}
+      {/* 몸통 + 앞코 */}
+      <path d={`M-28 -14 H26 Q${lead ? 40 : 32} -14 ${lead ? 42 : 34} -4 V0 H-28 Q-31 -8 -28 -14Z`} fill="#F2C230" stroke={INK} strokeWidth="2" />
+      <path d="M-24 -8 H30" stroke="#E0533F" strokeWidth="2.4" /><path d="M-24 -11 H28" stroke="#FFF3A6" strokeWidth="1" />
+      {lead && <circle cx="36" cy="-7" r="2.4" fill="#FFF3A6" stroke={INK} strokeWidth="0.9" />}
+      {/* 안전바 */}
+      {[-6, 20].map((bx) => <path key={bx} d={`M${bx - 8} -14 Q${bx - 2} -22 ${bx + 2} -14`} stroke="#5A5658" strokeWidth="1.8" fill="none" />)}
+      {/* 바퀴 (레일 위·아래) */}
+      {[-18, 22].map((wx) => <g key={wx}><rect x={wx - 5} y="-1" width="10" height="5" rx="1" fill="#8A8F98" stroke={INK} strokeWidth="1" /><circle cx={wx} cy="1" r="3.2" fill="#3A3434" stroke={INK} strokeWidth="1.1" /><circle cx={wx} cy="7.4" r="2" fill="#3A3434" stroke={INK} strokeWidth="0.9" /></g>)}
     </g>
   )
 }
 
-/** 입구: 하늘 · 아치 간판 · 매표소 · 깃발 · 나무 */
+/** 입구: 하늘 · 멀리 성·대관람차 · 산울타리 · 매표소 · 줄무늬 기둥 아치 · 화단 · 풍선 수레 · 보도블록 */
 function Gate({ t }: { t: number }) {
   return (
     <g>
       <defs><linearGradient id="gt-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#9ED3F0" /><stop offset="1" stopColor="#E8F5FB" /></linearGradient></defs>
       <rect width={W} height={H} fill="url(#gt-sky)" />
-      {/* 뒤로 보이는 대관람차 · 성 지붕 */}
-      <g transform="translate(270 70)" opacity="0.85"><circle r="40" fill="none" stroke="#C77FD0" strokeWidth="2.6" />{Array.from({ length: 8 }, (_, i) => { const a = t * 0.4 + (i * Math.PI) / 4; return <g key={i}><path d={`M0 0 L${Math.cos(a) * 40} ${Math.sin(a) * 40}`} stroke="#C77FD0" strokeWidth="1.2" /><rect x={Math.cos(a) * 40 - 5} y={Math.sin(a) * 40} width="10" height="8" rx="2.5" fill={['#E0533F', '#F2C230', '#5E8FC9', '#7FBF6A'][i % 4]} stroke={INK} strokeWidth="1.1" /></g> })}</g>
-      <g transform="translate(40 112)"><rect x="-14" y="-40" width="28" height="40" fill="#F4E3F4" stroke={INK} strokeWidth="1.6" /><path d="M-18 -40 L0 -66 L18 -40Z" fill="#C77FD0" stroke={INK} strokeWidth="1.6" /><path d="M0 -66 V-74 l8 3 l-8 3" fill="#E0533F" stroke={INK} strokeWidth="1" /></g>
-      <Tree x={18} y={124} s={0.7} />
-      <rect y="122" width={W} height={H - 122} fill="#E9DDCB" />
+      <path d="M118 22 q6 -10 16 -5 q8 -8 18 0 q10 0 8 8 H118Z M196 34 q4 -6 10 -3 q5 -5 11 0 q6 0 5 5 H196Z" fill="#fff" stroke="#D8E6EE" strokeWidth="1" />
+      <FerrisWheel x={282} y={66} r={38} gy={122} t={t} />
+      <Castle x={150} gy={122} s={0.8} />
+      <Tree x={20} y={122} s={0.72} /><Tree x={108} y={122} s={0.55} c="#8CC77A" flip />
+      {/* 산울타리 */}
+      {Array.from({ length: 22 }, (_, i) => <circle key={i} cx={i * 15 + 4} cy="111" r="8" fill="#6FAF5E" stroke={INK} strokeWidth="1.4" />)}
+      <rect y="110" width={W} height="12" fill="#6FAF5E" />
+      {Array.from({ length: 22 }, (_, i) => <path key={i} d={`M${i * 15} 108 q3 -3 6 0`} stroke="#4E8A3A" strokeWidth="1" fill="none" />)}
       <path d={`M0 122 H${W}`} stroke={INK} strokeWidth="2" />
-      {/* 아치 문 */}
+      <Pavers y0={122} />
+      <TicketBooth x={32} gy={150} s={1.3} /> {/* 11-28 사용자: 조금 크게 */}
+      {/* 아치 문: 줄무늬 기둥 + 꼭대기 공·깃발 + 전구 달린 간판 */}
+      <CandyPillar x={72} top={50} gy={150} id="gt-p1" />
+      <CandyPillar x={248} top={50} gy={150} c="#5E8FC9" id="gt-p2" />
       <g transform="translate(160 0)">
-        <rect x="-96" y="44" width="16" height="114" fill="#F2C230" stroke={INK} strokeWidth="2" />
-        <rect x="80" y="44" width="16" height="114" fill="#F2C230" stroke={INK} strokeWidth="2" />
-        {[-88, 88].map((x) => <g key={x}><circle cx={x} cy="40" r="9" fill="#E0533F" stroke={INK} strokeWidth="1.8" /><path d={`M${x} 31 V22 l8 3 l-8 3`} fill="#5E8FC9" stroke={INK} strokeWidth="1" /></g>)}
+        {[-88, 88].map((x) => <g key={x}><circle cx={x} cy="38" r="9" fill="#F2C230" stroke={INK} strokeWidth="1.8" /><circle cx={x - 3} cy="35" r="2.4" fill="#fff" opacity="0.7" /><path d={`M${x} 29 V18`} stroke={INK} strokeWidth="1.4" /><path d={`M${x} 18 l10 3.5 l-10 3.5Z`} fill="#E0533F" stroke={INK} strokeWidth="1" /></g>)}
         <path d="M-90 58 Q0 6 90 58 L90 72 Q0 22 -90 72Z" fill="#E0533F" stroke={INK} strokeWidth="2" />
+        <path d="M-88 61 Q0 11 88 61" stroke="#F58A75" strokeWidth="1.4" fill="none" />
         <text textAnchor="middle" y="46" fontSize="15" fill="#FFF3A6" stroke={INK} strokeWidth="0.6" paintOrder="stroke">데굴랜드</text>
-        {Array.from({ length: 9 }, (_, i) => { const a = Math.PI * (0.12 + i * 0.095); return <circle key={i} cx={-Math.cos(a) * 88} cy={66 - Math.sin(a) * 40} r="2" fill={Math.sin(t * 8 + i) > 0 ? '#FFF3A6' : '#fff'} stroke={INK} strokeWidth="0.6" /> })}
+        {Array.from({ length: 11 }, (_, i) => { const a = Math.PI * (0.1 + i * 0.08); return <circle key={i} cx={-Math.cos(a) * 88} cy={68 - Math.sin(a) * 41} r="2" fill={Math.sin(t * 8 + i) > 0 ? '#FFF3A6' : '#fff'} stroke={INK} strokeWidth="0.6" /> })}
       </g>
-      <Garland y={88} x0={0} x1={64} />
-      <Garland y={88} x0={256} x1={320} />
-      {/* 풍선 장수 */}
-      <g transform="translate(290 150)">{['#E0533F', '#F2C230', '#5E8FC9', '#7FBF6A'].map((c, i) => <g key={i} transform={`translate(${(i - 1.5) * 7} ${-i % 2 * 6})`}><Balloon c={c} t={t + i} /></g>)}</g>
-      <Bush x={246} y={124} s={0.6} flowers="#F7A3B8" />
+      <LampGarland x0={0} y0={70} x1={64} y1={58} sag={6} />
+      <LampGarland x0={256} y0={58} x1={320} y1={72} sag={6} />
+      <Planter x={100} gy={150} /><Planter x={220} gy={150} />
+      <BalloonCart x={292} gy={156} t={t} />
     </g>
   )
 }
 
-/** 광장: 회전목마 · 솜사탕 가게 · 깃발 · 나무 */
+/** 광장: 멀리 대관람차 · 나무 · 솜사탕 가게 · 가로등과 꽃줄 · 회전목마 · 보도블록 */
 function Plaza({ t }: { t: number }) {
   return (
     <g>
       <defs><linearGradient id="pz-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#FFD6A8" /><stop offset="1" stopColor="#FFF0D8" /></linearGradient></defs>
       <rect width={W} height={H} fill="url(#pz-sky)" />
-      {/* 회전목마 */}
-      <g transform="translate(226 0)">
-        <path d="M-70 52 L0 20 L70 52Z" fill="#E0533F" stroke={INK} strokeWidth="2" />
-        {Array.from({ length: 7 }, (_, i) => <path key={i} d={`M${-70 + i * 20} 52 q10 8 20 0`} fill={i % 2 ? '#fff' : '#F2C230'} stroke={INK} strokeWidth="1.4" />)}
-        <path d="M0 20 V10" stroke={INK} strokeWidth="2" /><circle cy="8" r="4" fill="#F2C230" stroke={INK} strokeWidth="1.4" />
-        <rect x="-66" y="58" width="132" height="6" fill="#C77FD0" stroke={INK} strokeWidth="1.4" />
-        {[-48, -16, 16, 48].map((x0, i) => { const x = ((x0 + t * 30 + 64) % 128) - 64, b = Math.sin(t * 4 + i) * 4; return <g key={i}><path d={`M${x} 64 V${112 + b}`} stroke="#E8C060" strokeWidth="2" /><g transform={`translate(${x} ${116 + b})`}><path d="M-10 0 Q-8 -8 4 -8 L10 -14 L12 -8 Q12 2 6 4 H-8Z" fill={['#fff', '#F7B8C8', '#BFE4F7', '#FFE27A'][i]} stroke={INK} strokeWidth="1.3" strokeLinejoin="round" /></g></g> })}
-        <rect x="-70" y="132" width="140" height="10" rx="2" fill="#C77FD0" stroke={INK} strokeWidth="1.6" />
-      </g>
-      {/* 솜사탕 가게 */}
-      <g transform="translate(46 158)">
-        <rect x="-36" y="-44" width="72" height="44" fill="#FFF6EA" stroke={INK} strokeWidth="2" />
-        <path d="M-42 -44 H42 L36 -62 H-36Z" fill="#F7A3B8" stroke={INK} strokeWidth="1.8" />
-        {Array.from({ length: 6 }, (_, i) => <path key={i} d={`M${-42 + i * 14} -44 q7 8 14 0`} fill={i % 2 ? '#fff' : '#F2708A'} stroke={INK} strokeWidth="1.2" />)}
-        <text y="-24" textAnchor="middle" fontSize="10" fill="#C2452D">솜사탕</text>
-        {[-20, 0, 20].map((x) => <g key={x} transform={`translate(${x} -2) scale(0.7)`}><Cotton /></g>)}
-      </g>
-      <Garland y={6} x0={0} x1={150} />
-      <rect y={GROUND} width={W} height={H - GROUND} fill="#E9DDCB" />
+      <path d="M100 20 q6 -10 16 -5 q8 -8 18 0 q10 0 8 8 H100Z" fill="#fff" opacity="0.9" />
+      <FerrisWheel x={128} y={58} r={30} gy={124} t={t} color="#E08AA0" />
+      <Tree x={100} y={126} s={0.6} c="#8CC77A" /><Tree x={160} y={126} s={0.5} flip />
+      <rect y="124" width={W} height={GROUND - 124} fill="#9CCB86" />
+      <path d={`M0 124 H${W}`} stroke={INK} strokeWidth="1.6" />
+      <CottonStand x={46} gy={GROUND} t={t} />
+      <Lamp x={124} y={GROUND} on />
+      <LampGarland x0={128} y0={GROUND - 70} x1={170} y1={GROUND - 100} sag={4} />
+      <Carousel x={240} gy={GROUND} t={t} />
+      <Pavers y0={GROUND} />
       <path d={`M0 ${GROUND} H${W}`} stroke={INK} strokeWidth="2" />
-      {Array.from({ length: 8 }, (_, i) => <path key={i} d={`M${i * 44} ${GROUND} L${i * 44 - 12} ${H}`} stroke="rgba(42,33,24,0.12)" strokeWidth="1.6" />)}
     </g>
   )
 }
@@ -138,7 +133,7 @@ export const amusement: SceneDef = {
       return (
         <g>
           <Amusement t={t} />
-          <Coaster x={cx} riders={[fr]} />
+          <Coaster x={cx} riders={[fr]} lead />
           <Coaster x={cx - 66} riders={[me, kidRider]} />
           {t < 4.0 && Math.sin(t * 14) > 0 && <text x={Math.min(280, Math.max(40, cx - 50))} y={railY(cx) + 30} fontSize="9" fill={INK}>덜컹덜컹</text>}
           <Bubble t={t} t0={4.4} t1={5.8} x={Math.min(260, Math.max(60, cx - 66))} y={34} text="꺄아~!" size={15} />

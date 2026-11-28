@@ -4,6 +4,7 @@
 import { Actor, castAt, GROUND, H, headH, W, type SceneDef } from './Stage'
 import { Bubble, Hearts, Sparkle, Sweat } from './Fx'
 import { Phone } from './Props2'
+import { Tree } from './Nature'
 import { INK, clamp01, ease, keys, pick, poseAt, seg } from './kit'
 import { CHEER, gaitOf, STAND } from './poses'
 import type { SidePose } from '../art/SideCharacter'
@@ -23,21 +24,27 @@ const gy = (wx: number) => -K * Math.min(wx, SX)
 function Pine({ x, y, s = 1, c = '#4E8A5A' }: { x: number; y: number; s?: number; c?: string }) {
   return (
     <g transform={`translate(${x} ${y}) scale(${s})`}>
-      <rect x="-4" y="-26" width="8" height="28" fill="#7A5232" stroke={INK} strokeWidth="1.8" />
-      {[0, 1, 2].map((i) => <path key={i} d={`M0 ${-128 + i * 30} L${-22 - i * 8} ${-78 + i * 26} H${22 + i * 8}Z`} fill={c} stroke={INK} strokeWidth="1.8" strokeLinejoin="round" />)}
+      {/* 줄기 (껍질 무늬) · 층층이 처진 가지 (톱니 끝 · 아래 그늘 · 위 빛) */}
+      <path d="M-4 2 L-3 -30 H3 L4 2Z" fill="#7A5232" stroke={INK} strokeWidth="1.8" />
+      <path d="M-1 -4 v-6 M1.5 -14 v-6 M-1.5 -22 v-5" stroke="#5A3A22" strokeWidth="1" />
+      {[0, 1, 2, 3].map((i) => {
+        const top = -132 + i * 26, w = 16 + i * 9, bot = top + 34 + i * 4
+        const teeth = Array.from({ length: 5 }, (_, k) => { const x0 = -w + (k * 2 * w) / 5, x1 = x0 + w / 5, x2 = x0 + (2 * w) / 5; return `L${x1} ${bot + 4} L${x2} ${bot}` }).join(' ')
+        return (
+          <g key={i}>
+            <path d={`M0 ${top} Q${-w * 0.5} ${top + 16} ${-w} ${bot} ${teeth} Q${w * 0.5} ${top + 16} 0 ${top}Z`} fill={c} stroke={INK} strokeWidth="1.8" strokeLinejoin="round" />
+            <path d={`M${-w + 4} ${bot - 1} Q0 ${bot - 7} ${w - 4} ${bot - 1}`} stroke="rgba(0,0,0,0.18)" strokeWidth="3" fill="none" />
+            <path d={`M-2 ${top + 6} Q${-w * 0.3} ${top + 16} ${-w * 0.55} ${bot - 6}`} stroke="rgba(255,255,255,0.3)" strokeWidth="2" fill="none" strokeLinecap="round" />
+          </g>
+        )
+      })}
     </g>
   )
 }
 /** 활엽수 */
 function Leafy({ x, y, s = 1, c = '#7FB86A' }: { x: number; y: number; s?: number; c?: string }) {
-  return (
-    <g transform={`translate(${x} ${y}) scale(${s})`}>
-      <path d="M-4 2 L-3 -50 Q-12 -60 -16 -62 M3 2 L3 -54 Q12 -62 16 -64" fill="#7A5232" stroke={INK} strokeWidth="1.8" />
-      <path d="M-4 2 L-3 -50 H3 L4 2Z" fill="#7A5232" stroke={INK} strokeWidth="1.8" />
-      <path d="M-34 -70 Q-40 -98 -16 -104 Q-10 -126 12 -118 Q34 -122 36 -98 Q48 -84 32 -66 Q12 -56 -8 -60 Q-30 -54 -34 -70Z" fill={c} stroke={INK} strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M-14 -96 q6 -6 12 -2 M10 -84 q6 -4 12 0" stroke="#5E9A50" strokeWidth="1.6" fill="none" />
-    </g>
-  )
+  // 11-28 사용자: 나무가 이상함 → 줄기·가지·겹친 잎 덩어리가 있는 공원 나무 그림을 씀
+  return <Tree x={x} y={y} s={s * 1.15} c={c} />
 }
 
 export const hike: SceneDef = {
@@ -96,6 +103,14 @@ export const hike: SceneDef = {
         {/* 뒤쪽 나무 (흐릿하게, 땅 뒤) */}
         {[-150, -70, 10, 95, 165, 215].map((wx, i) => i % 2 ? <Pine key={i} x={sx(wx)} y={sy(wx) + 4} s={0.9} c="#7FA88A" /> : <Leafy key={i} x={sx(wx)} y={sy(wx) + 4} s={1.05} c="#A6CF92" />)}
         <path d={ground} fill="#8CC377" stroke={INK} strokeWidth="2.4" strokeLinejoin="round" />
+        {/* 비탈의 풀포기 · 작은 돌 · 들꽃 */}
+        {Array.from({ length: 26 }, (_, i) => -190 + i * 17).filter((wx) => wx < EDGE - 10).map((wx, i) => (
+          <g key={wx}>
+            <path transform={`translate(${sx(wx)} ${sy(wx) + 18 + (i % 3) * 6})`} d="M-4 0 Q-3 -5 -5 -8 M0 0 Q0 -6 1 -9 M4 0 Q3 -5 5 -7" stroke="#5E9A50" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+            {i % 4 === 1 && <ellipse cx={sx(wx) + 8} cy={sy(wx) + 28} rx="4" ry="2.4" fill="#B8B2A6" stroke={INK} strokeWidth="0.9" />}
+            {i % 3 === 2 && <g transform={`translate(${sx(wx) - 6} ${sy(wx) + 24})`}><path d="M0 0 V-5" stroke="#4E8A3A" strokeWidth="1" />{[0, 72, 144, 216, 288].map((d) => <ellipse key={d} cx="0" cy="-7.4" rx="1.1" ry="1.7" fill={['#F2708A', '#FFE27A', '#fff', '#C77FD0'][i % 4]} stroke={INK} strokeWidth="0.4" transform={`rotate(${d} 0 -6)`} />)}<circle cy="-6" r="0.8" fill="#F2C230" /></g>}
+          </g>
+        ))}
         {/* 흙길 + 통나무 계단 */}
         <path d={trail} stroke="#D9C49A" strokeWidth="9" fill="none" strokeLinecap="round" />
         {Array.from({ length: 22 }, (_, i) => -180 + i * 20).filter((wx) => wx < SX - 10).map((wx) => <rect key={wx} x={sx(wx) - 6} y={sy(wx) + 3} width="12" height="5" rx="2.5" fill="#9A6A3E" stroke={INK} strokeWidth="1.2" />)}
@@ -125,7 +140,7 @@ export const hike: SceneDef = {
         </g>
         {/* 사람들 (뒤 친구 → 나) */}
         <Actor c={fr} x={sx(frX)} y={sy(frX)} size={SZ} pose={frPose} expr={frExpr} flip={t > POSE_AT} caneLean={t > ARRIVE && !frWalk} />
-        <Actor c={me} x={sx(meX)} y={sy(meX)} size={SZ} pose={mePose} expr={meExpr} flip={t > YAHO + 1.4 && t < SELFIE} holding={t > SELFIE ? <g transform="rotate(-90) scale(1.4)"><Phone /></g> : undefined} caneLean={t > ARRIVE} />
+        <Actor c={me} x={sx(meX)} y={sy(meX)} size={SZ} pose={mePose} expr={meExpr} flip={t > YAHO + 1.4 && t < SELFIE} holding={t > SELFIE ? <g transform="rotate(-90) scale(0.85)"><Phone /></g> : undefined} caneLean={t > ARRIVE} />
         {/* 앞쪽 나무 (가까워서 크고 진함, 사람 안 가리게 아래쪽) */}
         {[-150, -10, 130].map((wx, i) => <g key={i} transform={`translate(${sx(wx)} ${sy(wx) + 26})`}><path d="M-26 4 Q-28 -12 -14 -14 Q-8 -26 6 -20 Q20 -24 24 -10 Q32 -2 26 4Z" fill="#5E9A50" stroke={INK} strokeWidth="1.8" strokeLinejoin="round" /></g>)}
         <Sweat t={t} t0={1.9} x={sx(meX) + 20} y={meTop + 18} />
