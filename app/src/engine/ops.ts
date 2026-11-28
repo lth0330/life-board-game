@@ -22,6 +22,7 @@ export type Op =
   | ['deposit', number, number?] // 금액, 기간(5·10)
   | ['withdraw', number | undefined]
   | ['giveTeam', number, number]
+  | ['skipScene', string, number] // 사건 장면 건너뛰기: 장면 키, 주인공 (11-28)
 
 export function applyOp(s: GameState, op: Op) {
   switch (op[0]) {
@@ -45,12 +46,14 @@ export function applyOp(s: GameState, op: Op) {
     case 'deposit': return deposit(s, op[1], op[2])
     case 'withdraw': return withdraw(s)
     case 'giveTeam': return giveTeammate(s, op[1], op[2])
+    case 'skipScene': s.sceneSkip = op[1]; return
   }
 }
 
 // 이 행동을 할 수 있는 플레이어: 고르기는 선택 창 주인, 미니게임은 그 미니게임 주인, 나머지는 지금 차례인 사람
 export function opActor(s: GameState, op: Op): number | null {
   if (op[0] === 'choose') return s.pending?.playerId ?? null
+  if (op[0] === 'skipScene') return s.players[op[2]] ? op[2] : null // 장면 주인공만 (방장이 주인 확인)
   if (op[0] === 'rpsPick') return ((s.pending?.data as { queue?: number[] } | undefined)?.queue ?? []).includes(op[1]) && s.pending?.type === 'rps' ? op[1] : null
   if (op[0] === 'contestReady') return s.mini?.contest?.queue.includes(op[1]) ? op[1] : null
   if (op[0] === 'finishMini') {

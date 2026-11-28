@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { Character, type Expr } from './art/Character'
 import { aiStep } from './engine/ai'
@@ -35,6 +35,7 @@ const AuthScreen = lazy(() => import('./account/AuthScreen'))
 const AccountSheet = lazy(() => import('./account/AccountSheet'))
 const AdminScreen = lazy(() => import('./account/AdminScreen'))
 // 미니게임 화면은 처음 화면에 필요 없어서 따로 받음 (2026-10-29: 첫 화면 빨리). 게임 화면이 열리면 미리 받아 둠
+type SceneMod = typeof import('./scenes/forGame')
 const loadMini = () => Promise.all([import('./ui/MiniGames'), import('./ui/MiniWatch')])
 const MiniGame = lazy(() => import('./ui/MiniGames').then((m) => ({ default: m.MiniGame })))
 const MiniWatch = lazy(() => import('./ui/MiniWatch').then((m) => ({ default: m.MiniWatch })))
@@ -372,6 +373,12 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
 
   // ── 칸 사건 팝업: 걷기가 끝난 뒤 보여 주고 2.6초 뒤 저절로 꺼짐 ──
   const [popShow, setPopShow] = useState<GameState['popup']>(null)
+  // 사건 장면 (11-28): 사건 창·큰 사건 배너 위에 캐릭터 장면. 장면 코드는 게임 화면에서 따로 불러옴
+  const [sceneMod, setSceneMod] = useState<SceneMod | null>(null)
+  useEffect(() => { import('./scenes/forGame').then((m) => setSceneMod(m)).catch(() => {}) }, [])
+  const scenePlayed = useRef(new Set<string>()) // 같은 사건을 사건 창에서 보여 줬으면 배너에서 또 안 보여 줌
+  const sceneSpeed = (pid: number) => (!game.players[pid].human && speed === 'fast' ? 2 : 1) // AI 차례만 게임 빠르기에 맞춤
+  const sceneCast = (pid: number) => sceneMod ? sceneMod.castFor(game.players.map((q) => ({ outfit: q.outfit, age: ageOf(game, q) })), pid) : []
   const [rpsReveal, setRpsReveal] = useState<Record<number, number> | null>(null) // 가위바위보 손 공개 중 (아래에서 씀)
   const [suspense, setSuspense] = useState(false) // AI 미니게임 '도전 중…'
   const lastPopId = useRef(game.popup?.id ?? 0)
@@ -399,6 +406,13 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
     setSuspense(aiMini)
     if (!aiMini) sfx(game.popup.tone === 'bad' ? 'bad' : game.popup.art === 'money' ? 'coin' : 'pop')
   }, [game.popup, game.players])
+  // 사건 창에 맞는 장면 ('지난 차례 뒤 일어난 일'은 모아 보여 주는 글이라 장면 없음). 장면 코드를 늦게 불러와도 뜨게 계산으로
+  const popScene = useMemo(() => (popShow && popShow.id > 0 && sceneMod ? sceneMod.pickScene(popShow.text, stageOf(game).id) : null), [popShow, sceneMod]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (popScene && popShow) scenePlayed.current.add(`${game.turn}|${popShow.playerId}|${popScene.entry.scene.id}`) }, [popScene, popShow]) // eslint-disable-line react-hooks/exhaustive-deps
+  // 건너뛰기 (11-28 사용자): 장면 주인공이 누르면 모든 기기에서 장면 없이 결과만 (게임 상태 sceneSkip으로 알림)
+  const popKey = popShow ? `p:${popShow.id}` : ''
+  const popSceneOn = popScene && game.sceneSkip !== popKey ? popScene : null
+  const canSkip = (pid: number) => isMine(pid) && game.players[pid].human
   // 가위바위보를 고르거나 손을 보여 주는 동안에는 사건 창을 미뤄 둠 (가려서, 2026-10-31 사용자)
   const rpsOn = game.pending?.type === 'rps' || !!rpsReveal
   const popVisible = !!popShow && !walking && diceShow === null && !rpsOn
@@ -412,10 +426,12 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
   const popMine = !!popShow && isMine(popShow.playerId) && game.players[popShow.playerId].human
   useEffect(() => {
     if (!popVisible || suspense) return
-    const ms = popMine ? MY_POP_MS : popShow && game.players[popShow.playerId].human ? 2600 : 1500 // AI 차례는 짧게
+    const normal = popMine ? MY_POP_MS : popShow && game.players[popShow.playerId].human ? 2600 : 1500 // AI 차례는 짧게
+    // 장면이 있으면 장면 길이만큼 (+ 글 읽을 시간)
+    const ms = popSceneOn && popShow && sceneMod ? sceneMod.sceneMs(popSceneOn.entry.scene.dur, sceneSpeed(popShow.playerId), popMine, normal) : normal
     const t = setTimeout(() => setPopShow(null), ms)
     return () => clearTimeout(t)
-  }, [popVisible, popShow, game.players, suspense, popMine])
+  }, [popVisible, popShow, game.players, suspense, popMine, popSceneOn]) // eslint-disable-line react-hooks/exhaustive-deps
   // 룰렛 연출 (대학 합격·감독 도전)
   const [wheel, setWheel] = useState<GameState['roulette']>(null)
   // 주사위 결과와 같은 순간에 오면, 주사위가 나온 시각부터 재서 기다렸다가 돌림
@@ -433,6 +449,7 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
   useEffect(() => { setShopCat(null) }, [game.pending])
 
   // 차례가 넘어가도 방금 움직인 사람을 1.2초 더 보여 줌 (팝업·걷기가 끝난 뒤)
+  const [banner, setBanner] = useState(game.banner)
   const [hold, setHold] = useState<number | null>(null)
   const curIdx = game.current
   const prevCur = useRef(curIdx)
@@ -447,7 +464,15 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
     return () => clearTimeout(t)
   }, [hold, walking, diceShow, popBlocks])
 
-  const busy = rolling || awaitDice || remoteRoll || diceShow !== null || walking || popBlocks || hold !== null || summaryOpen || wheel !== null || wheelWaiting
+  const baseBusy = rolling || awaitDice || remoteRoll || diceShow !== null || walking || popBlocks || hold !== null || summaryOpen || wheel !== null || wheelWaiting
+  // 큰 사건 배너(결혼·아기·집·복권·승진·졸업)에 장면: 사건 창에서 이미 보여 줬으면 보통 배너. 장면이 도는 동안은 게임을 멈춤
+  const bannerPid = banner ? game.players.filter((q) => banner.text.startsWith(q.name)).sort((a, b) => b.name.length - a.name.length)[0]?.id ?? -1 : -1
+  const bScene = banner && sceneMod && bannerPid >= 0 && !banner.title.endsWith('단계') ? sceneMod.pickScene(banner.title, stageOf(game).id) : null
+  const bannerKey = banner ? `b:${game.turn}:${banner.title}` : ''
+  const bannerScene = bScene && !scenePlayed.current.has(`${game.turn}|${bannerPid}|${bScene.entry.scene.id}`) && game.sceneSkip !== bannerKey && !baseBusy ? bScene : null
+  const bannerMine = bannerPid >= 0 && isMine(bannerPid) && game.players[bannerPid].human
+  const bannerMs = bannerScene && sceneMod ? sceneMod.sceneMs(bannerScene.entry.scene.dur, sceneSpeed(bannerPid), bannerMine, 2800) : 0
+  const busy = baseBusy || !!bannerScene
   const p = cur(game)
   const shown = walking ? game.players[game.pathPlayer] : hold !== null ? game.players[hold] : p
   // 룰렛을 기다리거나 돌리는 동안은 정보 칸도 그 전 모습 그대로 (학자금 대출이 먼저 보여 합격을 미리 알 수 있었음, 2026-10-22)
@@ -512,7 +537,6 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
     const t = setTimeout(() => setSpeech(null), 5000)
     return () => clearTimeout(t)
   }, [game.speech])
-  const [banner, setBanner] = useState(game.banner)
   useEffect(() => { setPendingDown(false) }, [game.pending?.type, game.pending?.title, game.turn])
   // 단계 카드('중년 단계' 등)가 떠 있는 동안은 선택 창을 띄우지 않음 → 카드가 사라진 뒤에 뜸 (2026-10-22 사용자)
   const pending = busy || banner?.title.endsWith('단계') ? null : game.pending
@@ -523,6 +547,11 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
     sfx(t === '결혼!' ? 'bell' : CELEBRATE.includes(t) ? 'fanfare' : t.startsWith('복권') ? 'win' : t === '강제 청산' || t === '집 경매' ? 'bigBad' : t.startsWith('대출') && game.banner.tone === 'bad' ? 'warn' : game.banner.tone === 'bad' ? 'bad' : 'pop')
   }, [game.banner])
   useEffect(() => { if (game.phase === 'gameover') sfx('fanfare') }, [game.phase])
+  useEffect(() => {
+    if (!bannerMs) return
+    const t = setTimeout(() => setBanner(null), bannerMs)
+    return () => clearTimeout(t)
+  }, [banner, bannerMs])
   useEffect(() => {
     if (!banner || busy) return
     const t = setTimeout(() => setBanner(null), banner.title.endsWith('단계') ? 2000 : banner.title.startsWith('복권') ? 3200 : CELEBRATE.includes(banner.title) ? 2800 : 1800) // 큰 장면은 더 길게
@@ -810,7 +839,10 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
       {popVisible && popShow && (
         suspense
           ? <EventPopup art={popShow.art} title={popShow.text.match(/^\[(.+?)\]/)?.[1] ?? popShow.title} text="도전 중…" tone="info" who={game.players[popShow.playerId].name} onClose={() => setSuspense(false)} />
-          : <EventPopup art={popShow.art} title={popShow.title} text={popShow.text} tone={popShow.tone} who={game.players[popShow.playerId].name} hint={popMine ? MY_POP_MS : 0} onClose={() => setPopShow(null)} />
+          : <EventPopup art={popShow.art} title={popShow.title} text={popShow.text} tone={popShow.tone} who={game.players[popShow.playerId].name}
+              hint={popMine ? (popSceneOn && sceneMod ? sceneMod.sceneMs(popSceneOn.entry.scene.dur, 1, true, MY_POP_MS) : MY_POP_MS) : 0} onClose={() => setPopShow(null)}
+              onSkip={popSceneOn && canSkip(popShow.playerId) ? () => run(['skipScene', popKey, popShow.playerId]) : undefined}
+              scene={popSceneOn && sceneMod ? <sceneMod.ScenePlayer key={popShow.id} scene={popSceneOn.entry.scene} cast={sceneCast(popShow.playerId)} text={popSceneOn.line} speed={sceneSpeed(popShow.playerId)} /> : undefined} />
       )}
 
       <Suspense fallback={null}>
@@ -880,7 +912,12 @@ export function Play({ game, setGame, speed, onSpeed, saving, onQuit, onNew, onl
           <span>{banner.text}</span>
         </div>
       )}
-      {banner && !busy && CELEBRATE.includes(banner.title) && <Confetti key={banner.title + game.turn} />}
+      {banner && bannerScene && sceneMod && (
+        <EventPopup art="" title={banner.title} text={banner.text} tone={banner.tone} who="" hint={bannerMine ? bannerMs : 0} onClose={() => setBanner(null)}
+          onSkip={canSkip(bannerPid) ? () => run(['skipScene', bannerKey, bannerPid]) : undefined}
+          scene={<sceneMod.ScenePlayer key={banner.title + game.turn} scene={bannerScene.entry.scene} cast={sceneCast(bannerPid)} text={bannerScene.line} speed={sceneSpeed(bannerPid)} />} />
+      )}
+      {banner && (!busy || bannerScene) && CELEBRATE.includes(banner.title) && <Confetti key={banner.title + game.turn} />}
 
       {/* 왼쪽 위 뒤로 가기: 열린 창이 있으면 닫고, 없으면 게임에서 나갈지 물음 (2026-10-22 사용자) */}
       <BackButton label={sheet || menu || picker ? '닫기' : '게임에서 나가기'} onClick={() => {

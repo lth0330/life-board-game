@@ -19,7 +19,7 @@ const SEATS = [34, 76, 118, 160] // 하객 의자 (뒤쪽 줄)
 const GY = GROUND - 12 // 하객 줄 바닥 (조금 뒤)
 
 /** 식장: 샹들리에 · 꽃 아치 · 주례단 · 꽃 기둥 · 버진로드 */
-function Hall() {
+export function Hall() {
   const flowers = Array.from({ length: 15 }, (_, i) => { const a = Math.PI * (i / 14); return [OX - Math.cos(a) * 46, 60 - Math.sin(a) * 50] })
   return (
     <g>

@@ -606,6 +606,15 @@ const DODGE: [RegExp, string][] = [
   [/병원비/, '반려동물이 아플 뻔했지만 금방 나았다'],
 ]
 
+// 운세 '길'로 피해가 절반일 때 문구: 사건에 맞게 (11-28 사용자: 싸움·감기에도 '범인을 잡아'가 붙던 것 고침)
+function halfNote(b: Bad) {
+  if (/지갑|용돈|사기|보이스피싱|도둑|소매치기/.test(b.text)) return '다행히 범인을 잡아 절반은 돌려받았다'
+  if (/싸웠|다퉜|소문/.test(b.text)) return '다행히 금방 화해해서 덜 속상했다'
+  if (b.kind === 'health') return '다행히 금방 나아서 덜 고생했다'
+  if (b.kind === 'property' || b.kind === 'car') return '다행히 피해가 크지 않아 수리비가 절반만 들었다'
+  return '다행히 피해가 절반으로 줄었다'
+}
+
 export function badEvent(s: GameState, p: Player, b: Bad) {
   const rng = rngOf(s)
   let loss = b.loss
@@ -621,7 +630,7 @@ export function badEvent(s: GameState, p: Player, b: Bad) {
   let note = ''
   if (f === 0) { mult = 1.5; note = '더 나빠졌다' }
   else if (f === 1) { mult = 1.2; note = '조금 더 나빠졌다' }
-  else if (f === 3 && rng.chance(0.6)) { mult = 0.5; note = '다행히 범인을 잡아 절반은 돌려받았다' }
+  else if (f === 3 && rng.chance(0.6)) { mult = 0.5; note = halfNote(b) }
   else if (f === 4) {
     // 대길: 전화위복 20% · 완전히 피함 50% · 그대로 30% (2026-10-16 사용자: 무조건 피하면 안 됨)
     const r = rng.next()

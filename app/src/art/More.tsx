@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { sfx } from '../sound'
 import { awning, box, door, gable, sideWin } from './toyParts'
 import { artFile } from './slots'
@@ -360,15 +360,22 @@ export function Roulette({ title, chance, ok, who, manual, onDone }: { title: st
 
 // 칸 사건 팝업: 그림 + 제목 + 이번 칸 기록. 눌러서 닫거나 저절로 꺼짐
 // hint: 내 사건이면 몇 초 뒤 닫히는지 줄어드는 막대로 (ms, 2026-10-31 사용자)
-export function EventPopup({ art, title, text, tone, who, hint = 0, onClose }: { art: string; title: string; text: string; tone: string; who: string; hint?: number; onClose: () => void }) {
+// scene: 캐릭터 장면(11-28)이 있으면 그림 대신 장면. 누르면 장면을 넘기고 창을 닫음
+// onSkip: 장면 주인공만 보이는 '건너뛰기' (누르면 모든 기기에서 장면 없이 결과만, 11-28)
+export function EventPopup({ art, title, text, tone, who, hint = 0, onClose, scene, onSkip }: { art: string; title: string; text: string; tone: string; who: string; hint?: number; onClose: () => void; scene?: ReactNode; onSkip?: () => void }) {
   const draw = ART[art]
   const file = artFile(`event-${art}`) // 그림 파일이 있으면 그 그림 (2026-11-23)
   return (
-    <button className={`event-pop t-${tone}`} onClick={onClose} aria-label={`${title}: ${text} (눌러서 닫기)`}>
-      {file ? <img src={file} width="150" height="125" alt="" draggable={false} style={{ objectFit: 'contain' }} />
+    <button className={`event-pop t-${tone}${scene ? ' has-scene' : ''}`} onClick={onClose} aria-label={`${title}: ${text} (눌러서 닫기)`}>
+      {scene ? <div className="pop-scene">{scene}{onSkip && (
+        // 창 전체가 버튼이라 안쪽은 span으로 (버튼 안에 버튼 금지)
+        <span role="button" tabIndex={0} className="scene-skip jua" aria-label="장면 건너뛰기"
+          onClick={(e) => { e.stopPropagation(); onSkip() }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onSkip() } }}>건너뛰기 ▶▶</span>
+      )}</div> : file ? <img src={file} width="150" height="125" alt="" draggable={false} style={{ objectFit: 'contain' }} />
         : draw && <svg viewBox="0 0 120 100" width="150" height="125" aria-hidden="true">{draw('')}</svg>}
       <b className="jua">{title}</b>
-      <span className="muted">{who}</span>
+      {who && <span className="muted">{who}</span>}
       {text.split('\n').map((l, i) => <span key={i}>{l}</span>)}
       {hint > 0 && <small className="pop-hint">닫기</small>}
       {hint > 0 && <i className="pop-timer" style={{ animationDuration: `${hint}ms` }} />}

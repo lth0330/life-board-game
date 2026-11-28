@@ -545,6 +545,14 @@ button.wide.ghost { background: transparent; color: var(--ink); border: none; te
 .event-pop svg { animation: pop-bob 1.2s ease-in-out infinite; }
 @keyframes pop-bob { 50% { transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) { .event-pop, .event-pop svg { animation: none; } }
+/* 사건 장면 (11-28): 창을 넓혀 장면을 위에, 글은 아래 */
+.event-pop.has-scene { width: min(460px, calc(100% - 16px)); padding: 10px 12px 14px; gap: 2px; top: 46%; }
+.event-pop.has-scene b { font-size: 22px; margin-top: 4px; }
+.event-pop .pop-scene { width: 100%; border: 3px solid var(--ink); border-radius: 14px; overflow: hidden; background: #fff; }
+.event-pop .pop-scene svg { animation: none; }
+.event-pop .pop-scene { position: relative; }
+.event-pop .scene-skip { position: absolute; right: 6px; top: 6px; padding: 5px 10px; border-radius: 999px; background: rgba(42, 33, 24, 0.78); color: #fff; font-size: 14px; line-height: 1.2; cursor: pointer; }
+.event-pop .scene-skip:hover, .event-pop .scene-skip:focus-visible { background: var(--ink); outline: 2px solid #fff; }
 /* 상점 카테고리 */
 .shop-cats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
 .shop-cats button { min-height: 72px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: 'Jua', sans-serif; font-size: 17px; }

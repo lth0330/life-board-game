@@ -264,6 +264,7 @@ export interface GameState {
   reroll?: { item: DiceItem | null; bonus: number } | null // 찬스 카드 다시 굴리기: 사람은 직접 다시 굴림 (아이템은 이미 씀)
   log: LogEntry[]
   logCount: number // 지금까지 남긴 기록 수 (팝업에 이번 칸 기록만 모으려고)
+  sceneSkip?: string | null // 사건 장면을 주인공이 건너뜀 (11-28): 이 장면 키면 모든 기기에서 장면 없이 결과만
   popup: { id: number; art: string; title: string; text: string; tone: 'good' | 'bad' | 'info'; playerId: number } | null // 칸 사건 팝업
   news?: { id: number; art: string; title: string; text: string; tone: 'good' | 'bad' | 'info'; playerId: number } | null // '지난 차례 뒤 일어난 일' 창 (칸 사건 창 뒤에 뜸)
   stockPrev: Record<Sector, number>
